@@ -12,5 +12,8 @@ namespace learnSPH
 
 		inline double cubicFunction(const double q);
 		inline double cubicGradFunction(const double q);
+		double kernelFunction(const double q);
+		double kernelGradFunction(const double q);
+
 	};
 };
