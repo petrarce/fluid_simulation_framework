@@ -69,7 +69,7 @@ TEST_CASE( "Foo is always Bar", "[Foobar]" )
  		double vq = -3;
  		for(int i = 0; i < 100; i++, vq+= 0.06){
  			double kfval = kernelFunction(abs(vq));
- 			sum += kfval;
+ 			sum += kfval * 0.06;
  		}
  		REQUIRE(sum < 1);
 
@@ -92,6 +92,6 @@ TEST_CASE( "Foo is always Bar", "[Foobar]" )
  			err += errVec.norm();
  		}
  		err /= 100;
- 		REQUIRE(err < 0.05);
+ 		REQUIRE(err < 1./1000000);
  	}
  }

@@ -9,6 +9,7 @@ namespace learnSPH
 	namespace kernel
 	{
 		constexpr double PI = 3.14159265358979323846;
+		constexpr double smooth_length = 0.785;
 		static double pow2(const double a) { return a * a; }
 		static double pow3(const double a) { return a * a * a; }
 
