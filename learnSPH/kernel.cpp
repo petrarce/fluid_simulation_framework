@@ -19,7 +19,20 @@ double learnSPH::kernel::cubicFunction(const double q)
 
 double learnSPH::kernel::cubicGradFunction(const double q)
 {
-	// ...
+	assert(q >= 0.0);
+	constexpr double sigma = 3. /(2. * PI);
+
+	if (q < 1.0) {
+		return sigma * (-2*q + 1.5*pow2(q));
+	}
+	else if (q < 2.0) {
+		return sigma * (-3/6. * pow2(2-q));
+	}
+	else {
+		return 0;
+	}
+	assert(0 && "should never reach here");
+
 	return 0;
 }
 
@@ -30,8 +43,18 @@ double learnSPH::kernel::kernelFunction(const double q)
 	constexpr double h = 2.1;
 	return 1./pow3(h) * cubicFunction(q);
 }
-double learnSPH::kernel::kernelGradFunction(const double q)
+
+double learnSPH::kernel::kernelFunction(const Vector3d& x1, const Vector3d& x2)
 {
-	//...
-	return 0;
+	return kernelFunction((x1-x2).norm());
+}
+
+
+Vector3d learnSPH::kernel::kernelGradFunction(const Vector3d& x1, const Vector3d& x2)
+{
+	//smoosing length wath empirically found
+	constexpr double h = 2.1;
+	Vector3d distVec = x1-x2;
+	double q = distVec.norm();
+	return 1./pow3(h) * cubicGradFunction(q) * distVec/q;
 }
