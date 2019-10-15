@@ -1,9 +1,9 @@
 #include "catch.hpp"
 #include "../learnSPH/kernel.h"
 #include <iostream>
+#include <types.hpp>
 
 using namespace learnSPH::kernel;
-#define pr_dbg(msg, args...) fprintf(stdout, "[DBG (%s:%d)]" msg "\n", __FILE__, __LINE__, ##args)
 
 struct Foo
 {

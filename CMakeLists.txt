@@ -10,6 +10,7 @@ endif()
 add_subdirectory(learnSPH)
 add_subdirectory(tests)
 add_subdirectory(app)
+add_subdirectory(CompactNSearch)
 
 # Copy res folder
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/res)
