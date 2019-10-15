@@ -13,7 +13,7 @@ struct Foo
     }
 };
 
-Vector3d kernelEstimatedGrad(const Vector3d& x1, const Vector3d& x2){
+Vector3d kernelEstimatedGrad(const Vector3d& x1, const Vector3d& x2, const double h){
 	constexpr double eps = 1./1000000;
 	Vector3d epsX = Vector3d(eps, 0, 0);
 	Vector3d epsY = Vector3d(0, eps, 0);
@@ -21,9 +21,9 @@ Vector3d kernelEstimatedGrad(const Vector3d& x1, const Vector3d& x2){
 
 	Vector3d diffVec = x1 - x2;
 	Vector3d gradVect = Vector3d(
-		kernelFunction(x1 + epsX, x2) - kernelFunction(x1 - epsX, x2),
-		kernelFunction(x1 + epsY, x2) - kernelFunction(x1 - epsY, x2),
-		kernelFunction(x1 + epsZ, x2) - kernelFunction(x1 - epsZ, x2)
+		kernelFunction(x1 + epsX, x2, h) - kernelFunction(x1 - epsX, x2, h),
+		kernelFunction(x1 + epsY, x2, h) - kernelFunction(x1 - epsY, x2, h),
+		kernelFunction(x1 + epsZ, x2, h) - kernelFunction(x1 - epsZ, x2, h)
 	);
 	return 0.5 * (1./eps) * gradVect;
 }
@@ -58,7 +58,7 @@ TEST_CASE( "Foo is always Bar", "[Foobar]" )
 			Vector3d vec1 = Vector3d().Zero();
 			Vector3d vec2 = Vector3d().Ones() + Vector3d().Random();
 			vec2 = getRand(2., RAND_MAX) * (vec2 / vec2.norm());
- 			REQUIRE(kernelFunction(vec1, vec2) == 0);
+ 			REQUIRE(kernelFunction(vec1, vec2, smooth_length) == 0);
  		}
 
  		//Non negative property
@@ -66,19 +66,19 @@ TEST_CASE( "Foo is always Bar", "[Foobar]" )
 			Vector3d vec1 = Vector3d().Zero();
 			Vector3d vec2 = Vector3d().Ones() + Vector3d().Random();
 			vec2 = getRand(0., 2.) * (vec2 / vec2.norm());
- 			REQUIRE(kernelFunction(vec1, vec2) >= 0);
+ 			REQUIRE(kernelFunction(vec1, vec2, smooth_length) >= 0);
  		}
 
  		//Unity property
  		double sum = 0;
  		Vector3d vec1 = Vector3d().Zero();
  		Vector3d vec2 = -2 * Vector3d().Ones();
-		for(int i = 0; i < 100; i++){
+ 		for(int i = 0; i < 100; i++){
  			Vector3d vec2_1 = vec2;
  			for(int j = 0; j < 100; j++){
   			Vector3d vec2_2 = vec2_1;
 				for(int k = 0; k < 100; k++){
- 					sum += kernelFunction(vec1, vec2_2) * pow3(particle_size);
+ 					sum += kernelFunction(vec1, vec2_2, smooth_length) * pow3(particle_size);
  					vec2_2 += Vector3d(0, 0, particle_size);
  				}
  				vec2_1 += Vector3d(0, particle_size, 0);
@@ -101,7 +101,8 @@ TEST_CASE( "Foo is always Bar", "[Foobar]" )
  				vec2 = vec1/getRand(vec2.norm(), vec2.norm()*1.99);
  			}
  			REQUIRE((vec1 - vec2).norm() <= 2.);
- 			Vector3d errVec = kernelGradFunction(vec1, vec2) - kernelEstimatedGrad(vec1, vec2);
+ 			Vector3d errVec = kernelGradFunction(vec1, vec2, smooth_length) - 
+ 				kernelEstimatedGrad(vec1, vec2, smooth_length);
  			err += errVec.norm();
  		}
  		err /= 100;
