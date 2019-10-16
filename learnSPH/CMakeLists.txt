@@ -17,8 +17,12 @@ set(SOURCE_FILES
 	util/vtk_writer.cpp
 	util/vtk_writer.h
 	kernel.cpp
-	kernel.h)
-    
+	kernel.h
+	NBsearch.cpp
+	NBsearch.hpp
+	types.hpp)
+
 # Create a library version so it can be linked with other modules
 add_library(learnSPH ${SOURCE_FILES})
-target_include_directories(learnSPH PUBLIC ${EIGEN3_INCLUDE_DIR} )
+target_include_directories(learnSPH PUBLIC ${EIGEN3_INCLUDE_DIR})
+include_directories("${CMAKE_SOURCE_DIR}/learnSPH/")

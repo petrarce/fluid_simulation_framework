@@ -19,6 +19,7 @@ using namespace std;
 #define pr_warn(str, args...) fprintf(stderr, "WARNING: " str "\n", ##args)
 #define pr_info(str, args...) fprintf(stderr, "INFO: " str "\n", ##args)
 
+#undef assert
 #define assert(expr, msg...) do{ \
 	if(!(expr)){ \
 		pr_dbg("ASSERTION FAILES " #expr); \
@@ -28,3 +29,10 @@ using namespace std;
 		abort(); \
 	}\
 }while(0)
+
+enum opcode {
+	STATUS_OK = 0,
+	STATUS_NOK
+};
+
+using Real = double;
