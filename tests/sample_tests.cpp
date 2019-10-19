@@ -2,15 +2,12 @@
 #include <kernel.h>
 #include <iostream>
 #include <types.hpp>
-#include <CompactNSearch.h>
 #include <NBsearch.hpp>
-#include <Config.h>
 #include <random>
 #include <algorithm>
 #include <chrono>
 
 using namespace learnSPH::kernel;
-using namespace CompactNSearch;
 
 struct Foo
 {
@@ -142,43 +139,5 @@ TEST_CASE( "Foo is always Bar", "[Foobar]" )
  				REQUIRE(i_is_in_j == true);
  			}
  		}
-
-
-#ifndef NPOINTS
-#define NPOINTS 1000
-#endif
-
-		points.clear();
- 		points.reserve(NPOINTS);
- 		for(int i = 0; i < NPOINTS; i ++){
-			Real x = getRand(-1,1);
-			Real y = getRand(-1,1);
-			Real z = getRand(-1,1);
-			points.push_back({x,y,z});
- 		}
- 		custom_nbs.set_compack_support(2*smooth_length);
-  		auto t0 = std::chrono::high_resolution_clock::now();
- 		custom_nbs.bf_find_neighbours(points.front().data(), points.size(), neighbours);
- 		auto t1 = std::chrono::high_resolution_clock::now();
-		
-		fprintf(stderr, "custom_nbs takes %ld ms on %d particles\n", 
-			std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count(), NPOINTS);
-
-		
-		NeighborhoodSearch nsearch(2*smooth_length, true);
-		nsearch.add_point_set(points.front().data(), points.size(), true, true);
-		nsearch.z_sort();
-		for (auto i = 0u; i < nsearch.n_point_sets(); ++i)
-		{
-			auto const& d = nsearch.point_set(i);
-			d.sort_field(points.data());
-
-		}
-		t0 = std::chrono::high_resolution_clock::now();
-		nsearch.find_neighbors();
-		fprintf(stderr, "CompactNSearch takes %ld ms on %d particles\n", 
-			std::chrono::duration_cast<std::chrono::milliseconds>(
-				std::chrono::high_resolution_clock::now() - t0).count(), NPOINTS);
-
  	}
  }
