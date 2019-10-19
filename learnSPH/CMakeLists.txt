@@ -15,12 +15,12 @@ endif()
 
 set(SOURCE_FILES
 	util/vtk_writer.cpp
-	util/vtk_writer.h
+	${CMAKE_SOURCE_DIR}/include/vtk_writer.h
 	kernel.cpp
-	kernel.h
+	${CMAKE_SOURCE_DIR}/include/kernel.h
 	NBsearch.cpp
-	NBsearch.hpp
-	types.hpp)
+	${CMAKE_SOURCE_DIR}/include/NBsearch.hpp
+	${CMAKE_SOURCE_DIR}/include/types.hpp)
 
 # Create a library version so it can be linked with other modules
 add_library(learnSPH ${SOURCE_FILES})

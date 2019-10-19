@@ -6,7 +6,7 @@
 
 #include <Eigen/Dense>
 
-#include "../learnSPH/util/vtk_writer.h"
+#include <vtk_writer.h>
 
 int main()
 {

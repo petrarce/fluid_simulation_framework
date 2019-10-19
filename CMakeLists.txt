@@ -14,6 +14,8 @@ if (MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP") # Parallel compilation in Visual Studio
 endif()
 
+include_directories("${CMAKE_SOURCE_DIR}/include/")
+
 # Modules
 add_subdirectory(learnSPH)
 add_subdirectory(tests)
@@ -22,3 +24,4 @@ add_subdirectory(CompactNSearch)
 
 # Copy res folder
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/res)
+

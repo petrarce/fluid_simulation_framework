@@ -1,4 +1,4 @@
-#include "vtk_writer.h"
+#include <vtk_writer.h>
 
 void learnSPH::saveParticlesToVTK(std::string path, const std::vector<Eigen::Vector3d>& particles, const std::vector<double>& particle_scalar_data, const std::vector<Eigen::Vector3d>& particle_vector_data)
 {
