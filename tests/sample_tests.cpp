@@ -32,11 +32,6 @@ Vector3d kernelEstimatedGrad(const Vector3d& x1, const Vector3d& x2, const doubl
 	return 0.5 * (1./eps) * gradVect;
 }
 
-double getRand(const double minVal,const double maxVal){
-	assert(maxVal - minVal >= 0.0);
-	return minVal + double(rand())/RAND_MAX * (maxVal - minVal);
-}
-
 // Check out https://github.com/catchorg/Catch2 for more information about how to use Catch2
 TEST_CASE( "Foo is always Bar", "[Foobar]" )
 {

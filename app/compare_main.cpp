@@ -11,11 +11,6 @@ using namespace learnSPH::kernel;
 
 
 
-static double getRand(const double minVal,const double maxVal){
-	assert(maxVal - minVal >= 0.0);
-	return minVal + double(rand())/RAND_MAX * (maxVal - minVal);
-}
-
 int main(int argc, char** argv){
 
 	int number_of_points = 0;

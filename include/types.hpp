@@ -36,3 +36,8 @@ enum opcode {
 };
 
 using Real = double;
+
+static inline double getRand(const double minVal,const double maxVal){
+	assert(maxVal - minVal >= 0.0);
+	return minVal + double(rand())/RAND_MAX * (maxVal - minVal);
+}
