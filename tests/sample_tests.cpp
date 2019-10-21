@@ -25,9 +25,9 @@ Vector3d kernelEstimatedGrad(const Vector3d& x1, const Vector3d& x2, const doubl
 
 	Vector3d diffVec = x1 - x2;
 	Vector3d gradVect = Vector3d(
-		kernelFunction(x1, x2 + epsX, h) - kernelFunction(x1, x2 - epsX, h),
-		kernelFunction(x1, x2 + epsY, h) - kernelFunction(x1, x2 - epsY, h),
-		kernelFunction(x1, x2 + epsZ, h) - kernelFunction(x1, x2 - epsZ, h)
+		kernelFunction(x1 + epsX, x2, h) - kernelFunction(x1 - epsX, x2, h),
+		kernelFunction(x1 + epsY, x2, h) - kernelFunction(x1 - epsY, x2, h),
+		kernelFunction(x1 + epsZ, x2, h) - kernelFunction(x1 - epsZ, x2, h)
 	);
 	return 0.5 * (1./eps) * gradVect;
 }

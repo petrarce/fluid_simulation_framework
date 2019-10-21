@@ -46,7 +46,7 @@ double learnSPH::kernel::kernelFunction(const Vector3d& x1, const Vector3d& x2, 
 Vector3d learnSPH::kernel::kernelGradFunction(const Vector3d& x1, const Vector3d& x2, const double h)
 {
 	//smoosing length wath empirically found
-	Vector3d distVec = x2-x1;
+	Vector3d distVec = x1-x2;
 	return 		1./(pow2(h) * pow2(h)) *
 				cubicGradFunction(distVec.norm()/h) *	distVec/distVec.norm();
 }
