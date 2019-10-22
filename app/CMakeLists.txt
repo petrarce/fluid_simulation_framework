@@ -21,5 +21,5 @@ include_directories("${CMAKE_SOURCE_DIR}/CompactNSearch/include/")
 set(SOURCE_FILES_kernel_interpolation
 	kernel_interpolation.cpp)
 add_executable(kernel_interpolation ${SOURCE_FILES_kernel_interpolation})
-add_dependencies(kernel_interpolation learnSPH)
-target_link_libraries(kernel_interpolation learnSPH)
+add_dependencies(kernel_interpolation learnSPH CompactNSearch)
+target_link_libraries(kernel_interpolation learnSPH CompactNSearch)
