@@ -16,6 +16,8 @@ int main()
 
 	// Generate particles
 	std::vector<Eigen::Vector3d> particles;
+	std::vector<Eigen::Vector3d> velocities;
+
 	for (int i = 0; i < 20; i++) {
 		for (int j = 0; j < 20; j++) {
 			for (int k = 0; k < 20; k++) {
@@ -23,6 +25,7 @@ int main()
 				double y = static_cast<double> (rand()) / static_cast <float> (RAND_MAX);
 				double z = static_cast<double> (rand()) / static_cast <float> (RAND_MAX);
 				particles.push_back(Eigen::Vector3d(x, y, z));
+				velocities.push_back(Eigen::Vector3d(0.0, 0.0, 0.0));
 			}
 		}
 	}
@@ -34,12 +37,18 @@ int main()
 	// Simulation loop
 	for (int time_step = 0; time_step < 100; time_step++) {
 
+		std::cout << "processing frame: " << time_step << std::endl;
+
 		for (int particle_i = 0; particle_i < (int)particles.size(); particle_i++) {
 			// Move particles a bit down in the Z direction
-			particles[particle_i][2] -= 0.01;
+			velocities[particle_i][2] -= 0.01;
+			particles[particle_i][2] += velocities[particle_i][2];
 
 			// Clamp the motion to the floor
-			particles[particle_i][2] = std::max(particles[particle_i][2], 0.0);
+			if (particles[particle_i][2] <= 0.0) {
+				velocities[particle_i][2] *= -0.6;
+				particles[particle_i][2] = 0.0;
+			}
 			
 			// Update scalar data
 			particles_scalar_data[particle_i] = particles[particle_i].norm();
