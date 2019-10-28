@@ -20,7 +20,10 @@ set(SOURCE_FILES
 	${CMAKE_SOURCE_DIR}/include/kernel.h
 	NBsearch.cpp
 	${CMAKE_SOURCE_DIR}/include/NBsearch.hpp
-	${CMAKE_SOURCE_DIR}/include/types.hpp)
+	${CMAKE_SOURCE_DIR}/include/types.hpp
+	${CMAKE_SOURCE_DIR}/include/data_set.h
+	${CMAKE_SOURCE_DIR}/include/particle_sampler.h
+	particle_sampler.cpp)
 
 # Create a library version so it can be linked with other modules
 add_library(learnSPH ${SOURCE_FILES})
