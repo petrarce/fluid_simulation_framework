@@ -32,8 +32,9 @@ ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upper_
 	particleVelocities.resize(totalNumOfPrticles);
 
 	Real posX = lover_corner[0];
-	#pragma omp parallel for schedule(guided)
+	#pragma omp parallel for schedule(static) firstprivate(posX)
 	for(int i = 0; i < num_of_part_x_direction; i++){
+		posX = lover_corner[0] + i * delX;
 		Real posY = lover_corner[1];
 		for(int j = 0; j < num_of_part_y_direction; j++){
 
@@ -46,7 +47,6 @@ ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upper_
 			}
 			posY += delY;
 		}
-		posX += delX;
 	}
 
 	NormalPartDataSet* normParticles = new NormalPartDataSet(particlePositions, 

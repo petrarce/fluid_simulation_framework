@@ -24,43 +24,102 @@ namespace learnSPH
 		};
 	public:
 
+		/*
+			get type of the particles, that are handled by the set
+			currently there are 2 types of particles that are possible: 
+				1. Fluid particles (NORMAL)
+				2. Border particles (BORDER)
+		*/
 		virtual ParticleType getSetType() = 0;
 		
-		const vector<PositionVector>& getParticlePositions(){return particlePositions;};
+		/*
+			get particlePositions vector directly (required for vtk geeration)
+		*/
+		const vector<PositionVector>& getParticlePositions()
+		{
+			return particlePositions;
+		};
 		
-		PositionVector* getParticlePositionsData(){return particlePositions.data();};
+		PositionVector* getParticlePositionsData()
+		{
+			return particlePositions.data();
+		};
 		
-		size_t getNumberOfParticles(){return particlePositions.size();};
+		size_t getNumberOfParticles()
+		{
+			return particlePositions.size();
+		};
 		
-		ParticleDataSet(vector<PositionVector>& particlePositions, Real restDensity):
-			restDensity(restDensity){
-				this->particlePositions.swap(particlePositions);
-			};
+		ParticleDataSet(vector<PositionVector>& particlePositions, 
+						Real restDensity):
+			restDensity(restDensity)
+		{
+			this->particlePositions.swap(particlePositions);
+		};
 		virtual ~ParticleDataSet(){};
 	};
 
 	class BorderPartDataSet :public ParticleDataSet{
 	private:
+		/*
+			vector which contains volume for each Border particle. 
+			Border particle alhorythm adjusts each particle volume w.r.t. the grid...
+			TODO: make clearer explenation...
+		*/
 		vector<Real> particleVolume;
 	public:
-		virtual ParticleType getSetType(){return BORDER;};
-		const vector<Real>& getParticleVolume(){return particleVolume;};
-		Real* getParticleVolumeData(){return particleVolume.data();};
 
-		BorderPartDataSet(vector<PositionVector>& particlePositions, Real restDensity):
+		virtual ParticleType getSetType()
+		{
+			return BORDER;
+		};
+		
+		const vector<Real>& getParticleVolume()
+		{
+			return particleVolume;
+		};
+		
+		Real* getParticleVolumeData()
+		{
+			return particleVolume.data();
+		};
+
+		BorderPartDataSet(vector<PositionVector>& particlePositions, 
+							Real restDensity):
 			ParticleDataSet(particlePositions, restDensity){};
+		
 		~BorderPartDataSet(){};
 	};
 
 	class NormalPartDataSet :public ParticleDataSet{
 		vector<Vector3R> particleVelocities;
 		vector<Real> particleDencities;
+
 	public:
-		virtual ParticleType getSetType(){return NORMAL;};
-		const vector<Real>& getParticleDencities(){return particleDencities;};
-		Real* getParticleDencitiesData(){return particleDencities.data();};
-		const vector<VelocVector>& getParticleVelocities(){return particleVelocities;};
-		VelocVector* getParticleVelocitiesData(){return particleVelocities.data();};
+
+		virtual ParticleType getSetType()
+		{
+			return NORMAL;
+		};
+		
+		const vector<Real>& getParticleDencities()
+		{
+			return particleDencities;
+		};
+		
+		Real* getParticleDencitiesData()
+		{
+			return particleDencities.data();
+		};
+		const vector<VelocVector>& getParticleVelocities()
+		{
+			return particleVelocities;
+		};
+		
+		VelocVector* getParticleVelocitiesData()
+		{
+			return particleVelocities.data();
+		};
 
 
 		NormalPartDataSet(vector<PositionVector>& particlePositions,
@@ -68,10 +127,10 @@ namespace learnSPH
 							vector<Real>& particleDencities, 
 							Real restDensity):
 			ParticleDataSet(particlePositions, restDensity)
-			{
-				this->particleDencities.swap(particleDencities);
-				this->particleVelocities.swap(particleVelocities);
-			};
+		{
+			this->particleDencities.swap(particleDencities);
+			this->particleVelocities.swap(particleVelocities);
+		};
 		~NormalPartDataSet(){};
 	};
 };
