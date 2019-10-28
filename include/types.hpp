@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <Eigen/Dense>
 #ifdef DEBUG
 //#include <boost/stacktrace.hpp>
 #endif
@@ -36,6 +37,7 @@ enum opcode {
 };
 
 using Real = double;
+using Vector3R = Eigen::Vector3d;
 
 static inline double getRand(const double minVal,const double maxVal){
 	assert(maxVal - minVal >= 0.0);
