@@ -85,6 +85,7 @@ static inline bool check_point_in_triangle(const Vector3R& corner_a,
 ParticleDataSet* ParticleSampler::sample_border_particles(const Vector3R& corner_a, 
 											const Vector3R& corner_b,
 											const Vector3R& corner_c,
+											const Real particleDensities,
 											const Real samplingDistance)
 { 
 	Vector3R u1 = corner_b - corner_a;
@@ -123,6 +124,6 @@ ParticleDataSet* ParticleSampler::sample_border_particles(const Vector3R& corner
 	}
 
 
-	BorderPartDataSet* particleSet = new BorderPartDataSet(borderParticleSet, 0);
+	BorderPartDataSet* particleSet = new BorderPartDataSet(borderParticleSet, particleDensities);
 	return particleSet;
 };

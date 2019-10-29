@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 
 	BorderPartDataSet* brdParticles = 
 		static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_particles(
-			tp1, tp2, tp3, sampling_distance));
+			tp1, tp2, tp3, 0.01, sampling_distance));
 
 	vector<Real> dummyVec1;
 	dummyVec1.resize(brdParticles->getNumberOfParticles());
