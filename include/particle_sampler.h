@@ -23,7 +23,8 @@ namespace learnSPH{
 												const Real samplingDistance);
 	 	static ParticleDataSet* sample_border_particles(const Vector3R& corner_a, 
 	 												const Vector3R& corner_b,
-	 												const Vector3R& corner_c);
+	 												const Vector3R& corner_c,
+	 												const Real samplingDistance);
 	private:
 		ParticleSampler(){};
 		~ParticleSampler(){};
