@@ -55,7 +55,7 @@ int main(int argc, char** argv)
 	filename = "../res/border_particle_data_set.vtk";
 	learnSPH::saveParticlesToVTK(filename, 
 									brdParticles->getParticlePositions(),
-									dummyVec1, 
+									brdParticles->getParticleVolume(), 
 									dummyVec2);
 
  	delete particles;

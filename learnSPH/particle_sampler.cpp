@@ -4,20 +4,20 @@
 using namespace std;
 using namespace learnSPH;
 
-ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upper_corner,
-	 											const Vector3R& lover_corner,
-	 											const Real rest_dencity,
-	 											const Real sampling_distance)
+ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upperCorner,
+	 											const Vector3R& lowerCorner,
+	 											const Real restDensiti,
+	 											const Real samplingDistance)
 {
 	
-	Vector3R distVector = upper_corner - lover_corner;
-	size_t num_of_part_x_direction = abs(distVector[0]/sampling_distance) + 1;
-	size_t num_of_part_y_direction = abs(distVector[1]/sampling_distance) + 1;
-	size_t num_of_part_z_direction = abs(distVector[2]/sampling_distance) + 1;
+	Vector3R distVector = upperCorner - lowerCorner;
+	size_t num_of_part_x_direction = abs(distVector[0]/samplingDistance) + 1;
+	size_t num_of_part_y_direction = abs(distVector[1]/samplingDistance) + 1;
+	size_t num_of_part_z_direction = abs(distVector[2]/samplingDistance) + 1;
 
-	Real delX = sampling_distance * distVector[0]/fabs(distVector[0]);
-	Real delY = sampling_distance * distVector[1]/fabs(distVector[1]);
-	Real delZ = sampling_distance * distVector[2]/fabs(distVector[2]);
+	Real delX = samplingDistance * distVector[0]/fabs(distVector[0]);
+	Real delY = samplingDistance * distVector[1]/fabs(distVector[1]);
+	Real delZ = samplingDistance * distVector[2]/fabs(distVector[2]);
 
 	size_t totalNumOfPrticles = num_of_part_x_direction * 
 										num_of_part_y_direction*
@@ -31,14 +31,14 @@ ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upper_
 	particleDensities.resize(totalNumOfPrticles);
 	particleVelocities.resize(totalNumOfPrticles);
 
-	Real posX = lover_corner[0];
+	Real posX = lowerCorner[0];
 	#pragma omp parallel for schedule(static) firstprivate(posX)
 	for(int i = 0; i < num_of_part_x_direction; i++){
-		posX = lover_corner[0] + i * delX;
-		Real posY = lover_corner[1];
+		posX = lowerCorner[0] + i * delX;
+		Real posY = lowerCorner[1];
 		for(int j = 0; j < num_of_part_y_direction; j++){
 
-			Real posZ = lover_corner[2];
+			Real posZ = lowerCorner[2];
 			for(int k = 0; k < num_of_part_z_direction; k++, posZ += delZ){
 				size_t index = i*num_of_part_y_direction*num_of_part_z_direction + 
 								j*num_of_part_z_direction + k;
@@ -52,7 +52,8 @@ ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upper_
 	NormalPartDataSet* normParticles = new NormalPartDataSet(particlePositions, 
 																particleVelocities,
 																particleDensities, 
-																sampling_distance);
+																restDensiti,
+																samplingDistance);
 	return normParticles;
 
 }
@@ -124,6 +125,8 @@ ParticleDataSet* ParticleSampler::sample_border_particles(const Vector3R& corner
 	}
 
 
-	BorderPartDataSet* particleSet = new BorderPartDataSet(borderParticleSet, particleDensities);
+	BorderPartDataSet* particleSet = new BorderPartDataSet(borderParticleSet, 
+															particleDensities,
+															samplingDistance);
 	return particleSet;
 };

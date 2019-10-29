@@ -2,9 +2,12 @@
 #include <types.hpp>
 #include <Eigen/Dense>
 #include <vector>
+#include <CompactNSearch>
+#include <kernel.h>
 
 using namespace std;
 using namespace Eigen;
+using namespace CompactNSearch;
 
 typedef Vector3R VelocVector;
 typedef Vector3R PositionVector;
@@ -16,6 +19,7 @@ namespace learnSPH
 		vector<PositionVector> particlePositions;
 		Real restDensity;
 		Real particleDiameter;
+		Real particleMass;
 
 	public:
 		enum ParticleType{
@@ -31,6 +35,16 @@ namespace learnSPH
 				2. Border particles (BORDER)
 		*/
 		virtual ParticleType getSetType() = 0;
+
+		Real getParticleDiameter()
+		{
+			return this->particleDiameter;
+		}
+
+		Real getParticleMass()
+		{
+			return this->particleMass;
+		}
 		
 		/*
 			get particlePositions vector directly (required for vtk geeration)
@@ -51,10 +65,17 @@ namespace learnSPH
 		};
 		
 		ParticleDataSet(vector<PositionVector>& particlePositions, 
-						Real restDensity):
-			restDensity(restDensity)
+						Real restDensity,
+						Real particleDiameter):
+			restDensity(restDensity),
+			particleDiameter(particleDiameter)
+
 		{
+			assert(restDensity > 0);
+			assert(particleDiameter > 0);
 			this->particlePositions.swap(particlePositions);
+			this->particleMass = this->restDensity * 
+				this->particleDiameter * this->particleDiameter * this->particleDiameter;
 		};
 		virtual ~ParticleDataSet(){};
 	};
@@ -85,8 +106,30 @@ namespace learnSPH
 		};
 
 		BorderPartDataSet(vector<PositionVector>& particlePositions, 
-							Real restDensity):
-			ParticleDataSet(particlePositions, restDensity){};
+							Real restDensity,
+							Real particleDiameter):
+			ParticleDataSet(particlePositions, restDensity, particleDiameter)
+		{
+			this->particleVolume.resize(this->particlePositions.size());
+			NeighborhoodSearch ns(1.2*this->particleDiameter, false);
+			unsigned int pset = ns.add_point_set(&this->particlePositions[0](0), 
+								this->particlePositions.size(),
+								true,
+								true);
+			ns.update_point_sets();
+			vector<vector<unsigned int>> neighbours;
+			for(int i = 0; i < this->particlePositions.size(); i++){
+				ns.find_neighbors(pset, i, neighbours);
+				assert(neighbours.size() == 1);
+				Real kerel_sum = 0;
+				for(int j : neighbours[0]){
+					kerel_sum += kernel::kernelFunction(this->particlePositions[i], 
+														this->particlePositions[j], 
+														1.2*this->particleDiameter);
+				}
+				this->particleVolume[i] = 1 / kerel_sum;
+			}
+		};
 		
 		~BorderPartDataSet(){};
 	};
@@ -125,12 +168,15 @@ namespace learnSPH
 		NormalPartDataSet(vector<PositionVector>& particlePositions,
 							vector<VelocVector>& particleVelocities,
 							vector<Real>& particleDencities, 
-							Real restDensity):
-			ParticleDataSet(particlePositions, restDensity)
+							Real restDensity,
+							Real particleDiameter):
+
+			ParticleDataSet(particlePositions, restDensity, particleDiameter)
 		{
 			this->particleDencities.swap(particleDencities);
 			this->particleVelocities.swap(particleVelocities);
 		};
+
 		~NormalPartDataSet(){};
 	};
 };

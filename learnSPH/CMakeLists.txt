@@ -28,4 +28,7 @@ set(SOURCE_FILES
 # Create a library version so it can be linked with other modules
 add_library(learnSPH ${SOURCE_FILES})
 target_include_directories(learnSPH PUBLIC ${EIGEN3_INCLUDE_DIR})
-include_directories("${CMAKE_SOURCE_DIR}/learnSPH/")
+include_directories("${CMAKE_SOURCE_DIR}/learnSPH/"
+					"${CMAKE_SOURCE_DIR}/CompactNSearch/include/")
+add_dependencies(learnSPH CompactNSearch)
+target_link_libraries(learnSPH CompactNSearch)
