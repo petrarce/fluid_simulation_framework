@@ -8,6 +8,16 @@ namespace learnSPH{
 	class ParticleSampler
 	{
 
+	private:
+		static opcode sample_border_points_in_triangle(const Vector3R& corner_a, 
+	 												const Vector3R& corner_b,
+	 												const Vector3R& corner_c,
+	 												const Real samplingDistance,
+	 												vector<Vector3R>& borderParticleSet);
+		static opcode sample_border_points_in_box(const Vector3R& uppderCorner,
+													const Vector3R& loverCorner,
+	 												const Real samplingDistance,
+	 												vector<Vector3R>& borderParticleSet);
 
 	public:
 		/*
@@ -21,11 +31,15 @@ namespace learnSPH{
 												const Vector3R& loverCorner,
 												const Real restDensity,
 												const Real samplingDistance);
-	 	static ParticleDataSet* sample_border_particles(const Vector3R& corner_a, 
+	 	static ParticleDataSet* sample_border_triangle(const Vector3R& corner_a, 
 	 												const Vector3R& corner_b,
 	 												const Vector3R& corner_c,
 													const Real particleDensities,
 	 												const Real samplingDistance);
+	 	static ParticleDataSet* sample_border_box(const Vector3R& uppderCorner,
+													const Vector3R& loverCorner,
+													const Real particleDensities,
+		 											const Real samplingDistance);
 	private:
 		ParticleSampler(){};
 		~ParticleSampler(){};

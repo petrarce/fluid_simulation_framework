@@ -4,6 +4,8 @@
 using namespace std;
 using namespace learnSPH;
 
+constexpr Real treshold = 1e-6;
+
 ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upperCorner,
 	 											const Vector3R& lowerCorner,
 	 											const Real restDensiti,
@@ -63,7 +65,6 @@ static inline bool check_point_in_triangle(const Vector3R& corner_a,
 											const Vector3R& corner_c,
 											const Vector3R& point_p)
 {
-	constexpr Real treshold = 1e-6;
 	Vector3R sideAB = corner_b - corner_a;
 	Vector3R sideAC = corner_c - corner_a;
 	Vector3R sidePA = corner_a - point_p;
@@ -83,14 +84,16 @@ static inline bool check_point_in_triangle(const Vector3R& corner_a,
 	return false;
 }
 
-ParticleDataSet* ParticleSampler::sample_border_particles(const Vector3R& corner_a, 
-											const Vector3R& corner_b,
-											const Vector3R& corner_c,
-											const Real particleDensities,
-											const Real samplingDistance)
-{ 
+opcode ParticleSampler::sample_border_points_in_triangle(const Vector3R& corner_a, 
+												const Vector3R& corner_b,
+												const Vector3R& corner_c,
+												const Real samplingDistance,
+												vector<Vector3R>& borderParticleSet)
+{
 	Vector3R u1 = corner_b - corner_a;
 	Vector3R v1 = corner_c - corner_a;
+	assert(fabs(u1.normalized().dot(v1.normalized())) - 1 < treshold 
+		&& "all points of the triangle are on the same line");
 	//in case corner a is obuse angle - svitch directions
 	if(u1.dot(v1) < 0){
 		u1 = corner_a - corner_c;
@@ -113,7 +116,7 @@ ParticleDataSet* ParticleSampler::sample_border_particles(const Vector3R& corner
 	v = v * samplingDistance;
 	u = u * samplingDistance;
 
-	vector<Vector3R> borderParticleSet;
+	borderParticleSet.clear();
 	borderParticleSet.reserve(maxi*maxj);
 	for(int i = 0; i < maxi; i++){
 		for(int j = 0; j < maxj; j++){
@@ -123,10 +126,155 @@ ParticleDataSet* ParticleSampler::sample_border_particles(const Vector3R& corner
 			}
 		}
 	}
+	return STATUS_OK;
+}
 
+
+ParticleDataSet* ParticleSampler::sample_border_triangle(const Vector3R& corner_a, 
+											const Vector3R& corner_b,
+											const Vector3R& corner_c,
+											const Real particleDensities,
+											const Real samplingDistance)
+{ 
+
+	vector<Vector3R> borderParticleSet;
+	sample_border_points_in_triangle(corner_a, 
+										corner_b, corner_c, 
+										samplingDistance,
+										borderParticleSet);
 
 	BorderPartDataSet* particleSet = new BorderPartDataSet(borderParticleSet, 
 															particleDensities,
 															samplingDistance);
 	return particleSet;
 };
+
+ParticleDataSet* ParticleSampler::sample_border_box(const Vector3R& uppderCorner,
+											const Vector3R& loverCorner,
+											const Real particleDensities,
+											const Real samplingDistance)
+{
+	Real a = loverCorner(0), b = loverCorner(1), c = loverCorner(2);
+	Real d = uppderCorner(0), e = uppderCorner(1), f = uppderCorner(2);
+	Real boxHeight = fabs(c-f);
+	Real boxLength = fabs(b-e);
+	Real boxWidth = fabs(a-d);
+	vector<Vector3R> boxBorderPoints;
+	//resetve points precisely 
+	unsigned int pointsPerBoxSurface = 
+		static_cast<unsigned int>(
+			2*(boxHeight*boxLength + boxHeight*boxWidth + boxWidth*boxLength) 
+			* 1.1 
+			/ samplingDistance
+		);
+	boxBorderPoints.reserve(pointsPerBoxSurface);
+
+	vector<Vector3R> prticleTriangelSet;
+	sample_border_points_in_triangle(Vector3R(a,b,c),
+							Vector3R(a,e,c),
+							Vector3R(d,e,c),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+	sample_border_points_in_triangle(Vector3R(a, b,c),
+							Vector3R(d, b,c),
+							Vector3R(d, e,c),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+
+
+	sample_border_points_in_triangle(Vector3R(d, b,c),
+							Vector3R(d, b,f),
+							Vector3R(d, e,f),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+	sample_border_points_in_triangle(Vector3R(d, b,c),
+							Vector3R(d, e,c),
+							Vector3R(d, e,f),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+
+	sample_border_points_in_triangle(Vector3R(a, e,c),
+							Vector3R(d, e,f),
+							Vector3R(d, e,c),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+	sample_border_points_in_triangle(Vector3R(a, e,c),
+							Vector3R(a, e,f),
+							Vector3R(d, e,f),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+
+	sample_border_points_in_triangle(Vector3R(a, b,c),
+							Vector3R(d, b,c),
+							Vector3R(d, b,f),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+	sample_border_points_in_triangle(Vector3R(a, b, c),
+							Vector3R(d, b, f),
+							Vector3R(a, b, f),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+
+	sample_border_points_in_triangle(Vector3R(a, b, f),
+							Vector3R(a, e, f),
+							Vector3R(d, e, f),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+	sample_border_points_in_triangle(Vector3R(a, b, f),
+							Vector3R(d, b, f),
+							Vector3R(d, e, f),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+
+	sample_border_points_in_triangle(Vector3R(a, b, c),
+							Vector3R(a, b, f),
+							Vector3R(a, e, f),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+	sample_border_points_in_triangle(Vector3R(a, b, c),
+							Vector3R(a, e, c),
+							Vector3R(a, e, f),
+							samplingDistance, 
+							prticleTriangelSet);
+	boxBorderPoints.insert(boxBorderPoints.end(), 
+							prticleTriangelSet.begin(), 
+							prticleTriangelSet.end());
+
+	BorderPartDataSet* particleSet = new BorderPartDataSet(boxBorderPoints, 
+															particleDensities,
+															samplingDistance);
+	return particleSet;
+}

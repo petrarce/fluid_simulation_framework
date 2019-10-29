@@ -44,7 +44,7 @@ int main(int argc, char** argv)
 	Vector3R tp3 = {stod(argv[14]), stod(argv[15]),stod(argv[16])};
 
 	BorderPartDataSet* brdParticles = 
-		static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_particles(
+		static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_triangle(
 			tp1, tp2, tp3, 0.01, sampling_distance));
 
 	vector<Real> dummyVec1;
@@ -52,14 +52,26 @@ int main(int argc, char** argv)
 	vector<Vector3R> dummyVec2;
 	dummyVec2.resize(brdParticles->getNumberOfParticles());
 
-	filename = "../res/border_particle_data_set.vtk";
+	filename = "../res/triangle_border_particles.vtk";
 	learnSPH::saveParticlesToVTK(filename, 
 									brdParticles->getParticlePositions(),
 									brdParticles->getParticleVolume(), 
 									dummyVec2);
 
+ 
+	BorderPartDataSet* boxBrdParticles = 
+		static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_box(
+			upper_corner, lover_corner, 0.01, sampling_distance));
+
+	filename = "../res/box_border_particles.vtk";
+	dummyVec2.clear();
+	learnSPH::saveParticlesToVTK(filename, 
+									boxBrdParticles->getParticlePositions(),
+									boxBrdParticles->getParticleVolume(), 
+									dummyVec2);
  	delete particles;
  	delete brdParticles;
+ 	delete boxBrdParticles;
 	std::cout << "completed!" << std::endl;
 	std::cout << "The scene files have been saved in the folder `<build_folder>/res`. You can visualize them with Paraview." << std::endl;
 
