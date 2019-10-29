@@ -113,20 +113,12 @@ ParticleDataSet* ParticleSampler::sample_border_particles(const Vector3R& corner
 
 	vector<Vector3R> borderParticleSet;
 	borderParticleSet.reserve(maxi*maxj);
-	bool stop = false;
 	for(int i = 0; i < maxi; i++){
 		for(int j = 0; j < maxj; j++){
 			Vector3R newPoint = corner_a + i*v + j*u;
 			if(check_point_in_triangle(corner_a, corner_b, corner_c, newPoint)){
 				borderParticleSet.push_back(newPoint);
-				if(borderParticleSet.size() == maxi*maxj){
-					stop = true;
-					break;
-				}
 			}
-		}
-		if(stop){
-			break;
 		}
 	}
 
