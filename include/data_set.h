@@ -47,7 +47,7 @@ namespace learnSPH
 		}
 		
 		/*
-			get particlePositions vector directly (required for vtk geeration)
+			get particlePositions vector directly (required for vtk generation)
 		*/
 		const vector<PositionVector>& getParticlePositions()
 		{
@@ -84,8 +84,8 @@ namespace learnSPH
 	private:
 		/*
 			vector which contains volume for each Border particle. 
-			Border particle alhorythm adjusts each particle volume w.r.t. the grid...
-			TODO: make clearer explenation...
+			Border particle algorithm adjusts each particle volume w.r.t. the grid...
+			TODO: make clearer explanation...
 		*/
 		vector<Real> particleVolume;
 	public:
