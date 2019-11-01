@@ -42,10 +42,22 @@ int main(int argc, char** argv)
 						true);
 	std::cout<< "number of fluid particles: " << fluidParticles->getNumberOfParticles() << endl;
 
-	vector<Vector3R> dummyVector;
-	BorderPartDataSet dummyBorderParticles(dummyVector, 1, 1);
-	ns.add_point_set((Real*)dummyBorderParticles.getParticlePositions().data(), 
-						dummyBorderParticles.getNumberOfParticles(),
+
+	Vector3R p1 = upper_corner;
+	Vector3R p2 = Vector3R(upper_corner[0],
+											upper_corner[1],
+											10*lover_corner[2]);
+	Vector3R p3 = Vector3R(upper_corner[0],
+											10*lover_corner[1],
+											upper_corner[2]);
+
+	BorderPartDataSet* borderParticles = 
+		static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_triangle(
+			p1, p2, p3, 1000, sampling_distance));
+	
+
+	ns.add_point_set((Real*)borderParticles->getParticlePositions().data(), 
+						borderParticles->getNumberOfParticles(),
 						false, true, true);
 
 	ns.update_point_sets();
@@ -57,11 +69,11 @@ int main(int argc, char** argv)
 	}
 
 	learnSPH::Solver::calculate_dencities(*fluidParticles, 
-											dummyBorderParticles, 
+											*borderParticles, 
 											particleNeighbors,
 											compactSupportFactor);
 	// Generate particles
-	std::string filename = "../res/fluid_particle_data_set.vtk";
+	std::string filename = "../res/fluid_particle_data_set_with_border.vtk";
 	learnSPH::saveParticlesToVTK(filename, 
 									fluidParticles->getParticlePositions(), 
 									fluidParticles->getParticleDencities(), 
@@ -72,6 +84,7 @@ int main(int argc, char** argv)
 	}
  
 	delete fluidParticles;
+	delete borderParticles;
 	std::cout << "completed!" << std::endl;
 	std::cout << "The scene files have been saved in the folder `<build_folder>/res`. You can visualize them with Paraview." << std::endl;
 
