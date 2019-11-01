@@ -34,14 +34,17 @@ namespace learnSPH
 				1. Fluid particles (NORMAL)
 				2. Border particles (BORDER)
 		*/
-		virtual ParticleType getSetType() = 0;
-
-		Real getParticleDiameter()
+		virtual ParticleType getSetType() const = 0;
+		Real getRestDensity() const
+		{
+			return this->restDensity;
+		}
+		Real getParticleDiameter() const
 		{
 			return this->particleDiameter;
 		}
 
-		Real getParticleMass()
+		Real getParticleMass() const
 		{
 			return this->particleMass;
 		}
@@ -49,17 +52,17 @@ namespace learnSPH
 		/*
 			get particlePositions vector directly (required for vtk generation)
 		*/
-		const vector<PositionVector>& getParticlePositions()
+		vector<PositionVector>& getParticlePositions() 
 		{
 			return particlePositions;
 		};
 		
-		PositionVector* getParticlePositionsData()
+		const PositionVector* getParticlePositionsData() const
 		{
-			return particlePositions.data();
-		};
+			return static_cast<const PositionVector*>(particlePositions.data());
+		}; 
 		
-		size_t getNumberOfParticles()
+		size_t getNumberOfParticles() const
 		{
 			return particlePositions.size();
 		};
@@ -90,19 +93,19 @@ namespace learnSPH
 		vector<Real> particleVolume;
 	public:
 
-		virtual ParticleType getSetType()
+		virtual ParticleType getSetType() const
 		{
 			return BORDER;
 		};
 		
-		const vector<Real>& getParticleVolume()
+		vector<Real>& getParticleVolume()
 		{
 			return particleVolume;
 		};
 		
-		Real* getParticleVolumeData()
+		const Real* getParticleVolumeData() const
 		{
-			return particleVolume.data();
+			return static_cast<const Real*>(particleVolume.data());
 		};
 
 		BorderPartDataSet(vector<PositionVector>& particlePositions, 
@@ -140,26 +143,26 @@ namespace learnSPH
 
 	public:
 
-		virtual ParticleType getSetType()
+		virtual ParticleType getSetType() const
 		{
 			return NORMAL;
 		};
 		
-		const vector<Real>& getParticleDencities()
+		vector<Real>& getParticleDencities()
 		{
 			return particleDencities;
 		};
 		
-		Real* getParticleDencitiesData()
+		const Real* getParticleDencitiesData() const
 		{
 			return particleDencities.data();
 		};
-		const vector<VelocVector>& getParticleVelocities()
+		vector<VelocVector>& getParticleVelocities()
 		{
 			return particleVelocities;
 		};
 		
-		VelocVector* getParticleVelocitiesData()
+		const VelocVector* getParticleVelocitiesData() const
 		{
 			return particleVelocities.data();
 		};

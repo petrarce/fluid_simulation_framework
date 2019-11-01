@@ -39,6 +39,8 @@ enum opcode {
 using Real = double;
 using Vector3R = Eigen::Vector3d;
 
+const Real compactSupportFactor = 1.2;
+
 static inline double getRand(const double minVal,const double maxVal){
 	assert(maxVal - minVal >= 0.0);
 	return minVal + double(rand())/RAND_MAX * (maxVal - minVal);
