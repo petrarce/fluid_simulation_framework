@@ -2,13 +2,15 @@
 #include <kernel.h>
 opcode Solver::calculate_dencities(NormalPartDataSet& fluidParticles,
 	const BorderPartDataSet& borderParticles,
-	const vector<vector<vector<unsigned int>>>& fluidParticleNeighbours)
+	const vector<vector<vector<unsigned int>>>& fluidParticleNeighbours,
+	const Real smoothingLengthFactor)
 {
+	assert(smoothingLengthFactor > 0.0);
 	//fluidParticleNeighbours should contain set of neighbors for each particle of the fluid
 	assert(fluidParticleNeighbours.size() == fluidParticles.getNumberOfParticles());
 	//for each particle there should be two sets of neighbors: 
 	//	fluid neighbors set and border neighbor set
-	assert(fluidParticleNeighbours[0].size() == 2);
+	assert(fluidParticleNeighbours.size() == 0 || fluidParticleNeighbours[0].size() == 2);
 
 	vector<Real>& fluidParticlesDensities = fluidParticles.getParticleDencities();
 	const Vector3R* fluidParticlesPositions = fluidParticles.getParticlePositionsData();
@@ -33,7 +35,7 @@ opcode Solver::calculate_dencities(NormalPartDataSet& fluidParticles,
 		for(int j : fluidParticleNeighbours[i][1]){
 			borderDensity += learnSPH::kernel::kernelFunction(fluidParticlesPositions[i], 
 										borderParticlePositions[j], 
-										smoothingLength);
+										smoothingLength)*borderParticlesVolumes[j];
 		}
 		borderDensity *= borderParticles.getRestDensity();
 

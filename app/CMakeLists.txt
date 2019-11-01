@@ -23,3 +23,9 @@ set(SOURCE_FILES_kernel_interpolation
 add_executable(kernel_interpolation ${SOURCE_FILES_kernel_interpolation})
 add_dependencies(kernel_interpolation learnSPH CompactNSearch)
 target_link_libraries(kernel_interpolation learnSPH CompactNSearch)
+
+set(SOURCE_FILES_test_fluid_box
+	test_fluid_box.cpp)
+add_executable(test_fluid_box ${SOURCE_FILES_test_fluid_box})
+add_dependencies(test_fluid_box learnSPH CompactNSearch)
+target_link_libraries(test_fluid_box learnSPH CompactNSearch)

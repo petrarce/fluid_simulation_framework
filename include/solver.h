@@ -11,7 +11,8 @@ namespace learnSPH{
 	public:
 		static opcode calculate_dencities(NormalPartDataSet& normalParticles,
 			const BorderPartDataSet& borderParticles,
-			const vector<vector<vector<unsigned int>>>& normalParticleNeighbours);
+			const vector<vector<vector<unsigned int>>>& normalParticleNeighbours,
+			const Real smoothingLengthFactor = 1);
 	
 	private:
 		//deleted constructors and operator=

@@ -21,25 +21,19 @@ int main(int argc, char** argv)
 	std::cout << "Welcome to the learnSPH framework!!" << std::endl;
 	std::cout << "Generating a sample scene...";
 
-	assert(argc == 10);
+	assert(argc == 9);
 	Vector3R upper_corner = {stod(argv[1]), stod(argv[2]), stod(argv[3])};
 	Vector3R lover_corner = {stod(argv[4]), stod(argv[5]), stod(argv[6])};
 	Real sampling_distance = stod(argv[7]);
 	double compactSupportFactor = stod(argv[8]);
-	int genWithBorder = stoi(argv[9]) * compactSupportFactor;
 	NeighborhoodSearch ns(sampling_distance*compactSupportFactor);
 
 
-	//generate fluid particle cube
-	auto t0 = std::chrono::high_resolution_clock::now();
 	NormalPartDataSet* fluidParticles = 
 		static_cast<NormalPartDataSet*>(learnSPH::ParticleSampler::sample_normal_particles(upper_corner, 
 															lover_corner, 
 															1000, 
 															sampling_distance));
-	auto t1 = std::chrono::high_resolution_clock::now();
-	printf("fluid particle sampling time: %ld ms\n", 
-		std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
 
 	auto fluidPartilesPset = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()),
 						fluidParticles->getNumberOfParticles(),
@@ -48,28 +42,11 @@ int main(int argc, char** argv)
 						true);
 	std::cout<< "number of fluid particles: " << fluidParticles->getNumberOfParticles() << endl;
 
-	//generate border particle box if specified
-	upper_corner = upper_corner+
-					(upper_corner - lover_corner).normalized()*(sampling_distance + genWithBorder);
-	lover_corner = lover_corner + 
-					(lover_corner - upper_corner).normalized()*(sampling_distance + genWithBorder);
-	t0 = std::chrono::high_resolution_clock::now();
-	BorderPartDataSet* borderParticles = 
-		static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_box(upper_corner, 
-															lover_corner, 
-															1000, 
-															sampling_distance));
-	t1 = std::chrono::high_resolution_clock::now();
-	printf("border particle sampling time: %ld ms\n", 
-		std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
-
-	auto borderParticlesPset = ns.add_point_set((Real*)borderParticles->getParticlePositionsData(),
-						borderParticles->getNumberOfParticles(),
-						false,
-						true, 
-						true);
-	std::cout<< "number of border particles: " << borderParticles->getNumberOfParticles() << endl;
-
+	vector<Vector3R> dummyVector;
+	BorderPartDataSet dummyBorderParticles(dummyVector, 1, 1);
+	ns.add_point_set((Real*)dummyBorderParticles.getParticlePositions().data(), 
+						dummyBorderParticles.getNumberOfParticles(),
+						false, true, true);
 
 	ns.update_point_sets();
 
@@ -79,11 +56,10 @@ int main(int argc, char** argv)
 		ns.find_neighbors(fluidPartilesPset, i, particleNeighbors[i]);
 	}
 
-	t0 = std::chrono::high_resolution_clock::now();
-	learnSPH::Solver::calculate_dencities(*fluidParticles, *borderParticles, particleNeighbors);
-	t1 = std::chrono::high_resolution_clock::now();
-	printf("density calcultaions time: %ld ms\n", 
-		std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
+	learnSPH::Solver::calculate_dencities(*fluidParticles, 
+											dummyBorderParticles, 
+											particleNeighbors,
+											sampling_distance*compactSupportFactor);
 	// Generate particles
 	std::string filename = "../res/fluid_particle_data_set.vtk";
 	learnSPH::saveParticlesToVTK(filename, 
@@ -91,15 +67,11 @@ int main(int argc, char** argv)
 									fluidParticles->getParticleDencities(), 
 									fluidParticles->getParticleVelocities());
 
-	filename = "../res/boreder_particle_data_set.vtk";
-	learnSPH::saveParticlesToVTK(filename, 
-									borderParticles->getParticlePositions(), 
-									borderParticles->getParticleVolume(), 
-									borderParticles->getParticlePositions());
-
+	for(Real density : fluidParticles->getParticleDencities()){
+		fprintf(stderr, "%f\n", density);
+	}
  
 	delete fluidParticles;
-	delete borderParticles;
 	std::cout << "completed!" << std::endl;
 	std::cout << "The scene files have been saved in the folder `<build_folder>/res`. You can visualize them with Paraview." << std::endl;
 
