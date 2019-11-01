@@ -17,6 +17,7 @@ opcode Solver::calculate_dencities(NormalPartDataSet& fluidParticles,
 	const Real smoothingLength = fluidParticles.getParticleDiameter()*compactSupportFactor;
 
 
+	#pragma omp parallel for schedule(guided, 100)
 	for(int i = 0; i < fluidParticles.getNumberOfParticles(); i++){
 		//calculate density depending on neighbor fluid particles
 		Real fluidDensity = 0.0;
