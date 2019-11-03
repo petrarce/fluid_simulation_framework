@@ -3,9 +3,9 @@
 opcode Solver::calculate_dencities(NormalPartDataSet& fluidParticles,
 	const BorderPartDataSet& borderParticles,
 	const vector<vector<vector<unsigned int>>>& fluidParticleNeighbours,
-	const Real smoothingLengthFactor)
+	const Real smoothingLength)
 {
-	assert(smoothingLengthFactor > 0.0);
+	assert(smoothingLength > 0.0);
 	//fluidParticleNeighbours should contain set of neighbors for each particle of the fluid
 	assert(fluidParticleNeighbours.size() == fluidParticles.getNumberOfParticles());
 	//for each particle there should be two sets of neighbors: 
@@ -16,7 +16,6 @@ opcode Solver::calculate_dencities(NormalPartDataSet& fluidParticles,
 	const Vector3R* fluidParticlesPositions = fluidParticles.getParticlePositionsData();
 	const Vector3R* borderParticlePositions = borderParticles.getParticlePositionsData();
 	const Real* borderParticlesVolumes = borderParticles.getParticleVolumeData();
-	const Real smoothingLength = fluidParticles.getParticleDiameter()*smoothingLengthFactor;
 
 
 	#pragma omp parallel for schedule(guided, 100)

@@ -59,7 +59,7 @@ int main(int argc, char** argv)
 	learnSPH::Solver::calculate_dencities(*fluidParticles, 
 											dummyBorderParticles, 
 											particleNeighbors,
-											compactSupportFactor);
+											compactSupportFactor*sampling_distance);
 	// Generate particles
 	std::string filename = "../res/fluid_particle_data_set.vtk";
 	learnSPH::saveParticlesToVTK(filename, 
