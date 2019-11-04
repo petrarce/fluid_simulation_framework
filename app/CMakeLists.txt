@@ -35,3 +35,9 @@ set(SOURCE_FILES_test_fluid_box_with_border
 add_executable(test_fluid_box_with_border ${SOURCE_FILES_test_fluid_box_with_border})
 add_dependencies(test_fluid_box_with_border learnSPH CompactNSearch)
 target_link_libraries(test_fluid_box_with_border learnSPH CompactNSearch)
+
+set(SOURCE_FILES_test_acceleration
+		test_acceleration.cpp)
+add_executable(test_acceleration ${SOURCE_FILES_test_acceleration})
+add_dependencies(test_acceleration learnSPH CompactNSearch)
+target_link_libraries(test_acceleration learnSPH CompactNSearch)

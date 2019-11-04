@@ -11,6 +11,7 @@ using namespace CompactNSearch;
 
 typedef Vector3R VelocVector;
 typedef Vector3R PositionVector;
+typedef Vector3R ForceVector;
 
 namespace learnSPH
 {
@@ -140,6 +141,7 @@ namespace learnSPH
 	class NormalPartDataSet :public ParticleDataSet{
 		vector<Vector3R> particleVelocities;
 		vector<Real> particleDencities;
+		vector<Vector3R> particleExternalForces;
 
 	public:
 
@@ -152,7 +154,7 @@ namespace learnSPH
 		{
 			return particleDencities;
 		};
-		
+
 		const Real* getParticleDencitiesData() const
 		{
 			return particleDencities.data();
@@ -167,10 +169,15 @@ namespace learnSPH
 			return particleVelocities.data();
 		};
 
+		const ForceVector* getParticleForcesdata() const{
+		    return particleExternalForces.data();
+		};
 
+
+        // Default constructor with no external force.
 		NormalPartDataSet(vector<PositionVector>& particlePositions,
 							vector<VelocVector>& particleVelocities,
-							vector<Real>& particleDencities, 
+							vector<Real>& particleDencities,
 							Real restDensity,
 							Real particleDiameter):
 
@@ -178,7 +185,22 @@ namespace learnSPH
 		{
 			this->particleDencities.swap(particleDencities);
 			this->particleVelocities.swap(particleVelocities);
+			this->particleExternalForces = vector<Vector3R>(this->particlePositions.size(),Eigen::Vector3d(0.0,0.0,0.0));
 		};
+
+        NormalPartDataSet(vector<PositionVector>& particlePositions,
+                          vector<VelocVector>& particleVelocities,
+                          vector<Real>& particleDencities,
+                          vector<Vector3R>& particleExternalForces,
+                          Real restDensity,
+                          Real particleDiameter):
+
+                ParticleDataSet(particlePositions, restDensity, particleDiameter)
+        {
+            this->particleDencities.swap(particleDencities);
+            this->particleVelocities.swap(particleVelocities);
+            this->particleExternalForces.swap(particleExternalForces);
+        };
 
 		~NormalPartDataSet(){};
 	};
