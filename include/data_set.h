@@ -155,6 +155,11 @@ namespace learnSPH
 			return particleDencities;
 		};
 
+		vector<Vector3R>& getParticleForces()
+        {
+		    return particleExternalForces;
+        };
+
 		const Real* getParticleDencitiesData() const
 		{
 			return particleDencities.data();

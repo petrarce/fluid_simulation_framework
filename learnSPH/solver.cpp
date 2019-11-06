@@ -61,7 +61,7 @@ opcode Solver::calculate_acceleration(vector<Vector3R>& fluidParticlesAccelerati
 
 
     #pragma omp parallel for schedule(guided, 100)
-    for(int i = 0; i < fluidParticles.getNumberOfParticles(); i++){
+    for(unsigned int i = 0; i < fluidParticles.getNumberOfParticles(); i++){
         // fluid-fluid interactions
         Vector3R acce_pressure_ff(0.0,0.0,0.0);
         Vector3R acce_viscosity_ff(0.0,0.0,0.0);
@@ -71,7 +71,7 @@ opcode Solver::calculate_acceleration(vector<Vector3R>& fluidParticlesAccelerati
         Real acce_viscosity_fs_factor = 0.0;
 
         const Real rho_i = fluidParticlesDensities[i];
-        for(int j : fluidParticleNeighbours[i][0]){
+        for(unsigned int j : fluidParticleNeighbours[i][0]){
             const Real rho_j = fluidParticlesDensities[j];
             //
             const Vector3R grad_W_ij = learnSPH::kernel::kernelGradFunction(fluidParticlesPositions[i],
@@ -88,7 +88,7 @@ opcode Solver::calculate_acceleration(vector<Vector3R>& fluidParticlesAccelerati
         }
         acce_pressure_ff = fluidParticles.getParticleMass()*acce_pressure_ff;
         acce_viscosity_ff = 2.0*fluid_viscosity*fluidParticles.getParticleMass()*acce_viscosity_ff;
-        for(int k: fluidParticleNeighbours[i][1]){
+        for(unsigned int k: fluidParticleNeighbours[i][1]){
             const Vector3R grad_W_ik = learnSPH::kernel::kernelGradFunction(fluidParticlesPositions[i],
                                                                             borderParticlePositions[k],
                                                                             smoothingLength);
@@ -105,7 +105,7 @@ opcode Solver::calculate_acceleration(vector<Vector3R>& fluidParticlesAccelerati
 
         Vector3R acce_viscosity_fs = 2.0*friction_para*acce_viscosity_fs_factor * fluidParticlesVelocities[i];
 
-        Vector3R acce_external =1.0 / rho_i * fluidParticlesForces[i];
+        Vector3R acce_external =1.0 / fluidParticles.getParticleMass() * fluidParticlesForces[i];
 
         Vector3R acceleration = - acce_pressure_ff - acce_pressure_fs
                                 + acce_viscosity_ff + acce_viscosity_fs
@@ -113,5 +113,43 @@ opcode Solver::calculate_acceleration(vector<Vector3R>& fluidParticlesAccelerati
         fluidParticlesAccelerations[i] = acceleration;
     }
     return STATUS_OK;
+}
+
+opcode Solver::semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAccelerations,
+                                   NormalPartDataSet& fluidParticles, const Real time_frame) {
+    vector<Vector3R>& fluidParticlesVelocities  = fluidParticles.getParticleVelocities();
+    vector<Vector3R>& fluidParticlesPositions = fluidParticles.getParticlePositions();
+
+    #pragma omp parallel for schedule(guided, 100)
+    for (unsigned int i=0; i< fluidParticlesPositions.size(); i++){
+        fluidParticlesVelocities[i] += time_frame * fluidParticlesAccelerations[i];
+        fluidParticlesPositions[i] += time_frame * fluidParticlesVelocities[i];
+    }
+}
+
+opcode Solver::mod_semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAccelerations,
+                                       NormalPartDataSet &fluidParticles,
+                                       const vector<vector<vector<unsigned int>>> &normalParticleNeighbours,
+                                       const Real scaling_para, const Real time_frame,
+                                       const Real smoothingLengthFactor) {
+    vector<Vector3R>& fluidParticlesVelocities  = fluidParticles.getParticleVelocities();
+    vector<Vector3R>& fluidParticlesPositions = fluidParticles.getParticlePositions();
+    const Real* fluidParticlesDensities = fluidParticles.getParticleDencitiesData();
+    #pragma omp parallel for schedule(guided, 100)
+    for (unsigned int i=0; i< fluidParticlesPositions.size(); i++){
+        fluidParticlesVelocities[i] += time_frame * fluidParticlesAccelerations[i];
+    }
+
+    #pragma omp parallel for schedule(guided, 100)
+    for (unsigned int i=0; i< fluidParticlesPositions.size(); i++){
+        Vector3R auxiliary_velocity(0.0,0.0,0);
+        for(unsigned int j : normalParticleNeighbours[i][0]){
+            auxiliary_velocity += (learnSPH::kernel::kernelFunction(fluidParticlesPositions[i], fluidParticlesPositions[j], smoothingLengthFactor)/
+                    (fluidParticlesDensities[i] + fluidParticlesDensities[j]))*(fluidParticlesVelocities[j]-fluidParticlesVelocities[i]);
+        }
+        auxiliary_velocity = fluidParticlesVelocities[i] + 2.0 * scaling_para * fluidParticles.getParticleMass() * auxiliary_velocity;
+        fluidParticlesPositions[i] += time_frame * auxiliary_velocity;
+    }
+
 }
 	
