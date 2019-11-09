@@ -125,6 +125,7 @@ opcode Solver::semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAcceler
         fluidParticlesVelocities[i] += time_frame * fluidParticlesAccelerations[i];
         fluidParticlesPositions[i] += time_frame * fluidParticlesVelocities[i];
     }
+    return STATUS_OK;
 }
 
 opcode Solver::mod_semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAccelerations,
@@ -150,6 +151,6 @@ opcode Solver::mod_semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAcc
         auxiliary_velocity = fluidParticlesVelocities[i] + 2.0 * scaling_para * fluidParticles.getParticleMass() * auxiliary_velocity;
         fluidParticlesPositions[i] += time_frame * auxiliary_velocity;
     }
-
+    return STATUS_OK;
 }
 	

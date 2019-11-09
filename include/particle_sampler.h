@@ -13,12 +13,8 @@ namespace learnSPH{
 	 												const Vector3R& corner_b,
 	 												const Vector3R& corner_c,
 	 												const Real samplingDistance,
-	 												vector<Vector3R>& borderParticleSet);
-		static opcode sample_border_points_in_box(const Vector3R& upperCorner,
-													const Vector3R& lowerCorner,
-	 												const Real samplingDistance,
-	 												vector<Vector3R>& borderParticleSet);
-
+	 												vector<Vector3R>& borderParticleSet,
+	 												bool hexagonal = false);
 	public:
 		/*
 		generate fluid particles inside a cube with upper_corner and lower_corner
@@ -39,7 +35,8 @@ namespace learnSPH{
 	 	static ParticleDataSet* sample_border_box(const Vector3R& upperCorner,
 													const Vector3R& lowerCorner,
 													const Real particleDensities,
-		 											const Real samplingDistance);
+		 											const Real samplingDistance,
+		 											bool hexagonal = false);
 	private:
 		ParticleSampler(){};
 		~ParticleSampler(){};
