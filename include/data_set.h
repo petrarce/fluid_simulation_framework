@@ -70,16 +70,15 @@ namespace learnSPH
 		
 		ParticleDataSet(vector<PositionVector>& particlePositions, 
 						Real restDensity,
-						Real particleDiameter):
-			restDensity(restDensity),
-			particleDiameter(particleDiameter)
+						Real fluidVolume):
+			restDensity(restDensity)
 
 		{
 			assert(restDensity > 0);
-			assert(particleDiameter > 0);
+			assert(fluidVolume > 0);
 			this->particlePositions.swap(particlePositions);
-			this->particleMass = this->restDensity * 
-				this->particleDiameter * this->particleDiameter * this->particleDiameter;
+			this->particleMass = (this->restDensity * fluidVolume)/this->particlePositions.size();
+			this->particleDiameter = cbrt(this->particleMass/this->restDensity);
 		};
 		virtual ~ParticleDataSet(){};
 	};
@@ -139,9 +138,12 @@ namespace learnSPH
 	};
 
 	class NormalPartDataSet :public ParticleDataSet{
+	private:
 		vector<Vector3R> particleVelocities;
 		vector<Real> particleDencities;
 		vector<Vector3R> particleExternalForces;
+		Real compactSupportFactor;
+
 
 	public:
 
@@ -149,6 +151,22 @@ namespace learnSPH
 		{
 			return NORMAL;
 		};
+
+		opcode setCompactSupportFactor(const Real val)
+		{
+			this->compactSupportFactor = val;
+			return STATUS_OK;
+		}
+
+		Real getSmoothingLength()
+		{
+			return 0.5*this->particleDiameter*this->compactSupportFactor;
+		}
+
+		Real getCompactSupport()
+		{
+			return this->particleDiameter*this->compactSupportFactor;
+		}
 		
 		vector<Real>& getParticleDencities()
 		{
@@ -184,9 +202,10 @@ namespace learnSPH
 							vector<VelocVector>& particleVelocities,
 							vector<Real>& particleDencities,
 							Real restDensity,
-							Real particleDiameter):
+							Real fluidVolume):
 
-			ParticleDataSet(particlePositions, restDensity, particleDiameter)
+			ParticleDataSet(particlePositions, restDensity, fluidVolume),
+			compactSupportFactor(1.2)
 		{
 			this->particleDencities.swap(particleDencities);
 			this->particleVelocities.swap(particleVelocities);
@@ -198,9 +217,9 @@ namespace learnSPH
                           vector<Real>& particleDencities,
                           vector<Vector3R>& particleExternalForces,
                           Real restDensity,
-                          Real particleDiameter):
+                          Real fluidVolume):
 
-                ParticleDataSet(particlePositions, restDensity, particleDiameter)
+                ParticleDataSet(particlePositions, restDensity, fluidVolume)
         {
             this->particleDencities.swap(particleDencities);
             this->particleVelocities.swap(particleVelocities);

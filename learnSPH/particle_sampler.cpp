@@ -14,6 +14,9 @@ ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upperC
 	 											const Real samplingDistance)
 {
 	
+	assert(restDensiti > 0.0);
+	assert(samplingDistance > 0.0);
+	assert((upperCorner - lowerCorner).dot(upperCorner - lowerCorner) > 0);
 	Vector3R distVector = upperCorner - lowerCorner;
 	size_t num_of_part_x_direction = abs(distVector[0]/samplingDistance) + 1;
 	size_t num_of_part_y_direction = abs(distVector[1]/samplingDistance) + 1;
@@ -53,11 +56,21 @@ ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upperC
 		}
 	}
 
+	//calculate volume of fluid from lower corner to lower corner to upper corner
+	//taking in acoount that particles on the border has extended voulume up to 1/2
+	//of smpling distance, thuss add to each side samplingDistancevalue
+	Real width = fabs(distVector[0]) + samplingDistance;
+	Real height = fabs(distVector[1]) + samplingDistance;
+	Real length = fabs(distVector[2]) + samplingDistance;
+	Real fluidVolume = width * height * length;
+	//Workarround - according to histograms after sampling most of the particles 
+	//inside the fluid (accept borders) doesn't reach rest density. 
+	//This can be fixed by virtually increasing volume of the fluid
 	NormalPartDataSet* normParticles = new NormalPartDataSet(particlePositions, 
 																particleVelocities,
 																particleDensities, 
 																restDensiti,
-																samplingDistance);
+																1.1*fluidVolume);
 	return normParticles;
 }
 

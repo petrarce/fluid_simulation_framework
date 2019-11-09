@@ -25,8 +25,8 @@ int main(int argc, char** argv)
 	Vector3R upper_corner = {stod(argv[1]), stod(argv[2]), stod(argv[3])};
 	Vector3R lover_corner = {stod(argv[4]), stod(argv[5]), stod(argv[6])};
 	Real sampling_distance = stod(argv[7]);
-	double compactSupportFactor = stod(argv[8]);
-	NeighborhoodSearch ns(sampling_distance*compactSupportFactor);
+
+
 
 
 	NormalPartDataSet* fluidParticles = 
@@ -34,6 +34,9 @@ int main(int argc, char** argv)
 															lover_corner, 
 															1000, 
 															sampling_distance));
+	fluidParticles->setCompactSupportFactor(stod(argv[8]));
+
+	NeighborhoodSearch ns(fluidParticles->getCompactSupport());
 
 	auto fluidPartilesPset = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()),
 						fluidParticles->getNumberOfParticles(),
@@ -59,7 +62,7 @@ int main(int argc, char** argv)
 	learnSPH::Solver::calculate_dencities(*fluidParticles, 
 											dummyBorderParticles, 
 											particleNeighbors,
-											compactSupportFactor*sampling_distance);
+											fluidParticles->getSmoothingLength());
 	// Generate particles
 	std::string filename = "../res/fluid_particle_data_set.vtk";
 	learnSPH::saveParticlesToVTK(filename, 
