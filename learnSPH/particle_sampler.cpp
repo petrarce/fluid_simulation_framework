@@ -1,7 +1,9 @@
 #include <data_set.h>
 #include <particle_sampler.h>
+#include <kernel.h>
 #include <types.hpp>
 
+using namespace learnSPH::kernel;
 using namespace std;
 using namespace learnSPH;
 
@@ -61,14 +63,11 @@ ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upperC
 	Real height = fabs(distVector[1]) + samplingDistance;
 	Real length = fabs(distVector[2]) + samplingDistance;
 	Real fluidVolume = width * height * length;
-	//Workarround - according to histograms after sampling most of the particles 
-	//inside the fluid (accept borders) doesn't reach rest density. 
-	//This can be fixed by virtually increasing volume of the fluid
 	NormalPartDataSet* normParticles = new NormalPartDataSet(particlePositions, 
 																particleVelocities,
 																particleDensities, 
 																restDensiti,
-																1.1*fluidVolume);
+																fluidVolume);
 	return normParticles;
 }
 
@@ -280,7 +279,11 @@ ParticleDataSet* ParticleSampler::sample_border_triangle(const Vector3R& corner_
 	vector<Vector3R> borderParticleSet;
 	sample_border_points_in_triangle(corner_a, corner_b, corner_c, samplingDistance, borderParticleSet);
 
-	return new BorderPartDataSet(borderParticleSet, particleDensities, samplingDistance);
+	//calculate fluid border particle volume theoretically as if all particles where in fluid cube
+	//TODO: check if different fluid volume and border volume influences on simulation
+	return new BorderPartDataSet(borderParticleSet, 
+									particleDensities, 
+									pow3(samplingDistance)*borderParticleSet.size());
 };
 
 
@@ -400,5 +403,10 @@ ParticleDataSet* ParticleSampler::sample_border_box(
 
 	std::cout << borderParticles.size() << " particles sampled" << std::endl;
 	
-	return new BorderPartDataSet(borderParticles, particleDensities, samplingDistance);
+	//calculate fluid border particle volume theoretically as if all particles where in fluid cube
+	//TODO: check if different fluid volume and border volume influences on simulation
+	Vector3R distVec = lower_corner - upper_corner;
+	Real volume = distVec(0)*distVec(1)*distVec(2);
+	return new BorderPartDataSet(borderParticles, particleDensities, 
+		fabs(volume));
 }

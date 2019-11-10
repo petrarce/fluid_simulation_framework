@@ -110,11 +110,11 @@ namespace learnSPH
 
 		BorderPartDataSet(vector<PositionVector>& particlePositions, 
 							Real restDensity,
-							Real particleDiameter):
-			ParticleDataSet(particlePositions, restDensity, particleDiameter)
+							Real fluidVolume):
+			ParticleDataSet(particlePositions, restDensity, fluidVolume)
 		{
 			this->particleVolume.resize(this->particlePositions.size());
-			NeighborhoodSearch ns(1.2*this->particleDiameter, false);
+			NeighborhoodSearch ns(this->particleDiameter*1.2, false);
 			unsigned int pset = ns.add_point_set(&this->particlePositions[0](0), 
 								this->particlePositions.size(),
 								true,
