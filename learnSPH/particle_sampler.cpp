@@ -1,10 +1,9 @@
 #include <data_set.h>
 #include <particle_sampler.h>
+#include <types.hpp>
 
 using namespace std;
 using namespace learnSPH;
-
-constexpr Real threshold = 1e-6;
 
 
 ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upperCorner,

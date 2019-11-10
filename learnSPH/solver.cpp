@@ -39,6 +39,7 @@ opcode Solver::calculate_dencities(NormalPartDataSet& fluidParticles,
 		borderDensity *= borderParticles.getRestDensity();
 
 		fluidParticlesDensities[i] = fluidDensity + borderDensity;
+        assert(fluidParticlesDensities[i] >= 0.0);
 	}
 	return STATUS_OK;
 }

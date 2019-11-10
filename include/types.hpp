@@ -39,6 +39,8 @@ enum opcode {
 using Real = double;
 using Vector3R = Eigen::Vector3d;
 
+constexpr Real threshold = 1e-6;
+
 static inline double getRand(const double minVal,const double maxVal){
 	assert(maxVal - minVal >= 0.0);
 	return minVal + double(rand())/RAND_MAX * (maxVal - minVal);

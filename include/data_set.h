@@ -130,6 +130,7 @@ namespace learnSPH
 														this->particlePositions[j], 
 														1.2*this->particleDiameter);
 				}
+				assert(kerel_sum > threshold);
 				this->particleVolume[i] = 1 / kerel_sum;
 			}
 		};
