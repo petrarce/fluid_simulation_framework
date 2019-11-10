@@ -19,16 +19,22 @@
 using namespace CompactNSearch;
 
 
-int main()
+int main(int argc, char** argv)
 {
+    assert(argc == 15);
     std::cout << "Welcome to the learnSPH framework!!" << std::endl;
     std::cout << "Generating test sample for 3.a) Assignment 2...";
 
-    Vector3R upper_corner = {0.0,0.0,0.0};
-    Vector3R lover_corner = {1.0,1.0,1.0};
-    Real sampling_distance = 0.05;
-    double compactSupportFactor = 2.0;
-    NeighborhoodSearch ns(sampling_distance*compactSupportFactor);
+    Vector3R upper_corner = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
+    Vector3R lover_corner = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
+    Real sampling_distance = stod(argv[7]);
+    Real compactSupportFactor = stod(argv[8]);
+    Real preasureStiffness = stod(argv[9]);
+    Real viscosity = stod(argv[10]);
+    Real friction = stod(argv[11]);
+    bool with_smoothing = stoi(argv[12]);
+    bool withNavierStokes = stoi(argv[13]);
+    size_t nsamples = stoi(argv[14]);
 
 
     NormalPartDataSet* fluidParticles =
@@ -36,6 +42,9 @@ int main()
                                                                                                lover_corner,
                                                                                                1000,
                                                                                                sampling_distance));
+
+    fluidParticles->setCompactSupportFactor(compactSupportFactor);
+    NeighborhoodSearch ns(fluidParticles->getCompactSupport());
 
     auto fluidPartilesPset = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()),
                                               fluidParticles->getNumberOfParticles(),
@@ -51,12 +60,17 @@ int main()
 //                     dummyBorderParticles.getNumberOfParticles(),
 //                     false, true, true);
 
+    Vector3R distanceVector = upper_corner - lover_corner;
+    upper_corner += distanceVector.normalized();
+    lover_corner -= distanceVector.normalized();
 
     BorderPartDataSet* borderParticles =
             static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_box(
-                    Vector3R(-0.5,-0.5,-0.5),
-                    Vector3R(1.5,1.5,1.5),
-                    1000, sampling_distance*0.1));
+                    lover_corner,
+                    upper_corner,
+                    1000, 
+                    sampling_distance,
+                    true));
 
     ns.add_point_set((Real*)borderParticles->getParticlePositions().data(),
                      borderParticles->getNumberOfParticles(),
@@ -64,8 +78,6 @@ int main()
 
 
     Real unit_timeframe = 0.002;
-    bool with_smoothing = true;
-    bool withNavierStokes = true;
     vector<vector<vector<unsigned int>>> particleNeighbors;
     particleNeighbors.resize(fluidParticles->getNumberOfParticles());
 
@@ -75,7 +87,7 @@ int main()
         particleForces[i] = fluidParticles->getParticleMass() * gravity;
     }
 //
-    for (unsigned int t = 0; t<250; t++){
+    for (unsigned int t = 0; t<nsamples; t++){
 
         ns.update_point_sets();
         for(int i = 0; i < fluidParticles->getNumberOfParticles(); i++){
@@ -85,7 +97,7 @@ int main()
         learnSPH::Solver::calculate_dencities(*fluidParticles,
                                               *borderParticles,
                                               particleNeighbors,
-                                              compactSupportFactor*sampling_distance);
+                                              fluidParticles->getSmoothingLength());
 
         // consider only gravity as external forces
         vector<Vector3R> fluidParticlesAccelerations(fluidParticles->getNumberOfParticles(), gravity);
@@ -94,7 +106,10 @@ int main()
                                                      *fluidParticles,
                                                      *borderParticles,
                                                      particleNeighbors,
-                                                     0.1, 1000, 1000, 1);
+                                                     viscosity, 
+                                                     friction, 
+                                                     preasureStiffness, 
+                                                     fluidParticles->getSmoothingLength());
         }
 
 
@@ -102,7 +117,12 @@ int main()
             learnSPH::Solver::semi_implicit_Euler(fluidParticlesAccelerations, *fluidParticles, unit_timeframe);
         }
         else{
-            learnSPH::Solver::mod_semi_implicit_Euler(fluidParticlesAccelerations, *fluidParticles, particleNeighbors, 0.5, unit_timeframe, 1.0);
+            learnSPH::Solver::mod_semi_implicit_Euler(fluidParticlesAccelerations, 
+                                                      *fluidParticles, 
+                                                      particleNeighbors, 
+                                                      0.5, 
+                                                      unit_timeframe, 
+                                                      fluidParticles->getSmoothingLength());
         }
 
         // Save

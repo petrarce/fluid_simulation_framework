@@ -19,8 +19,8 @@ namespace learnSPH{
                                              const vector<vector<vector<unsigned int>>>& normalParticleNeighbours,
                                              const Real fluid_viscosity,
                                              const Real friction_para,
-                                             const Real stiffness_para = 1000,
-                                             const Real smoothingLengthFactor = 1);
+                                             const Real stiffness_para,
+                                             const Real smoothingLength);
 
 	    static opcode semi_implicit_Euler(const vector<Vector3R>& fluidParticlesAccelerations,
                                           NormalPartDataSet& normalParticles,
@@ -31,7 +31,7 @@ namespace learnSPH{
                                                      const vector<vector<vector<unsigned int>>>& normalParticleNeighbours,
                                                      const Real scaling_para,
                                                      const Real time_frame,
-                                                     const Real smoothingLengthFactor = 1);
+                                                     const Real smoothingLength);
 	
 	private:
 		//deleted constructors and operator=
