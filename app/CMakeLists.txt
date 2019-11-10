@@ -30,11 +30,11 @@ add_executable(test_fluid_box ${SOURCE_FILES_test_fluid_box})
 add_dependencies(test_fluid_box learnSPH CompactNSearch)
 target_link_libraries(test_fluid_box learnSPH CompactNSearch)
 
-set(SOURCE_FILES_test_fluid_box_with_border
-	test_fluid_box_with_border.cpp)
-add_executable(test_fluid_box_with_border ${SOURCE_FILES_test_fluid_box_with_border})
-add_dependencies(test_fluid_box_with_border learnSPH CompactNSearch)
-target_link_libraries(test_fluid_box_with_border learnSPH CompactNSearch)
+set(SOURCE_FILES_test_border_box
+	test_border_box.cpp)
+add_executable(test_border_box ${SOURCE_FILES_test_border_box})
+add_dependencies(test_border_box learnSPH CompactNSearch)
+target_link_libraries(test_border_box learnSPH CompactNSearch)
 
 set(SOURCE_FILES_test_acceleration
 		test_acceleration.cpp)

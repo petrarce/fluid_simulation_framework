@@ -1,6 +1,5 @@
 #include <data_set.h>
 #include <particle_sampler.h>
-#include <conio.h>
 
 using namespace std;
 using namespace learnSPH;
