@@ -405,8 +405,6 @@ ParticleDataSet* ParticleSampler::sample_border_box(
 	
 	//calculate fluid border particle volume theoretically as if all particles where in fluid cube
 	//TODO: check if different fluid volume and border volume influences on simulation
-	Vector3R distVec = lower_corner - upper_corner;
-	Real volume = distVec(0)*distVec(1)*distVec(2);
 	return new BorderPartDataSet(borderParticles, particleDensities, 
-		fabs(volume));
+		borderParticles.size() * pow3(samplingDistance));
 }
