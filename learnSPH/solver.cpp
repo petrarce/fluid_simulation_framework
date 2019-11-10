@@ -78,8 +78,10 @@ opcode Solver::calculate_acceleration(vector<Vector3R>& fluidParticlesAccelerati
             const Vector3R grad_W_ij = learnSPH::kernel::kernelGradFunction(fluidParticlesPositions[i],
                                                                              fluidParticlesPositions[j],
                                                                              smoothingLength);
-            acce_pressure_ff +=(max(stiffness_para*(rho_i-fluidParticles.getRestDensity()),0.0)/pow(rho_i,2.0)+
-                                max(stiffness_para*(rho_j-fluidParticles.getRestDensity()),0.0)/pow(rho_j,2.0))*
+            assert(fabs(rho_i) + threshold > threshold);
+            assert(fabs(rho_j) + threshold > threshold);
+            acce_pressure_ff +=(max(stiffness_para*(rho_i-fluidParticles.getRestDensity()),0.0)/(pow(rho_i,2.0) + threshold) +
+                                max(stiffness_para*(rho_j-fluidParticles.getRestDensity()),0.0)/(pow(rho_j,2.0) + threshold))*
                                 grad_W_ij;
 
             const Vector3R diff_ij = fluidParticlesPositions[i]-fluidParticlesPositions[j];
@@ -97,15 +99,18 @@ opcode Solver::calculate_acceleration(vector<Vector3R>& fluidParticlesAccelerati
             acce_pressure_fs += borderParticlesVolumes[k]*grad_W_ik;
 
             const Vector3R diff_ik =fluidParticlesPositions[i]-borderParticlePositions[k];
+            assert(fabs(diff_ik.dot(diff_ik) + 0.01*smoothingLength*smoothingLength) > threshold);
             acce_viscosity_fs_factor += borderParticlesVolumes[k]*
                     diff_ik.dot(grad_W_ik)/(diff_ik.dot(diff_ik) + 0.01*smoothingLength*smoothingLength);
 
         }
+        assert(learnSPH::kernel::pow2(rho_i) + 1e-6 >= threshold);
         acce_pressure_fs *= fluidParticles.getRestDensity()*
-                            max(stiffness_para*(rho_i-fluidParticles.getRestDensity()),0.0)/pow(rho_i,2.0);
+                            max(stiffness_para*(rho_i-fluidParticles.getRestDensity()),0.0)/(learnSPH::kernel::pow2(rho_i) +1e-6);
 
         Vector3R acce_viscosity_fs = 2.0*friction_para*acce_viscosity_fs_factor * fluidParticlesVelocities[i];
 
+        assert(fluidParticles.getParticleMass() > threshold);
         Vector3R acce_external =1.0 / fluidParticles.getParticleMass() * fluidParticlesForces[i];
 
         Vector3R acceleration = - acce_pressure_ff - acce_pressure_fs
@@ -146,6 +151,7 @@ opcode Solver::mod_semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAcc
     for (unsigned int i=0; i< fluidParticlesPositions.size(); i++){
         Vector3R auxiliary_velocity(0.0,0.0,0);
         for(unsigned int j : normalParticleNeighbours[i][0]){
+            assert((fluidParticlesDensities[i] + fluidParticlesDensities[j]) > threshold);
             auxiliary_velocity += (learnSPH::kernel::kernelFunction(fluidParticlesPositions[i], fluidParticlesPositions[j], smoothingLengthFactor)/
                     (fluidParticlesDensities[i] + fluidParticlesDensities[j]))*(fluidParticlesVelocities[j]-fluidParticlesVelocities[i]);
         }
