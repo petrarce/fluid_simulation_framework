@@ -21,25 +21,27 @@ using namespace CompactNSearch;
 
 int main(int argc, char** argv)
 {
-    assert(argc == 15);
+    assert(argc == 21);
     std::cout << "Welcome to the learnSPH framework!!" << std::endl;
     std::cout << "Generating test sample for 3.a) Assignment 2...";
 
-    Vector3R upper_corner = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
-    Vector3R lover_corner = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
-    Real sampling_distance = stod(argv[7]);
-    Real compactSupportFactor = stod(argv[8]);
-    Real preasureStiffness = stod(argv[9]);
-    Real viscosity = stod(argv[10]);
-    Real friction = stod(argv[11]);
-    bool with_smoothing = stoi(argv[12]);
-    bool withNavierStokes = stoi(argv[13]);
-    size_t nsamples = stoi(argv[14]);
+    Vector3R upper_corner_fluid = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
+    Vector3R lover_corner_fluid = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
+    Vector3R upper_corner_box = {stod(argv[7]),stod(argv[8]),stod(argv[9])};
+    Vector3R lover_corner_box = {stod(argv[10]),stod(argv[11]),stod(argv[12])};
+    Real sampling_distance = stod(argv[13]);
+    Real compactSupportFactor = stod(argv[14]);
+    Real preasureStiffness = stod(argv[15]);
+    Real viscosity = stod(argv[16]);
+    Real friction = stod(argv[17]);
+    bool with_smoothing = stoi(argv[18]);
+    bool withNavierStokes = stoi(argv[19]);
+    size_t nsamples = stoi(argv[20]);
 
 
     NormalPartDataSet* fluidParticles =
-            static_cast<NormalPartDataSet*>(learnSPH::ParticleSampler::sample_normal_particles(upper_corner,
-                                                                                               lover_corner,
+            static_cast<NormalPartDataSet*>(learnSPH::ParticleSampler::sample_normal_particles(upper_corner_fluid,
+                                                                                               lover_corner_fluid,
                                                                                                1000,
                                                                                                sampling_distance));
 
@@ -60,14 +62,11 @@ int main(int argc, char** argv)
 //                     dummyBorderParticles.getNumberOfParticles(),
 //                     false, true, true);
 
-    Vector3R distanceVector = upper_corner - lover_corner;
-    upper_corner += distanceVector.normalized();
-    lover_corner -= distanceVector.normalized();
 
     BorderPartDataSet* borderParticles =
             static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_box(
-                    lover_corner,
-                    upper_corner,
+                    lover_corner_box,
+                    upper_corner_box,
                     1000, 
                     sampling_distance,
                     true));
