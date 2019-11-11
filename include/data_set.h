@@ -128,7 +128,7 @@ namespace learnSPH
 				for(int j : neighbours[0]){
 					kerel_sum += kernel::kernelFunction(this->particlePositions[i], 
 														this->particlePositions[j], 
-														1.2*this->particleDiameter);
+														this->particleDiameter*1.2*0.5);
 				}
 				assert(kerel_sum > threshold);
 				this->particleVolume[i] = 1 / kerel_sum;
