@@ -151,7 +151,7 @@ opcode Solver::mod_semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAcc
     for (unsigned int i=0; i< fluidParticlesPositions.size(); i++){
         Vector3R auxiliary_velocity(0.0,0.0,0);
         for(unsigned int j : normalParticleNeighbours[i][0]){
-            assert((fluidParticlesDensities[i] + fluidParticlesDensities[j]) > threshold);
+//            assert((fluidParticlesDensities[i] + fluidParticlesDensities[j]) > threshold);
             auxiliary_velocity += (learnSPH::kernel::kernelFunction(fluidParticlesPositions[i], fluidParticlesPositions[j], smoothingLengthFactor)/
                     (fluidParticlesDensities[i] + fluidParticlesDensities[j]))*(fluidParticlesVelocities[j]-fluidParticlesVelocities[i]);
         }

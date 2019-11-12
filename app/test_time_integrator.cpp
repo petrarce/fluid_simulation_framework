@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>    // std::max
+#include <math.h>
 
 #include <Eigen/Dense>
 #include <data_set.h>
@@ -21,9 +22,9 @@ using namespace CompactNSearch;
 
 int main(int argc, char** argv)
 {
-    assert(argc == 21);
+    assert(argc == 22);
     std::cout << "Welcome to the learnSPH framework!!" << std::endl;
-    std::cout << "Generating test sample for 3.a) Assignment 2...";
+    std::cout << "Generating test sample for Assignment 2...";
 
     Vector3R upper_corner_fluid = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
     Vector3R lover_corner_fluid = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
@@ -36,7 +37,9 @@ int main(int argc, char** argv)
     Real friction = stod(argv[17]);
     bool with_smoothing = stoi(argv[18]);
     bool withNavierStokes = stoi(argv[19]);
-    size_t nsamples = stoi(argv[20]);
+    Real defaultTimeStep = (stod(argv[20])); // time frame
+    Real simulateDuration = (stod(argv[21])); // duration of the simulation
+//    size_t nsamples = stoi(argv[20]);
 
 
     NormalPartDataSet* fluidParticles =
@@ -63,6 +66,7 @@ int main(int argc, char** argv)
 //                     false, true, true);
 
 
+
     BorderPartDataSet* borderParticles =
             static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_box(
                     lover_corner_box,
@@ -76,7 +80,7 @@ int main(int argc, char** argv)
                      false, true, true);
 
 
-    Real unit_timeframe = 0.002;
+    Real unit_timeframe = defaultTimeStep;
     vector<vector<vector<unsigned int>>> particleNeighbors;
     particleNeighbors.resize(fluidParticles->getNumberOfParticles());
 
@@ -86,43 +90,83 @@ int main(int argc, char** argv)
         particleForces[i] = fluidParticles->getParticleMass() * gravity;
     }
 //
+    unsigned int nsamples = int(simulateDuration/defaultTimeStep);
+    std::cout<<"simulateDuration"<<simulateDuration<<"defaultTimeStep"<<defaultTimeStep<<"nsamples: "<<simulateDuration/defaultTimeStep<<std::endl;
     for (unsigned int t = 0; t<nsamples; t++){
+        Real timeSimulation = 0;
+        while (timeSimulation <1){
+            ns.update_point_sets();
+            for(int i = 0; i < fluidParticles->getNumberOfParticles(); i++){
+                ns.find_neighbors(fluidPartilesPset, i, particleNeighbors[i]);
+            }
 
-        ns.update_point_sets();
-        for(int i = 0; i < fluidParticles->getNumberOfParticles(); i++){
-            ns.find_neighbors(fluidPartilesPset, i, particleNeighbors[i]);
+            learnSPH::Solver::calculate_dencities(*fluidParticles,
+                                                  *borderParticles,
+                                                  particleNeighbors,
+                                                  fluidParticles->getSmoothingLength());
+
+            // consider only gravity as external forces
+            vector<Vector3R> fluidParticlesAccelerations(fluidParticles->getNumberOfParticles(), gravity);
+            if(withNavierStokes){
+                learnSPH::Solver::calculate_acceleration(fluidParticlesAccelerations,
+                                                         *fluidParticles,
+                                                         *borderParticles,
+                                                         particleNeighbors,
+                                                         viscosity,
+                                                         friction,
+                                                         preasureStiffness,
+                                                         fluidParticles->getSmoothingLength());
+            }
+            //TODO set argument to customize velocity cap
+            Real velocityCap = 30.0;
+            Real vMaxNorm = 0;
+            const Vector3R * fluidParticlesVelocity = fluidParticles->getParticleVelocitiesData();
+            bool maxVelocClamp = false;
+            if(maxVelocClamp){
+                for (int iVelo=0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++){
+                    if( (fluidParticlesVelocity[iVelo]).norm()>vMaxNorm){
+                        vMaxNorm = (fluidParticlesVelocity[iVelo]).norm();
+                    }
+                }
+                vMaxNorm = min(vMaxNorm, velocityCap);
+            }else{
+                //95% clamp
+                vector<Real> fluidParticlesAbsoluteVelocity(fluidParticles->getNumberOfParticles());
+                for (int iVelo=0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++){
+                    fluidParticlesAbsoluteVelocity[iVelo] = (fluidParticlesVelocity[iVelo]).norm();
+                }
+                std::sort(fluidParticlesAbsoluteVelocity.begin(),fluidParticlesAbsoluteVelocity.end());
+                Real vClamp = fluidParticlesAbsoluteVelocity[int(fluidParticles->getNumberOfParticles()*0.95)];
+                vMaxNorm = min(vClamp, velocityCap);
+            }
+
+
+
+            Real delTimeCFL = 0.5*0.5*fluidParticles->getParticleDiameter()/vMaxNorm/defaultTimeStep;
+            Real delTime;
+            if (timeSimulation + delTimeCFL >= 1){
+                delTime = (1-timeSimulation)*defaultTimeStep;
+                timeSimulation=1;
+            }else{
+                delTime = delTimeCFL*defaultTimeStep;
+                timeSimulation += delTimeCFL;
+                std::cout<<"interpolate: "<<to_string(t + timeSimulation)<<std::endl;
+            }
+
+            if (not with_smoothing){
+                learnSPH::Solver::semi_implicit_Euler(fluidParticlesAccelerations, *fluidParticles, delTime);
+            }
+            else{
+                learnSPH::Solver::mod_semi_implicit_Euler(fluidParticlesAccelerations,
+                                                          *fluidParticles,
+                                                          particleNeighbors,
+                                                          0.5,
+                                                          delTime,
+                                                          fluidParticles->getSmoothingLength());
+            }
+
         }
 
-        learnSPH::Solver::calculate_dencities(*fluidParticles,
-                                              *borderParticles,
-                                              particleNeighbors,
-                                              fluidParticles->getSmoothingLength());
-
-        // consider only gravity as external forces
-        vector<Vector3R> fluidParticlesAccelerations(fluidParticles->getNumberOfParticles(), gravity);
-        if(withNavierStokes){
-            learnSPH::Solver::calculate_acceleration(fluidParticlesAccelerations,
-                                                     *fluidParticles,
-                                                     *borderParticles,
-                                                     particleNeighbors,
-                                                     viscosity, 
-                                                     friction, 
-                                                     preasureStiffness, 
-                                                     fluidParticles->getSmoothingLength());
-        }
-
-
-        if (with_smoothing){
-            learnSPH::Solver::semi_implicit_Euler(fluidParticlesAccelerations, *fluidParticles, unit_timeframe);
-        }
-        else{
-            learnSPH::Solver::mod_semi_implicit_Euler(fluidParticlesAccelerations, 
-                                                      *fluidParticles, 
-                                                      particleNeighbors, 
-                                                      0.5, 
-                                                      unit_timeframe, 
-                                                      fluidParticles->getSmoothingLength());
-        }
 
         // Save
         std::string filename;
@@ -133,7 +177,9 @@ int main(int argc, char** argv)
                 filename = "../res/2_3a/smooth_" + std::to_string(t) + ".vtk";
         else
             filename = "../res/2_3a/no_smooth_" + std::to_string(t) + ".vtk";
-        std::cout<<"epoch " + std::to_string(t)<<endl;
+
+        if (t%25==0)
+            std::cout<<"epoch " + std::to_string(t)<<endl;
 
         learnSPH::saveParticlesToVTK(filename,
                                      fluidParticles->getParticlePositions(),
