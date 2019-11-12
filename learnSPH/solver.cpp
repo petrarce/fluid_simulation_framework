@@ -147,17 +147,32 @@ opcode Solver::mod_semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAcc
         fluidParticlesVelocities[i] += time_frame * fluidParticlesAccelerations[i];
     }
 
+    vector<Vector3R> fluidParticlesNewPositions(fluidParticlesPositions.size());
+
     #pragma omp parallel for schedule(guided, 100)
     for (unsigned int i=0; i< fluidParticlesPositions.size(); i++){
         Vector3R auxiliary_velocity(0.0,0.0,0);
         for(unsigned int j : normalParticleNeighbours[i][0]){
 //            assert((fluidParticlesDensities[i] + fluidParticlesDensities[j]) > threshold);
-            auxiliary_velocity += (learnSPH::kernel::kernelFunction(fluidParticlesPositions[i], fluidParticlesPositions[j], smoothingLengthFactor)/
-                    (fluidParticlesDensities[i] + fluidParticlesDensities[j]))*(fluidParticlesVelocities[j]-fluidParticlesVelocities[i]);
+            if ((fluidParticlesDensities[i] + fluidParticlesDensities[j])<= threshold){
+                auxiliary_velocity += (learnSPH::kernel::kernelFunction(fluidParticlesPositions[i], fluidParticlesPositions[j], smoothingLengthFactor)*1e5/
+                                       ((fluidParticlesDensities[i] + fluidParticlesDensities[j])*1e5))*(fluidParticlesVelocities[j]-fluidParticlesVelocities[i]);
+            }
+            else{
+                auxiliary_velocity += (learnSPH::kernel::kernelFunction(fluidParticlesPositions[i], fluidParticlesPositions[j], smoothingLengthFactor)/
+                                       (fluidParticlesDensities[i] + fluidParticlesDensities[j]))*(fluidParticlesVelocities[j]-fluidParticlesVelocities[i]);
+            }
+
         }
         auxiliary_velocity = fluidParticlesVelocities[i] + 2.0 * scaling_para * fluidParticles.getParticleMass() * auxiliary_velocity;
-        fluidParticlesPositions[i] += time_frame * auxiliary_velocity;
+        assert(auxiliary_velocity.norm()<1e5);
+        fluidParticlesNewPositions[i] = fluidParticlesPositions[i] +  time_frame * auxiliary_velocity;
+
     }
+    for (unsigned int i=0; i< fluidParticlesPositions.size(); i++){
+        fluidParticlesPositions[i] = fluidParticlesNewPositions[i];
+    }
+
     return STATUS_OK;
 }
 	

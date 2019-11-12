@@ -22,7 +22,7 @@ using namespace CompactNSearch;
 
 int main(int argc, char** argv)
 {
-    assert(argc == 22);
+    assert(argc == 23);
     std::cout << "Welcome to the learnSPH framework!!" << std::endl;
     std::cout << "Generating test sample for Assignment 2...";
 
@@ -39,6 +39,7 @@ int main(int argc, char** argv)
     bool withNavierStokes = stoi(argv[19]);
     Real defaultTimeStep = (stod(argv[20])); // time frame
     Real simulateDuration = (stod(argv[21])); // duration of the simulation
+    string expName = argv[22]; // name of experience
 //    size_t nsamples = stoi(argv[20]);
 
 
@@ -71,8 +72,8 @@ int main(int argc, char** argv)
             static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_box(
                     lover_corner_box,
                     upper_corner_box,
-                    1000, 
-                    sampling_distance,
+                    3000,
+                    sampling_distance*0.5,
                     true));
 
     ns.add_point_set((Real*)borderParticles->getParticlePositions().data(),
@@ -80,7 +81,6 @@ int main(int argc, char** argv)
                      false, true, true);
 
 
-    Real unit_timeframe = defaultTimeStep;
     vector<vector<vector<unsigned int>>> particleNeighbors;
     particleNeighbors.resize(fluidParticles->getNumberOfParticles());
 
@@ -118,10 +118,10 @@ int main(int argc, char** argv)
                                                          fluidParticles->getSmoothingLength());
             }
             //TODO set argument to customize velocity cap
-            Real velocityCap = 30.0;
+            Real velocityCap = 300.0;
             Real vMaxNorm = 0;
             const Vector3R * fluidParticlesVelocity = fluidParticles->getParticleVelocitiesData();
-            bool maxVelocClamp = false;
+            bool maxVelocClamp = true;
             if(maxVelocClamp){
                 for (int iVelo=0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++){
                     if( (fluidParticlesVelocity[iVelo]).norm()>vMaxNorm){
@@ -142,14 +142,18 @@ int main(int argc, char** argv)
 
 
 
-            Real delTimeCFL = 0.5*0.5*fluidParticles->getParticleDiameter()/vMaxNorm/defaultTimeStep;
+            Real delTimeCFL = 0.5*0.5*(fluidParticles->getParticleDiameter()/vMaxNorm);
             Real delTime;
-            if (timeSimulation + delTimeCFL >= 1){
+            if (timeSimulation*defaultTimeStep + delTimeCFL >= defaultTimeStep){
                 delTime = (1-timeSimulation)*defaultTimeStep;
                 timeSimulation=1;
             }else{
-                delTime = delTimeCFL*defaultTimeStep;
-                timeSimulation += delTimeCFL;
+//                delTime = defaultTimeStep;
+//                while (delTime>delTimeCFL){
+//                    delTime *=0.5;
+//                }
+                delTime = delTimeCFL;
+                timeSimulation += delTime/defaultTimeStep;
                 std::cout<<"interpolate: "<<to_string(t + timeSimulation)<<std::endl;
             }
 
@@ -170,14 +174,15 @@ int main(int argc, char** argv)
 
         // Save
         std::string filename;
-        if(with_smoothing)
-            if(withNavierStokes)
-                filename = "../res/2_3a/smooth_navier_stokes" + std::to_string(t) + ".vtk";
-            else
-                filename = "../res/2_3a/smooth_" + std::to_string(t) + ".vtk";
-        else
-            filename = "../res/2_3a/no_smooth_" + std::to_string(t) + ".vtk";
+//        if(with_smoothing)
+//            if(withNavierStokes)
+//                filename = "../res/2_3a/smooth_navier_stokes" + std::to_string(t) + ".vtk";
+//            else
+//                filename = "../res/2_3a/smooth_" + std::to_string(t) + ".vtk";
+//        else
+//            filename = "../res/2_3a/no_smooth_" + std::to_string(t) + ".vtk";
 
+        filename = "../res/assignment2/" + expName + '_' + std::to_string(t) + ".vtk";
         if (t%25==0)
             std::cout<<"epoch " + std::to_string(t)<<endl;
 
@@ -188,7 +193,7 @@ int main(int argc, char** argv)
 
     }
     //save border
-    std:string filename = "../res/2_3a/border.vtk";
+    std:string filename = "../res/assignment2/border.vtk";
     vector<Vector3R> dummyVector(borderParticles->getNumberOfParticles());
     learnSPH::saveParticlesToVTK(filename,
                                  borderParticles->getParticlePositions(),
@@ -203,7 +208,7 @@ int main(int argc, char** argv)
 
     delete fluidParticles;
     std::cout << "completed!" << std::endl;
-    std::cout << "The scene files have been saved in the folder `<build_folder>/res/2_3a/`. You can visualize them with Paraview." << std::endl;
+    std::cout << "The scene files have been saved in the folder `<build_folder>/res/assignment2/`. You can visualize them with Paraview." << std::endl;
 
 
     return 0;
