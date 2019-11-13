@@ -18,7 +18,7 @@ opcode Solver::calculate_dencities(NormalPartDataSet& fluidParticles,
 	const Real* borderParticlesVolumes = borderParticles.getParticleVolumeData();
 
 
-	//#pragma omp parallel for schedule(guided, 100)
+	#pragma omp parallel for schedule(guided, 100)
 	for(int i = 0; i < fluidParticles.getNumberOfParticles(); i++){
 		//calculate density depending on neighbor fluid particles
 		Real fluidDensity = 0.0;

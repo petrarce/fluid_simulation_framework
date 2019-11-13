@@ -130,8 +130,7 @@ namespace learnSPH
 														this->particlePositions[j], 
 														this->particleDiameter*1.2*0.5);
 				}
-				assert(kerel_sum > threshold);
-				this->particleVolume[i] = 1 / kerel_sum;
+				this->particleVolume[i] = (kerel_sum > 0.0) ? (1 / kerel_sum) : learnSPH::kernel::pow3(this->particleDiameter);
 			}
 		};
 		
