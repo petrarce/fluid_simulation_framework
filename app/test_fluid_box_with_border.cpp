@@ -54,11 +54,14 @@ int main(int argc, char** argv)
 	std::cout << "Welcome to the learnSPH framework!!" << std::endl;
 	std::cout << "Generating a sample scene...";
 
-	assert(argc == 9);
+	assert(argc == 15);
 	Vector3R upper_corner = {stod(argv[1]), stod(argv[2]), stod(argv[3])};
 	Vector3R lower_corner = {stod(argv[4]), stod(argv[5]), stod(argv[6])};
-	Real sampling_distance = stod(argv[7]);
-	double compactSupportFactor = stod(argv[8]);
+	Vector3R upper_corner_box = {stod(argv[7]), stod(argv[8]), stod(argv[9])};
+	Vector3R lower_corner_box = {stod(argv[10]), stod(argv[11]), stod(argv[12])};
+
+	Real sampling_distance = stod(argv[13]);
+	double compactSupportFactor = stod(argv[14]);
 
 
 	NormalPartDataSet* fluidParticles = 
@@ -79,13 +82,9 @@ int main(int argc, char** argv)
 	Real offset = fluidParticles->getCompactSupport() + 1;
 	BorderPartDataSet* borderParticles = 
 		static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_box(
-			Vector3R(lower_corner(0), 
-						lower_corner(1) + ((lower_corner(1)>0)?1:-1)*offset, 
-						lower_corner(2) + ((lower_corner(2)>0)?1:-1)*offset), 
-			Vector3R(upper_corner(0) + ((upper_corner(0)>0)?1:-1)*offset, 
-						upper_corner(1) + ((upper_corner(1)>0)?1:-1)*offset, 
-						upper_corner(2) + ((upper_corner(2)>0)?1:-1)*offset), 
-			1000, sampling_distance, true));
+			upper_corner_box, 
+			lower_corner_box, 
+			3000, 0.5*sampling_distance, true));
 	
 
 	ns.add_point_set((Real*)borderParticles->getParticlePositions().data(), 
