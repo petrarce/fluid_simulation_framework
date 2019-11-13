@@ -154,7 +154,7 @@ int main(int argc, char** argv)
 //                }
                 delTime = delTimeCFL;
                 timeSimulation += delTime/defaultTimeStep;
-                std::cout<<"interpolate: "<<to_string(t + timeSimulation)<<std::endl;
+//                std::cout<<"interpolate: "<<to_string(t + timeSimulation)<<std::endl;
             }
 
             if (not with_smoothing){
@@ -182,6 +182,17 @@ int main(int argc, char** argv)
 //        else
 //            filename = "../res/2_3a/no_smooth_" + std::to_string(t) + ".vtk";
 
+        vector<PositionVector>& particlePositions = fluidParticles->getParticlePositions();
+        const Real maxRadius = 200.0; // To avoid exploded particles moves too far from center => view vanish
+        bool beyondSphere = false;
+        for (unsigned particleIndex = 0; particleIndex<fluidParticles->getNumberOfParticles(); particleIndex++){
+            if (particlePositions[particleIndex].norm() > maxRadius){
+                particlePositions[particleIndex] = 0.8*maxRadius*(particlePositions[particleIndex].normalized());
+                beyondSphere = true;
+            }
+        }
+        if (beyondSphere)
+            std::cout<<"warning： particles away from center, frame: "<<t<<std::endl;
         filename = "../res/assignment2/" + expName + '_' + std::to_string(t) + ".vtk";
         if (t%25==0)
             std::cout<<"epoch " + std::to_string(t)<<endl;
