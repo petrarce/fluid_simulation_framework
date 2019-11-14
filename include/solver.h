@@ -8,15 +8,15 @@ using namespace learnSPH;
 namespace learnSPH{
 
 	void calculate_dencities(
-						NormalPartDataSet& normalParticles,
-						BorderPartDataSet& borderParticles,
+						NormalPartDataSet *normalParticles,
+						BorderPartDataSet *borderParticles,
 						const vector<vector<vector<unsigned int> > >& normalParticleNeighbours,
 						const Real smoothingLengthFactor = 1);
 
 	void calculate_acceleration(
 						vector<Vector3R>& fluidParticlesAccelerations,
-						NormalPartDataSet& fluidParticles,
-						BorderPartDataSet& borderParticles,
+						NormalPartDataSet *fluidParticles,
+						BorderPartDataSet *borderParticles,
 						const vector<vector<vector<unsigned int> > >& normalParticleNeighbours,
 						const Real fluid_viscosity,
 						const Real friction_para,
@@ -25,12 +25,12 @@ namespace learnSPH{
 
 	void symplectic_euler(
 						const vector<Vector3R>& fluidParticlesAccelerations,
-						NormalPartDataSet& normalParticles,
+						NormalPartDataSet *normalParticles,
 						const Real time_frame);
 
 	void smooth_symplectic_euler(
 						const vector<Vector3R>& fluidParticlesAccelerations,
-						NormalPartDataSet& fluidParticles,
+						NormalPartDataSet *fluidParticles,
 						const vector<vector<vector<unsigned int> > >& normalParticleNeighbours,
 						const Real scaling_para,
 						const Real time_frame,

@@ -1,11 +1,8 @@
-//
-// Created by nelson on 2019/11/5.
-//
-#include <stdlib.h>     // rand
+#include <stdlib.h>
 #include <iostream>
 #include <vector>
 #include <string>
-#include <algorithm>    // std::max
+#include <algorithm>
 #include <math.h>
 
 #include <Eigen/Dense>
@@ -42,10 +39,10 @@ int main(int argc, char** argv)
 	Real simulateDuration = (stod(argv[21])); // duration of the simulation
 	string expName = argv[22]; // name of experience
 
-
 	NormalPartDataSet* fluidParticles = sample_fluid_cube(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance);
 
 	fluidParticles->setCompactSupportFactor(compactSupportFactor);
+
 	NeighborhoodSearch ns(fluidParticles->getCompactSupport());
 
 	auto fluidPointSet = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()), fluidParticles->getNumberOfParticles(), true);
@@ -58,8 +55,8 @@ int main(int argc, char** argv)
 
 	ns.add_point_set((Real*)borderParticles->getParticlePositions().data(), borderParticles->getNumberOfParticles(), false);
 
-
 	vector<vector<vector<unsigned int>>> particleNeighbors;
+
 	particleNeighbors.resize(fluidParticles->getNumberOfParticles());
 
 	const Vector3R gravity(0.0, -9.7, 0.0);
@@ -74,91 +71,79 @@ int main(int argc, char** argv)
 	cout << "Default time step: "<< render_step << endl;
 	cout << "number of frames: "<< simulateDuration / render_step << endl;
 
-    for (unsigned int t = 0; t < nsamples; t++) {
+	string filename = "res/assignment2/border.vtk";
 
-        Real timeSimulation = 0;
+	vector<Vector3R> dummyVector(borderParticles->getNumberOfParticles());
 
-        int physical_steps = 0;
+	learnSPH::saveParticlesToVTK(filename, borderParticles->getParticlePositions(), borderParticles->getParticleVolume(), dummyVector);
 
-        while (timeSimulation < 1) {
-            ns.update_point_sets();
-            for(int i = 0; i < fluidParticles->getNumberOfParticles(); i++){
-                ns.find_neighbors(fluidPointSet, i, particleNeighbors[i]);
-            }
+	for (unsigned int t = 0; t < nsamples; t++) {
 
-            learnSPH::calculate_dencities(*fluidParticles,
-                                                  *borderParticles,
-                                                  particleNeighbors,
-                                                  fluidParticles->getSmoothingLength());
+		Real timeSimulation = 0;
 
-            // consider only gravity as external forces
-            vector<Vector3R> fluidParticlesAccelerations(fluidParticles->getNumberOfParticles(), gravity);
-            if(withNavierStokes){
-                learnSPH::calculate_acceleration(fluidParticlesAccelerations,
-                                                         *fluidParticles,
-                                                         *borderParticles,
-                                                         particleNeighbors,
-                                                         viscosity,
-                                                         friction,
-                                                         preasureStiffness,
-                                                         fluidParticles->getSmoothingLength());
-            }
-            //TODO set argument to customize velocity cap
-            Real velocityCap = 300.0;
-            Real vMaxNorm = 0;
-            auto fluidParticlesVelocity = fluidParticles->getParticleVelocities().data();
+		int physical_steps = 0;
 
-            for (int iVelo = 0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++){
-                if( (fluidParticlesVelocity[iVelo]).norm() > vMaxNorm){
-                    vMaxNorm = (fluidParticlesVelocity[iVelo]).norm();
-                }
-            }
-            vMaxNorm = min(vMaxNorm, velocityCap);
+		while (timeSimulation < 1) {
+			ns.update_point_sets();
 
-            Real logic_step_upper_bound = 0.5 * (fluidParticles->getParticleDiameter() / vMaxNorm);
-            Real logic_time_step;
+			for(int i = 0; i < fluidParticles->getNumberOfParticles(); i++) ns.find_neighbors(fluidPointSet, i, particleNeighbors[i]);
 
-            if (timeSimulation * render_step + logic_step_upper_bound >= render_step){
-                logic_time_step = (1 - timeSimulation) * render_step;
-                timeSimulation = 1;
-            } else {
-                logic_time_step = logic_step_upper_bound;
-                timeSimulation += logic_time_step / render_step;
-            }
+			learnSPH::calculate_dencities(fluidParticles, borderParticles, particleNeighbors, fluidParticles->getSmoothingLength());
 
-            if (!with_smoothing) {
-                learnSPH::symplectic_euler(fluidParticlesAccelerations, *fluidParticles, logic_time_step);
-            } else {
-                learnSPH::smooth_symplectic_euler(fluidParticlesAccelerations,
-                                                          *fluidParticles,
-                                                          particleNeighbors,
-                                                          0.5,
-                                                          logic_time_step,
-                                                          fluidParticles->getSmoothingLength());
-            }
-            physical_steps++;
-        }
-        cout << "[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "]" << endl;
 
-        std::string filename = "res/assignment2/" + expName + '_' + std::to_string(t) + ".vtk";
+			vector<Vector3R> fluidParticlesAccelerations(fluidParticles->getNumberOfParticles(), gravity);
 
-        learnSPH::saveParticlesToVTK(filename,
-                                     fluidParticles->getParticlePositions(),
-                                     fluidParticles->getParticleDencities(),
-                                     fluidParticles->getParticleVelocities());
-    }
-    //save border
-    std:string filename = "res/assignment2/border.vtk";
-    vector<Vector3R> dummyVector(borderParticles->getNumberOfParticles());
-    learnSPH::saveParticlesToVTK(filename,
-                                 borderParticles->getParticlePositions(),
-                                 borderParticles->getParticleVolume(),
-                                 dummyVector);
+			learnSPH::calculate_acceleration(
+											fluidParticlesAccelerations,
+											fluidParticles,
+											borderParticles,
+											particleNeighbors,
+											viscosity,
+											friction,
+											preasureStiffness,
+											fluidParticles->getSmoothingLength());
 
-    delete fluidParticles;
-    std::cout << "completed!" << std::endl;
-    std::cout << "The scene files have been saved in the folder `<build_folder>/res/assignment2/`. You can visualize them with Paraview." << std::endl;
+			Real velocityCap = 300.0;
+			Real vMaxNorm = 0;
+			auto fluidParticlesVelocity = fluidParticles->getParticleVelocities().data();
 
-    return 0;
+			for (int iVelo = 0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++) if(fluidParticlesVelocity[iVelo].norm() > vMaxNorm) vMaxNorm = (fluidParticlesVelocity[iVelo]).norm();
+
+			vMaxNorm = min(vMaxNorm, velocityCap);
+
+			Real logic_step_upper_bound = 0.5 * (fluidParticles->getParticleDiameter() / vMaxNorm);
+			Real logic_time_step;
+
+			if (timeSimulation * render_step + logic_step_upper_bound >= render_step){
+				logic_time_step = (1 - timeSimulation) * render_step;
+				timeSimulation = 1;
+			} else {
+				logic_time_step = logic_step_upper_bound;
+				timeSimulation += logic_time_step / render_step;
+			}
+
+			if (!with_smoothing) {
+				learnSPH::symplectic_euler(fluidParticlesAccelerations, fluidParticles, logic_time_step);
+			} else {
+				learnSPH::smooth_symplectic_euler(
+												fluidParticlesAccelerations,
+												fluidParticles,
+												particleNeighbors,
+												0.5,
+												logic_time_step,
+												fluidParticles->getSmoothingLength());
+			}
+			physical_steps++;
+		}
+		cout << "[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "]" << endl;
+
+		string filename = "res/assignment2/" + expName + '_' + std::to_string(t) + ".vtk";
+
+		learnSPH::saveParticlesToVTK(filename, fluidParticles->getParticlePositions(), fluidParticles->getParticleDencities(), fluidParticles->getParticleVelocities());
+	}
+	delete fluidParticles;
+	std::cout << "completed!" << std::endl;
+	std::cout << "The scene files have been saved in the folder `<build_folder>/res/assignment2/`. You can visualize them with Paraview." << std::endl;
+
+	return 0;
 }
-
