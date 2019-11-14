@@ -38,45 +38,47 @@ int main(int argc, char** argv)
 	Real friction = stod(argv[17]);
 	bool with_smoothing = stoi(argv[18]);
 	bool withNavierStokes = stoi(argv[19]);
-	Real defaultTimeStep = (stod(argv[20])); // time frame
+	Real render_step = (stod(argv[20])); // time frame
 	Real simulateDuration = (stod(argv[21])); // duration of the simulation
 	string expName = argv[22]; // name of experience
 
 
-    NormalPartDataSet* fluidParticles = sample_fluid_cube(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance);
+	NormalPartDataSet* fluidParticles = sample_fluid_cube(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance);
 
-    fluidParticles->setCompactSupportFactor(compactSupportFactor);
-    NeighborhoodSearch ns(fluidParticles->getCompactSupport());
+	fluidParticles->setCompactSupportFactor(compactSupportFactor);
+	NeighborhoodSearch ns(fluidParticles->getCompactSupport());
 
-    auto fluidPointSet = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()), fluidParticles->getNumberOfParticles(), true);
+	auto fluidPointSet = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()), fluidParticles->getNumberOfParticles(), true);
 
-    cout << "Number of fluid particles: " << fluidParticles->getNumberOfParticles() << endl;
+	cout << "Number of fluid particles: " << fluidParticles->getNumberOfParticles() << endl;
 
-    BorderPartDataSet* borderParticles = sample_border_box(lover_corner_box, upper_corner_box, 3000, sampling_distance * 0.5, true);
+	BorderPartDataSet* borderParticles = sample_border_box(lover_corner_box, upper_corner_box, 3000, sampling_distance * 0.5, true);
 
-    cout << "Number of border particles: " << borderParticles->getNumberOfParticles() << endl;
+	cout << "Number of border particles: " << borderParticles->getNumberOfParticles() << endl;
 
-    ns.add_point_set((Real*)borderParticles->getParticlePositions().data(), borderParticles->getNumberOfParticles(), false);
+	ns.add_point_set((Real*)borderParticles->getParticlePositions().data(), borderParticles->getNumberOfParticles(), false);
 
 
-    vector<vector<vector<unsigned int>>> particleNeighbors;
-    particleNeighbors.resize(fluidParticles->getNumberOfParticles());
+	vector<vector<vector<unsigned int>>> particleNeighbors;
+	particleNeighbors.resize(fluidParticles->getNumberOfParticles());
 
-    const Vector3R gravity(0.0, -9.7, 0.0);
-    vector<Vector3R>& particleForces = fluidParticles->getExternalForces();
-    for(unsigned int i=0; i < particleForces.size(); i++){
-        particleForces[i] = fluidParticles->getParticleMass() * gravity;
-    }
-//
-    unsigned int nsamples = int(simulateDuration / defaultTimeStep);
+	const Vector3R gravity(0.0, -9.7, 0.0);
 
-    cout << "Duration: " << simulateDuration << endl;
-    cout << "Default time step: "<< defaultTimeStep << endl;
-    cout << "number of frames: "<< simulateDuration / defaultTimeStep << endl;
+	vector<Vector3R>& particleForces = fluidParticles->getExternalForces();
+
+	for(unsigned int i = 0; i < particleForces.size(); i++) particleForces[i] = fluidParticles->getParticleMass() * gravity;
+
+	unsigned int nsamples = int(simulateDuration / render_step);
+
+	cout << "Duration: " << simulateDuration << endl;
+	cout << "Default time step: "<< render_step << endl;
+	cout << "number of frames: "<< simulateDuration / render_step << endl;
 
     for (unsigned int t = 0; t < nsamples; t++) {
 
         Real timeSimulation = 0;
+
+        int physical_steps = 0;
 
         while (timeSimulation < 1) {
             ns.update_point_sets();
@@ -106,55 +108,39 @@ int main(int argc, char** argv)
             Real vMaxNorm = 0;
             auto fluidParticlesVelocity = fluidParticles->getParticleVelocities().data();
 
-            for (int iVelo=0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++){
-                if( (fluidParticlesVelocity[iVelo]).norm()>vMaxNorm){
+            for (int iVelo = 0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++){
+                if( (fluidParticlesVelocity[iVelo]).norm() > vMaxNorm){
                     vMaxNorm = (fluidParticlesVelocity[iVelo]).norm();
                 }
             }
             vMaxNorm = min(vMaxNorm, velocityCap);
 
-            Real delTimeCFL = 0.5*0.5*(fluidParticles->getParticleDiameter()/vMaxNorm);
-            Real delTime;
-            if (timeSimulation*defaultTimeStep + delTimeCFL >= defaultTimeStep){
-                delTime = (1-timeSimulation)*defaultTimeStep;
-                timeSimulation=1;
-            }else{
-                delTime = delTimeCFL;
-                timeSimulation += delTime/defaultTimeStep;
+            Real logic_step_upper_bound = 0.5 * (fluidParticles->getParticleDiameter() / vMaxNorm);
+            Real logic_time_step;
+
+            if (timeSimulation * render_step + logic_step_upper_bound >= render_step){
+                logic_time_step = (1 - timeSimulation) * render_step;
+                timeSimulation = 1;
+            } else {
+                logic_time_step = logic_step_upper_bound;
+                timeSimulation += logic_time_step / render_step;
             }
 
-            if (not with_smoothing){
-                learnSPH::symplectic_euler(fluidParticlesAccelerations, *fluidParticles, delTime);
-            }
-            else{
+            if (!with_smoothing) {
+                learnSPH::symplectic_euler(fluidParticlesAccelerations, *fluidParticles, logic_time_step);
+            } else {
                 learnSPH::smooth_symplectic_euler(fluidParticlesAccelerations,
                                                           *fluidParticles,
                                                           particleNeighbors,
                                                           0.5,
-                                                          delTime,
+                                                          logic_time_step,
                                                           fluidParticles->getSmoothingLength());
             }
-
+            physical_steps++;
         }
+        cout << "[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "]" << endl;
 
-
-        // Save
-        std::string filename;
-
-        vector<Vector3R>& particlePositions = fluidParticles->getParticlePositions();
-        const Real maxRadius = 200.0; // To avoid exploded particles moves too far from center => view vanish
-        bool beyondSphere = false;
-        for (unsigned particleIndex = 0; particleIndex<fluidParticles->getNumberOfParticles(); particleIndex++){
-            if (particlePositions[particleIndex].norm() > maxRadius){
-                particlePositions[particleIndex] = 0.8*maxRadius*(particlePositions[particleIndex].normalized());
-                beyondSphere = true;
-            }
-        }
-        if (beyondSphere)
-            std::cout<<"warning： particles away from center, frame: "<<t<<std::endl;
-        filename = "res/assignment2/" + expName + '_' + std::to_string(t) + ".vtk";
-        if (t%25==0)
-            std::cout<<"epoch " + std::to_string(t)<<endl;
+        std::string filename = "res/assignment2/" + expName + '_' + std::to_string(t) + ".vtk";
 
         learnSPH::saveParticlesToVTK(filename,
                                      fluidParticles->getParticlePositions(),
@@ -172,7 +158,6 @@ int main(int argc, char** argv)
     delete fluidParticles;
     std::cout << "completed!" << std::endl;
     std::cout << "The scene files have been saved in the folder `<build_folder>/res/assignment2/`. You can visualize them with Paraview." << std::endl;
-
 
     return 0;
 }

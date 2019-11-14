@@ -24,13 +24,6 @@ namespace learnSPH
 			NORMAL
 		};
 	public:
-
-		/*
-			get type of the particles, that are handled by the set
-			currently there are 2 types of particles that are possible: 
-				1. Fluid particles (NORMAL)
-				2. Border particles (BORDER)
-		*/
 		virtual ParticleType getType() const
 		{
 			return NORMAL;
@@ -63,11 +56,11 @@ namespace learnSPH
 		ParticleDataSet(vector<Vector3R>& particlePositions,
 						Real restDensity,
 						Real fluidVolume):
-			restDensity(restDensity)
-
+						restDensity(restDensity)
 		{
 			assert(restDensity > 0);
 			assert(fluidVolume > 0);
+
 			this->particlePositions.swap(particlePositions);
 			this->particleMass = (this->restDensity * fluidVolume)/this->particlePositions.size();
 			this->particleDiameter = cbrt(this->particleMass/this->restDensity);
@@ -138,17 +131,15 @@ namespace learnSPH
 			return NORMAL;
 		};
 
-		opcode setCompactSupportFactor(const Real val)
+		void setCompactSupportFactor(const Real val)
 		{
 			this->compactSupportFactor = val;
-			return STATUS_OK;
 		}
 
-		opcode setParticlePositions(vector<Vector3R>& newPositions)
+		void setParticlePositions(vector<Vector3R>& newPositions)
 		{
 			assert(this->particlePositions.size() == newPositions.size());
-			this->particlePositions.swap(newPositions);
-			return STATUS_OK;
+			this->particlePositions.assign(newPositions.begin(), newPositions.end());
 		}
 
 		Real getSmoothingLength()
@@ -186,7 +177,7 @@ namespace learnSPH
 		{
 			this->particleDencities.swap(particleDencities);
 			this->particleVelocities.swap(particleVelocities);
-			this->particleExternalForces = vector<Vector3R>(this->particlePositions.size(),Eigen::Vector3d(0.0,0.0,0.0));
+			this->particleExternalForces = vector<Vector3R>(this->particlePositions.size(), Vector3R(0.0, 0.0, 0.0));
 		};
 
         NormalPartDataSet(
