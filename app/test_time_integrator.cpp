@@ -27,7 +27,7 @@ int main(int argc, char** argv)
     std::cout << "Generating test sample for Assignment 2...";
 
     Vector3R upper_corner_fluid = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
-    Vector3R lover_corner_fluid = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
+    Vector3R lower_corner_fluid = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
     Vector3R upper_corner_box = {stod(argv[7]),stod(argv[8]),stod(argv[9])};
     Vector3R lover_corner_box = {stod(argv[10]),stod(argv[11]),stod(argv[12])};
     Real sampling_distance = stod(argv[13]);
@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 
     NormalPartDataSet* fluidParticles =
             static_cast<NormalPartDataSet*>(learnSPH::ParticleSampler::sample_normal_particles(upper_corner_fluid,
-                                                                                               lover_corner_fluid,
+                                                                                               lower_corner_fluid,
                                                                                                1000,
                                                                                                sampling_distance));
 
@@ -58,15 +58,6 @@ int main(int argc, char** argv)
                                               true,
                                               true);
     std::cout<< "number of fluid particles: " << fluidParticles->getNumberOfParticles() << endl;
-
-//    vector<Vector3R> dummyVector;
-//    BorderPartDataSet dummyBorderParticles(dummyVector, 1, 1);
-//
-//    ns.add_point_set((Real*)dummyBorderParticles.getParticlePositions().data(),
-//                     dummyBorderParticles.getNumberOfParticles(),
-//                     false, true, true);
-
-
 
     BorderPartDataSet* borderParticles =
             static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_box(
@@ -174,13 +165,6 @@ int main(int argc, char** argv)
 
         // Save
         std::string filename;
-//        if(with_smoothing)
-//            if(withNavierStokes)
-//                filename = "../res/2_3a/smooth_navier_stokes" + std::to_string(t) + ".vtk";
-//            else
-//                filename = "../res/2_3a/smooth_" + std::to_string(t) + ".vtk";
-//        else
-//            filename = "../res/2_3a/no_smooth_" + std::to_string(t) + ".vtk";
 
         vector<PositionVector>& particlePositions = fluidParticles->getParticlePositions();
         const Real maxRadius = 200.0; // To avoid exploded particles moves too far from center => view vanish
@@ -201,7 +185,6 @@ int main(int argc, char** argv)
                                      fluidParticles->getParticlePositions(),
                                      fluidParticles->getParticleDencities(),
                                      fluidParticles->getParticleVelocities());
-
     }
     //save border
     std:string filename = "../res/assignment2/border.vtk";
@@ -210,12 +193,6 @@ int main(int argc, char** argv)
                                  borderParticles->getParticlePositions(),
                                  borderParticles->getParticleVolume(),
                                  dummyVector);
-
-//        for(Real density : fluidParticles->getParticleDencities()){
-//            fprintf(stderr, "%f\n", density);
-//        }
-
-
 
     delete fluidParticles;
     std::cout << "completed!" << std::endl;
