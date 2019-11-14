@@ -2,44 +2,36 @@
 #include <data_set.h>
 
 using namespace std;
-using namespace learnSPH;
 
 namespace learnSPH{
-	class ParticleSampler
-	{
-
-	private:
-		static opcode sample_border_points_in_triangle(const Vector3R& corner_a, 
-	 												const Vector3R& corner_b,
-	 												const Vector3R& corner_c,
-	 												const Real samplingDistance,
-	 												vector<Vector3R>& borderParticleSet,
-	 												bool hexagonal = false);
-	public:
-		/*
-		generate fluid particles inside a cube with upper_corner and lower_corner
-			upperCorner 		- upper corner of the cube, in which particles will be generated
-			lowerCorner 		- lower corner of the cube, in which particles will be generated
-			restDensity 		- rest density for all particle (constant among each particles)
-			samplingDistance 	- distance between centers of particles
-		*/
-		static ParticleDataSet* sample_normal_particles(const Vector3R& upperCorner,
-												const Vector3R& lowerCorner,
-												const Real restDensity,
-												const Real samplingDistance);
-	 	static ParticleDataSet* sample_border_triangle(const Vector3R& corner_a, 
-	 												const Vector3R& corner_b,
-	 												const Vector3R& corner_c,
-													const Real particleDensities,
-	 												const Real samplingDistance);
-	 	static ParticleDataSet* sample_border_box(const Vector3R& upperCorner,
-													const Vector3R& lowerCorner,
-													const Real particleDensities,
-		 											const Real samplingDistance,
-		 											bool hexagonal = false);
-	private:
-		ParticleSampler(){};
-		~ParticleSampler(){};
-		const ParticleSampler& operator=(ParticleSampler& other){return *this;};
-	};
+	/*
+	 *	samples fluid particles on a triangular face
+	 *	Args:
+	 *		corner_a			- corner A of the triangular face
+	 *		corner_b			- corner B of the triangular face
+	 *		corner_c			- corner C of the triangular face
+	 *		samplingDistance	- distance between the centers of each two adjacent particles
+	 *		borderParticles		- container for fetched particles
+	 *		hexagonal			- whether to employ hexagonal patterns when sampling the particles (default: false)
+	 */
+	void sample_border_face(const Vector3R& vertex_a, const Vector3R& vertex_b, const Vector3R& vertex_c, const Real samplingDistance, vector<Vector3R>& borderParticles, bool hexagonal);
+	/*
+	 *	samples fluid particles inside a cube in axis-aligned fashion.
+	 *	Args:
+	 *		upperCorner			- upper corner of the cube
+	 *		lowerCorner			- lower corner of the cube
+	 *		restDensity			- rest density for the fluid (assumed as constant among all particles)
+	 *		samplingDistance	- distance between the centers of each two adjacent particles
+	 */
+	NormalPartDataSet* sample_fluid_cube(const Vector3R& upperCorner, const Vector3R& lowerCorner, const Real restDensity, const Real samplingDistance);
+	/*
+	 *	samples border particles on the faces of a cube
+	 *	Args:
+	 *		upperCorner			- upper corner of the cube
+	 *		lowerCorner			- lower corner of the cube
+	 *		restDensity			- rest density for the border (assumed as constant among all particles)
+	 *		samplingDistance	- distance between the centers of each two adjacent particles
+	 *		hexagonal			- whether to employ hexagonal patterns when sampling the particles (default: false)
+	 */
+	BorderPartDataSet* sample_border_box(const Vector3R& upperCorner, const Vector3R& lowerCorner, const Real restDensity, const Real samplingDistance, bool hexagonal = false);
 };

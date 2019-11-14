@@ -17,8 +17,9 @@
 #include <vtk_writer.h>
 #include <solver.h>
 #include <chrono>
-using namespace CompactNSearch;
 
+using namespace CompactNSearch;
+using namespace learnSPH;
 
 int main(int argc, char** argv)
 {
@@ -42,7 +43,7 @@ int main(int argc, char** argv)
 	string expName = argv[22]; // name of experience
 
 
-    NormalPartDataSet* fluidParticles = static_cast<NormalPartDataSet*>(learnSPH::ParticleSampler::sample_normal_particles(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance));
+    NormalPartDataSet* fluidParticles = sample_fluid_cube(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance);
 
     fluidParticles->setCompactSupportFactor(compactSupportFactor);
     NeighborhoodSearch ns(fluidParticles->getCompactSupport());
@@ -51,7 +52,7 @@ int main(int argc, char** argv)
 
     cout << "Number of fluid particles: " << fluidParticles->getNumberOfParticles() << endl;
 
-    BorderPartDataSet* borderParticles = static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_box(lover_corner_box, upper_corner_box, 3000, sampling_distance * 0.5, true));
+    BorderPartDataSet* borderParticles = sample_border_box(lover_corner_box, upper_corner_box, 3000, sampling_distance * 0.5, true);
 
     cout << "Number of border particles: " << borderParticles->getNumberOfParticles() << endl;
 
@@ -151,7 +152,7 @@ int main(int argc, char** argv)
         }
         if (beyondSphere)
             std::cout<<"warning： particles away from center, frame: "<<t<<std::endl;
-        filename = "../res/assignment2/" + expName + '_' + std::to_string(t) + ".vtk";
+        filename = "res/assignment2/" + expName + '_' + std::to_string(t) + ".vtk";
         if (t%25==0)
             std::cout<<"epoch " + std::to_string(t)<<endl;
 
@@ -161,7 +162,7 @@ int main(int argc, char** argv)
                                      fluidParticles->getParticleVelocities());
     }
     //save border
-    std:string filename = "../res/assignment2/border.vtk";
+    std:string filename = "res/assignment2/border.vtk";
     vector<Vector3R> dummyVector(borderParticles->getNumberOfParticles());
     learnSPH::saveParticlesToVTK(filename,
                                  borderParticles->getParticlePositions(),

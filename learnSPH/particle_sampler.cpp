@@ -3,32 +3,28 @@
 #include <kernel.h>
 #include <types.hpp>
 
-using namespace learnSPH::kernel;
 using namespace std;
 using namespace learnSPH;
+using namespace learnSPH::kernel;
 
-
-ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upperCorner,
-	 											const Vector3R& lowerCorner,
-	 											const Real restDensiti,
-	 											const Real samplingDistance)
+NormalPartDataSet* learnSPH::sample_fluid_cube(const Vector3R& upperCorner, const Vector3R& lowerCorner, const Real restDensity, const Real samplingDistance)
 {
 	
-	assert(restDensiti > 0.0);
+	assert(restDensity > 0.0);
 	assert(samplingDistance > 0.0);
 	assert((upperCorner - lowerCorner).dot(upperCorner - lowerCorner) > 0);
+
 	Vector3R distVector = upperCorner - lowerCorner;
-	size_t num_of_part_x_direction = abs(distVector[0]/samplingDistance) + 1;
-	size_t num_of_part_y_direction = abs(distVector[1]/samplingDistance) + 1;
-	size_t num_of_part_z_direction = abs(distVector[2]/samplingDistance) + 1;
 
-	Real delX = samplingDistance * distVector[0]/fabs(distVector[0]);
-	Real delY = samplingDistance * distVector[1]/fabs(distVector[1]);
-	Real delZ = samplingDistance * distVector[2]/fabs(distVector[2]);
+	size_t num_of_part_x_direction = fabs(distVector[0] / samplingDistance) + 1;
+	size_t num_of_part_y_direction = fabs(distVector[1] / samplingDistance) + 1;
+	size_t num_of_part_z_direction = fabs(distVector[2] / samplingDistance) + 1;
 
-	size_t totalNumOfPrticles = num_of_part_x_direction * 
-										num_of_part_y_direction*
-										num_of_part_z_direction;
+	Real delX = samplingDistance * distVector[0] / fabs(distVector[0]);
+	Real delY = samplingDistance * distVector[1] / fabs(distVector[1]);
+	Real delZ = samplingDistance * distVector[2] / fabs(distVector[2]);
+
+	size_t totalNumOfPrticles = num_of_part_x_direction * num_of_part_y_direction * num_of_part_z_direction;
 
 	vector<Vector3R> particlePositions;
 	vector<Vector3R> particleVelocities;
@@ -39,44 +35,41 @@ ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upperC
 	particleVelocities.resize(totalNumOfPrticles);
 
 	Real posX = lowerCorner[0];
+
 	#pragma omp parallel for schedule(static) firstprivate(posX)
-	for(int i = 0; i < num_of_part_x_direction; i++){
+
+	for(int i = 0; i < num_of_part_x_direction; i++) {
+
 		posX = lowerCorner[0] + i * delX;
+
 		Real posY = lowerCorner[1];
-		for(int j = 0; j < num_of_part_y_direction; j++){
+
+		for(int j = 0; j < num_of_part_y_direction; j++) {
 
 			Real posZ = lowerCorner[2];
-			for(int k = 0; k < num_of_part_z_direction; k++, posZ += delZ){
-				size_t index = i*num_of_part_y_direction*num_of_part_z_direction + 
-								j*num_of_part_z_direction + k;
+
+			for(int k = 0; k < num_of_part_z_direction; k++, posZ += delZ) {
+
+				size_t index = i * num_of_part_y_direction * num_of_part_z_direction + j * num_of_part_z_direction + k;
+
 				assert(index < totalNumOfPrticles && index >= 0);
+
 				particlePositions[index] = {posX, posY, posZ};
 			}
 			posY += delY;
 		}
 	}
-
-	//calculate volume of fluid from lower corner to lower corner to upper corner
-	//taking in acoount that particles on the border has extended voulume up to 1/2
-	//of smpling distance, thuss add to each side samplingDistancevalue
 	Real width = fabs(distVector[0]) + samplingDistance;
 	Real height = fabs(distVector[1]) + samplingDistance;
 	Real length = fabs(distVector[2]) + samplingDistance;
+
 	Real fluidVolume = width * height * length;
-	NormalPartDataSet* normParticles = new NormalPartDataSet(particlePositions, 
-																particleVelocities,
-																particleDensities, 
-																restDensiti,
-																fluidVolume);
-	return normParticles;
+
+	return new NormalPartDataSet(particlePositions, particleVelocities, particleDensities, restDensity, fluidVolume);
 }
 
 
-static inline bool is_in_triangle(
-										const Vector3R& corner_a, 
-										const Vector3R& corner_b,
-										const Vector3R& corner_c,
-										const Vector3R& point_p)
+static inline bool is_in_triangle(const Vector3R& corner_a, const Vector3R& corner_b, const Vector3R& corner_c, const Vector3R& point_p)
 {
 	Vector3R sideAB = corner_b - corner_a;
 	Vector3R sideAC = corner_c - corner_a;
@@ -99,14 +92,7 @@ static Vector3R get_shift(const Vector3R& vec_s, const Vector3R& vec_t, Real mar
 	return  margin * margin * sqrt(2.0 / (vec_s.dot(vec_t) + margin * margin)) * (vec_s + vec_t).normalized();
 }
 
-static void expand_triangle(
-				const Vector3R& vertex_a,
-				const Vector3R& vertex_b,
-				const Vector3R& vertex_c,
-				const Real margin,
-				Vector3R& vertex_a_prime,
-				Vector3R& vertex_b_prime,
-				Vector3R& vertex_c_prime)
+static void expand_triangle(const Vector3R& vertex_a, const Vector3R& vertex_b, const Vector3R& vertex_c, const Real margin, Vector3R& vertex_a_prime, Vector3R& vertex_b_prime, Vector3R& vertex_c_prime)
 {
 	const Vector3R vec_AB = vertex_b - vertex_a;
 	const Vector3R vec_BC = vertex_c - vertex_b;
@@ -132,13 +118,7 @@ static void expand_triangle(
 }
 
 
-opcode ParticleSampler::sample_border_points_in_triangle(
-												const Vector3R& vertex_a,
-												const Vector3R& vertex_b,
-												const Vector3R& vertex_c,
-												const Real samplingDistance,
-												vector<Vector3R>& borderParticles,
-												bool hexagonal)
+void learnSPH::sample_border_face(const Vector3R& vertex_a, const Vector3R& vertex_b, const Vector3R& vertex_c, const Real samplingDistance, vector<Vector3R>& borderParticles, bool hexagonal)
 {
 	vector<Vector3R> faceParticles;
 
@@ -263,32 +243,9 @@ opcode ParticleSampler::sample_border_points_in_triangle(
 	for (Vector3R &pt : faceParticles) { pt += vec_offset; }
 
 	borderParticles.insert(borderParticles.end(), faceParticles.begin(), faceParticles.end());
-
-	return STATUS_OK;
 }
 
-
-ParticleDataSet* ParticleSampler::sample_border_triangle(const Vector3R& corner_a, 
-											const Vector3R& corner_b,
-											const Vector3R& corner_c,
-											const Real particleDensities,
-											const Real samplingDistance)
-{
-	vector<Vector3R> borderParticleSet;
-	sample_border_points_in_triangle(corner_a, corner_b, corner_c, samplingDistance, borderParticleSet);
-
-	//calculate fluid border particle volume theoretically as if all particles where in fluid cube
-	//TODO: check if different fluid volume and border volume influences on simulation
-	return new BorderPartDataSet(borderParticleSet, particleDensities, pow3(samplingDistance) * borderParticleSet.size());
-};
-
-
-ParticleDataSet* ParticleSampler::sample_border_box(
-											const Vector3R& lower_corner,
-											const Vector3R& upper_corner,
-											const Real particleDensities,
-											const Real samplingDistance,
-											bool hexagonal)
+BorderPartDataSet* learnSPH::sample_border_box(const Vector3R& lower_corner, const Vector3R& upper_corner, const Real restDensity, const Real samplingDistance, bool hexagonal)
 {
 	vector<Vector3R> borderParticles;
 
@@ -301,101 +258,18 @@ ParticleDataSet* ParticleSampler::sample_border_box(
 	Vector3R vertexH = Vector3R(upper_corner(0), lower_corner(1), upper_corner(2));
 	Vector3R vertexG = Vector3R(upper_corner(0), upper_corner(1), upper_corner(2));
 
-	sample_border_points_in_triangle(
-							vertexA,
-							vertexB,
-							vertexC,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
+	sample_border_face(vertexA, vertexB, vertexC, samplingDistance, borderParticles, hexagonal);
+	sample_border_face(vertexA, vertexD, vertexC, samplingDistance, borderParticles, hexagonal);
+	sample_border_face(vertexD, vertexH, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_border_face(vertexD, vertexC, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_border_face(vertexB, vertexC, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_border_face(vertexB, vertexF, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_border_face(vertexA, vertexD, vertexH, samplingDistance, borderParticles, hexagonal);
+	sample_border_face(vertexA, vertexE, vertexH, samplingDistance, borderParticles, hexagonal);
+	sample_border_face(vertexE, vertexF, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_border_face(vertexE, vertexH, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_border_face(vertexA, vertexE, vertexF, samplingDistance, borderParticles, hexagonal);
+	sample_border_face(vertexA, vertexB, vertexF, samplingDistance, borderParticles, hexagonal);
 
-	sample_border_points_in_triangle(
-							vertexA,
-							vertexD,
-							vertexC,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
-
-	sample_border_points_in_triangle(
-							vertexD,
-							vertexH,
-							vertexG,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
-
-	sample_border_points_in_triangle(
-							vertexD,
-							vertexC,
-							vertexG,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
-
-	sample_border_points_in_triangle(
-							vertexB,
-							vertexC,
-							vertexG,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
-
-	sample_border_points_in_triangle(
-							vertexB,
-							vertexF,
-							vertexG,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
-
-	sample_border_points_in_triangle(
-							vertexA,
-							vertexD,
-							vertexH,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
-
-	sample_border_points_in_triangle(
-							vertexA,
-							vertexE,
-							vertexH,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
-
-	sample_border_points_in_triangle(
-							vertexE,
-							vertexF,
-							vertexG,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
-	
-	sample_border_points_in_triangle(
-							vertexE,
-							vertexH,
-							vertexG,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
-
-	sample_border_points_in_triangle(
-							vertexA,
-							vertexE,
-							vertexF,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
-
-	sample_border_points_in_triangle(
-							vertexA,
-							vertexB,
-							vertexF,
-							samplingDistance,
-							borderParticles,
-							hexagonal);
-
-	return new BorderPartDataSet(borderParticles, particleDensities, borderParticles.size() * pow3(samplingDistance));
+	return new BorderPartDataSet(borderParticles, restDensity, borderParticles.size() * pow3(samplingDistance));
 }
