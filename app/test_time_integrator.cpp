@@ -20,7 +20,7 @@ using namespace learnSPH;
 
 int main(int argc, char** argv)
 {
-	assert(argc == 23);
+	assert(argc == 22);
 	std::cout << "Welcome to the learnSPH framework!!" << std::endl;
 	std::cout << "Generating test sample for Assignment 2...";
 
@@ -34,10 +34,9 @@ int main(int argc, char** argv)
 	Real viscosity = stod(argv[16]);
 	Real friction = stod(argv[17]);
 	bool with_smoothing = stoi(argv[18]);
-	bool withNavierStokes = stoi(argv[19]);
-	Real render_step = (stod(argv[20])); // time frame
-	Real simulateDuration = (stod(argv[21])); // duration of the simulation
-	string expName = argv[22]; // name of experience
+	Real render_step = (stod(argv[19])); // time frame
+	Real simulateDuration = (stod(argv[20])); // duration of the simulation
+	string expName = argv[21]; // name of experience
 
 	NormalPartDataSet* fluidParticles = sample_fluid_cube(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance);
 
@@ -107,7 +106,7 @@ int main(int argc, char** argv)
 			Real vMaxNorm = 0;
 			auto fluidParticlesVelocity = fluidParticles->getParticleVelocities().data();
 
-			for (int iVelo = 0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++) if(fluidParticlesVelocity[iVelo].norm() > vMaxNorm) vMaxNorm = (fluidParticlesVelocity[iVelo]).norm();
+			for (int iVelo = 0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++) vMaxNorm = max(fluidParticlesVelocity[iVelo].norm(), vMaxNorm);
 
 			vMaxNorm = min(vMaxNorm, velocityCap);
 
