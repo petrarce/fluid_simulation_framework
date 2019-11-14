@@ -31,7 +31,11 @@ namespace learnSPH
 				1. Fluid particles (NORMAL)
 				2. Border particles (BORDER)
 		*/
-		virtual ParticleType getSetType() const = 0;
+		virtual ParticleType getType() const
+		{
+			return NORMAL;
+		}
+
 		Real getRestDensity() const
 		{
 			return this->restDensity;
@@ -45,25 +49,17 @@ namespace learnSPH
 		{
 			return this->particleMass;
 		}
-		
-		/*
-			get particlePositions vector directly (required for vtk generation)
-		*/
+
 		vector<Vector3R>& getParticlePositions()
 		{
 			return particlePositions;
 		};
-		
-		const Vector3R* getParticlePositionsData() const
-		{
-			return static_cast<const Vector3R*>(particlePositions.data());
-		}; 
-		
+
 		size_t getNumberOfParticles() const
 		{
 			return particlePositions.size();
 		};
-		
+
 		ParticleDataSet(vector<Vector3R>& particlePositions,
 						Real restDensity,
 						Real fluidVolume):
@@ -89,19 +85,14 @@ namespace learnSPH
 		vector<Real> particleVolume;
 	public:
 
-		virtual ParticleType getSetType() const
+		virtual ParticleType getType() const
 		{
 			return BORDER;
 		};
-		
+
 		vector<Real>& getParticleVolume()
 		{
 			return particleVolume;
-		};
-		
-		const Real* getParticleVolumeData() const
-		{
-			return static_cast<const Real*>(particleVolume.data());
 		};
 
 		BorderPartDataSet(vector<Vector3R>& particlePositions,
@@ -140,10 +131,9 @@ namespace learnSPH
 		vector<Vector3R> particleExternalForces;
 		Real compactSupportFactor;
 
-
 	public:
 
-		virtual ParticleType getSetType() const
+		virtual ParticleType getType() const
 		{
 			return NORMAL;
 		};
@@ -151,6 +141,13 @@ namespace learnSPH
 		opcode setCompactSupportFactor(const Real val)
 		{
 			this->compactSupportFactor = val;
+			return STATUS_OK;
+		}
+
+		opcode setParticlePositions(vector<Vector3R>& newPositions)
+		{
+			assert(this->particlePositions.size() == newPositions.size());
+			this->particlePositions.swap(newPositions);
 			return STATUS_OK;
 		}
 
@@ -163,64 +160,48 @@ namespace learnSPH
 		{
 			return this->particleDiameter*this->compactSupportFactor;
 		}
-		
+
 		vector<Real>& getParticleDencities()
 		{
 			return particleDencities;
 		};
 
-		vector<Vector3R>& getParticleForces()
-        {
-		    return particleExternalForces;
-        };
-
-		const Real* getParticleDencitiesData() const
-		{
-			return particleDencities.data();
-		};
 		vector<Vector3R>& getParticleVelocities()
 		{
 			return particleVelocities;
 		};
-		
-		const Vector3R* getParticleVelocitiesData() const
+
+		vector<Vector3R>& getExternalForces()
 		{
-			return particleVelocities.data();
+			return particleExternalForces;
 		};
 
-		const Vector3R* getParticleForcesdata() const{
-		    return particleExternalForces.data();
-		};
-
-
-        // Default constructor with no external force.
-		NormalPartDataSet(vector<Vector3R>& particlePositions,
-							vector<Vector3R>& particleVelocities,
-							vector<Real>& particleDencities,
-							Real restDensity,
-							Real fluidVolume):
-
-			ParticleDataSet(particlePositions, restDensity, fluidVolume),
-			compactSupportFactor(1.2)
+		NormalPartDataSet(
+						vector<Vector3R>& particlePositions,
+						vector<Vector3R>& particleVelocities,
+						vector<Real>& particleDencities,
+						Real restDensity,
+						Real fluidVolume):
+						ParticleDataSet(particlePositions, restDensity, fluidVolume), compactSupportFactor(1.2)
 		{
 			this->particleDencities.swap(particleDencities);
 			this->particleVelocities.swap(particleVelocities);
 			this->particleExternalForces = vector<Vector3R>(this->particlePositions.size(),Eigen::Vector3d(0.0,0.0,0.0));
 		};
 
-        NormalPartDataSet(vector<Vector3R>& particlePositions,
-                          vector<Vector3R>& particleVelocities,
-                          vector<Real>& particleDencities,
-                          vector<Vector3R>& particleExternalForces,
-                          Real restDensity,
-                          Real fluidVolume):
-
-                ParticleDataSet(particlePositions, restDensity, fluidVolume)
-        {
-            this->particleDencities.swap(particleDencities);
-            this->particleVelocities.swap(particleVelocities);
-            this->particleExternalForces.swap(particleExternalForces);
-        };
+        NormalPartDataSet(
+						vector<Vector3R>& particlePositions,
+						vector<Vector3R>& particleVelocities,
+						vector<Real>& particleDencities,
+						vector<Vector3R>& particleExternalForces,
+						Real restDensity,
+						Real fluidVolume):
+						ParticleDataSet(particlePositions, restDensity, fluidVolume)
+		{
+			this->particleDencities.swap(particleDencities);
+			this->particleVelocities.swap(particleVelocities);
+			this->particleExternalForces.swap(particleExternalForces);
+		};
 
 		~NormalPartDataSet(){};
 	};

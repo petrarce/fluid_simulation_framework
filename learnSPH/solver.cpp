@@ -1,7 +1,9 @@
 #include <solver.h>
 #include <kernel.h>
-opcode Solver::calculate_dencities(NormalPartDataSet& fluidParticles,
-	const BorderPartDataSet& borderParticles,
+
+
+void learnSPH::calculate_dencities(NormalPartDataSet& fluidParticles,
+	BorderPartDataSet& borderParticles,
 	const vector<vector<vector<unsigned int>>>& fluidParticleNeighbours,
 	const Real smoothingLength)
 {
@@ -13,9 +15,9 @@ opcode Solver::calculate_dencities(NormalPartDataSet& fluidParticles,
 	assert(fluidParticleNeighbours.size() == 0 || fluidParticleNeighbours[0].size() == 2);
 
 	vector<Real>& fluidParticlesDensities = fluidParticles.getParticleDencities();
-	const Vector3R* fluidParticlesPositions = fluidParticles.getParticlePositionsData();
-	const Vector3R* borderParticlePositions = borderParticles.getParticlePositionsData();
-	const Real* borderParticlesVolumes = borderParticles.getParticleVolumeData();
+	auto fluidParticlesPositions = fluidParticles.getParticlePositions();
+	auto borderParticlePositions = borderParticles.getParticlePositions();
+	auto borderParticlesVolumes = borderParticles.getParticleVolume();
 
 
 	#pragma omp parallel for schedule(guided, 100)
@@ -41,24 +43,22 @@ opcode Solver::calculate_dencities(NormalPartDataSet& fluidParticles,
 		fluidParticlesDensities[i] = fluidDensity + borderDensity;
         assert(fluidParticlesDensities[i] >= 0.0);
 	}
-	return STATUS_OK;
 }
 
-// set NormalPartDataSet as constant, switch back if causing mistakes.
-opcode Solver::calculate_acceleration(vector<Vector3R>& fluidParticlesAccelerations,
-                                      const NormalPartDataSet& fluidParticles,
-                                      const BorderPartDataSet& borderParticles,
+void learnSPH::calculate_acceleration(vector<Vector3R>& fluidParticlesAccelerations,
+                                      NormalPartDataSet& fluidParticles,
+                                      BorderPartDataSet& borderParticles,
                                       const vector<vector<vector<unsigned int>>>& fluidParticleNeighbours,
                                       const Real fluid_viscosity,
                                       const Real friction_para,
                                       const Real stiffness_para,
                                       const Real smoothingLength) {
-    const Real* fluidParticlesDensities = fluidParticles.getParticleDencitiesData();
-    const Vector3R* fluidParticlesPositions = fluidParticles.getParticlePositionsData();
-    const Vector3R* borderParticlePositions = borderParticles.getParticlePositionsData();
-    const Vector3R* fluidParticlesVelocities = fluidParticles.getParticleVelocitiesData();
-    const Vector3R* fluidParticlesForces = fluidParticles.getParticleForcesdata();
-    const Real* borderParticlesVolumes = borderParticles.getParticleVolumeData();
+    auto fluidParticlesDensities = fluidParticles.getParticleDencities();
+    auto fluidParticlesPositions = fluidParticles.getParticlePositions();
+    auto borderParticlePositions = borderParticles.getParticlePositions();
+    auto fluidParticlesVelocities = fluidParticles.getParticleVelocities();
+    auto fluidParticlesForces = fluidParticles.getExternalForces();
+    auto borderParticlesVolumes = borderParticles.getParticleVolume();
 
 
     #pragma omp parallel for schedule(guided, 100)
@@ -118,10 +118,9 @@ opcode Solver::calculate_acceleration(vector<Vector3R>& fluidParticlesAccelerati
                                 + acce_external;
         fluidParticlesAccelerations[i] = acceleration;
     }
-    return STATUS_OK;
 }
 
-opcode Solver::semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAccelerations,
+void learnSPH::symplectic_euler(const vector<Vector3R> &fluidParticlesAccelerations,
                                    NormalPartDataSet& fluidParticles, const Real time_frame) {
     vector<Vector3R>& fluidParticlesVelocities  = fluidParticles.getParticleVelocities();
     vector<Vector3R>& fluidParticlesPositions = fluidParticles.getParticlePositions();
@@ -131,17 +130,16 @@ opcode Solver::semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAcceler
         fluidParticlesVelocities[i] += time_frame * fluidParticlesAccelerations[i];
         fluidParticlesPositions[i] += time_frame * fluidParticlesVelocities[i];
     }
-    return STATUS_OK;
 }
 
-opcode Solver::mod_semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAccelerations,
+void learnSPH::smooth_symplectic_euler(const vector<Vector3R> &fluidParticlesAccelerations,
                                        NormalPartDataSet &fluidParticles,
                                        const vector<vector<vector<unsigned int>>> &normalParticleNeighbours,
                                        const Real scaling_para, const Real time_frame,
                                        const Real smoothingLengthFactor) {
     vector<Vector3R>& fluidParticlesVelocities  = fluidParticles.getParticleVelocities();
     vector<Vector3R>& fluidParticlesPositions = fluidParticles.getParticlePositions();
-    const Real* fluidParticlesDensities = fluidParticles.getParticleDencitiesData();
+    auto fluidParticlesDensities = fluidParticles.getParticleDencities();
     #pragma omp parallel for schedule(guided, 100)
     for (unsigned int i=0; i< fluidParticlesPositions.size(); i++){
         fluidParticlesVelocities[i] += time_frame * fluidParticlesAccelerations[i];
@@ -172,7 +170,5 @@ opcode Solver::mod_semi_implicit_Euler(const vector<Vector3R> &fluidParticlesAcc
     for (unsigned int i=0; i< fluidParticlesPositions.size(); i++){
         fluidParticlesPositions[i] = fluidParticlesNewPositions[i];
     }
-
-    return STATUS_OK;
 }
 	

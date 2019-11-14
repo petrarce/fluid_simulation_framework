@@ -63,7 +63,7 @@ int main(int argc, char** argv)
     particleNeighbors.resize(fluidParticles->getNumberOfParticles());
 
     const Vector3R gravity(0.0, -9.7, 0.0);
-    vector<Vector3R>& particleForces = fluidParticles->getParticleForces();
+    vector<Vector3R>& particleForces = fluidParticles->getExternalForces();
     for(unsigned int i=0; i < particleForces.size(); i++){
         particleForces[i] = fluidParticles->getParticleMass() * gravity;
     }
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
                 ns.find_neighbors(fluidPointSet, i, particleNeighbors[i]);
             }
 
-            learnSPH::Solver::calculate_dencities(*fluidParticles,
+            learnSPH::calculate_dencities(*fluidParticles,
                                                   *borderParticles,
                                                   particleNeighbors,
                                                   fluidParticles->getSmoothingLength());
@@ -92,7 +92,7 @@ int main(int argc, char** argv)
             // consider only gravity as external forces
             vector<Vector3R> fluidParticlesAccelerations(fluidParticles->getNumberOfParticles(), gravity);
             if(withNavierStokes){
-                learnSPH::Solver::calculate_acceleration(fluidParticlesAccelerations,
+                learnSPH::calculate_acceleration(fluidParticlesAccelerations,
                                                          *fluidParticles,
                                                          *borderParticles,
                                                          particleNeighbors,
@@ -104,7 +104,7 @@ int main(int argc, char** argv)
             //TODO set argument to customize velocity cap
             Real velocityCap = 300.0;
             Real vMaxNorm = 0;
-            const Vector3R * fluidParticlesVelocity = fluidParticles->getParticleVelocitiesData();
+            auto fluidParticlesVelocity = fluidParticles->getParticleVelocities().data();
 
             for (int iVelo=0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++){
                 if( (fluidParticlesVelocity[iVelo]).norm()>vMaxNorm){
@@ -124,10 +124,10 @@ int main(int argc, char** argv)
             }
 
             if (not with_smoothing){
-                learnSPH::Solver::semi_implicit_Euler(fluidParticlesAccelerations, *fluidParticles, delTime);
+                learnSPH::symplectic_euler(fluidParticlesAccelerations, *fluidParticles, delTime);
             }
             else{
-                learnSPH::Solver::mod_semi_implicit_Euler(fluidParticlesAccelerations,
+                learnSPH::smooth_symplectic_euler(fluidParticlesAccelerations,
                                                           *fluidParticles,
                                                           particleNeighbors,
                                                           0.5,
