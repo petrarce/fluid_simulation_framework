@@ -22,73 +22,65 @@ using namespace CompactNSearch;
 
 int main(int argc, char** argv)
 {
-    assert(argc == 23);
-    std::cout << "Welcome to the learnSPH framework!!" << std::endl;
-    std::cout << "Generating test sample for Assignment 2...";
+	assert(argc == 23);
+	std::cout << "Welcome to the learnSPH framework!!" << std::endl;
+	std::cout << "Generating test sample for Assignment 2...";
 
-    Vector3R upper_corner_fluid = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
-    Vector3R lower_corner_fluid = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
-    Vector3R upper_corner_box = {stod(argv[7]),stod(argv[8]),stod(argv[9])};
-    Vector3R lover_corner_box = {stod(argv[10]),stod(argv[11]),stod(argv[12])};
-    Real sampling_distance = stod(argv[13]);
-    Real compactSupportFactor = stod(argv[14]);
-    Real preasureStiffness = stod(argv[15]);
-    Real viscosity = stod(argv[16]);
-    Real friction = stod(argv[17]);
-    bool with_smoothing = stoi(argv[18]);
-    bool withNavierStokes = stoi(argv[19]);
-    Real defaultTimeStep = (stod(argv[20])); // time frame
-    Real simulateDuration = (stod(argv[21])); // duration of the simulation
-    string expName = argv[22]; // name of experience
-//    size_t nsamples = stoi(argv[20]);
+	Vector3R upper_corner_fluid = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
+	Vector3R lower_corner_fluid = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
+	Vector3R upper_corner_box = {stod(argv[7]),stod(argv[8]),stod(argv[9])};
+	Vector3R lover_corner_box = {stod(argv[10]),stod(argv[11]),stod(argv[12])};
+	Real sampling_distance = stod(argv[13]);
+	Real compactSupportFactor = stod(argv[14]);
+	Real preasureStiffness = stod(argv[15]);
+	Real viscosity = stod(argv[16]);
+	Real friction = stod(argv[17]);
+	bool with_smoothing = stoi(argv[18]);
+	bool withNavierStokes = stoi(argv[19]);
+	Real defaultTimeStep = (stod(argv[20])); // time frame
+	Real simulateDuration = (stod(argv[21])); // duration of the simulation
+	string expName = argv[22]; // name of experience
 
 
-    NormalPartDataSet* fluidParticles =
-            static_cast<NormalPartDataSet*>(learnSPH::ParticleSampler::sample_normal_particles(upper_corner_fluid,
-                                                                                               lower_corner_fluid,
-                                                                                               1000,
-                                                                                               sampling_distance));
+    NormalPartDataSet* fluidParticles = static_cast<NormalPartDataSet*>(learnSPH::ParticleSampler::sample_normal_particles(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance));
 
     fluidParticles->setCompactSupportFactor(compactSupportFactor);
     NeighborhoodSearch ns(fluidParticles->getCompactSupport());
 
-    auto fluidPartilesPset = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()),
-                                              fluidParticles->getNumberOfParticles(),
-                                              true,
-                                              true,
-                                              true);
-    std::cout<< "number of fluid particles: " << fluidParticles->getNumberOfParticles() << endl;
+    auto fluidPointSet = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()), fluidParticles->getNumberOfParticles(), true);
 
-    BorderPartDataSet* borderParticles =
-            static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_box(
-                    lover_corner_box,
-                    upper_corner_box,
-                    3000,
-                    sampling_distance*0.5,
-                    true));
+    cout << "Number of fluid particles: " << fluidParticles->getNumberOfParticles() << endl;
 
-    ns.add_point_set((Real*)borderParticles->getParticlePositions().data(),
-                     borderParticles->getNumberOfParticles(),
-                     false, true, true);
+    BorderPartDataSet* borderParticles = static_cast<BorderPartDataSet*>(learnSPH::ParticleSampler::sample_border_box(lover_corner_box, upper_corner_box, 3000, sampling_distance * 0.5, true));
+
+    cout << "Number of border particles: " << borderParticles->getNumberOfParticles() << endl;
+
+    ns.add_point_set((Real*)borderParticles->getParticlePositions().data(), borderParticles->getNumberOfParticles(), false);
 
 
     vector<vector<vector<unsigned int>>> particleNeighbors;
     particleNeighbors.resize(fluidParticles->getNumberOfParticles());
 
-    const Vector3R gravity(0.0,-9.7,0.0);
+    const Vector3R gravity(0.0, -9.7, 0.0);
     vector<Vector3R>& particleForces = fluidParticles->getParticleForces();
-    for(unsigned int i=0; i<particleForces.size(); i++){
+    for(unsigned int i=0; i < particleForces.size(); i++){
         particleForces[i] = fluidParticles->getParticleMass() * gravity;
     }
 //
-    unsigned int nsamples = int(simulateDuration/defaultTimeStep);
-    std::cout<<"simulateDuration"<<simulateDuration<<"defaultTimeStep"<<defaultTimeStep<<"nsamples: "<<simulateDuration/defaultTimeStep<<std::endl;
-    for (unsigned int t = 0; t<nsamples; t++){
+    unsigned int nsamples = int(simulateDuration / defaultTimeStep);
+
+    cout << "Duration: " << simulateDuration << endl;
+    cout << "Default time step: "<< defaultTimeStep << endl;
+    cout << "number of frames: "<< simulateDuration / defaultTimeStep << endl;
+
+    for (unsigned int t = 0; t < nsamples; t++) {
+
         Real timeSimulation = 0;
-        while (timeSimulation <1){
+
+        while (timeSimulation < 1) {
             ns.update_point_sets();
             for(int i = 0; i < fluidParticles->getNumberOfParticles(); i++){
-                ns.find_neighbors(fluidPartilesPset, i, particleNeighbors[i]);
+                ns.find_neighbors(fluidPointSet, i, particleNeighbors[i]);
             }
 
             learnSPH::Solver::calculate_dencities(*fluidParticles,
@@ -112,26 +104,13 @@ int main(int argc, char** argv)
             Real velocityCap = 300.0;
             Real vMaxNorm = 0;
             const Vector3R * fluidParticlesVelocity = fluidParticles->getParticleVelocitiesData();
-            bool maxVelocClamp = true;
-            if(maxVelocClamp){
-                for (int iVelo=0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++){
-                    if( (fluidParticlesVelocity[iVelo]).norm()>vMaxNorm){
-                        vMaxNorm = (fluidParticlesVelocity[iVelo]).norm();
-                    }
+
+            for (int iVelo=0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++){
+                if( (fluidParticlesVelocity[iVelo]).norm()>vMaxNorm){
+                    vMaxNorm = (fluidParticlesVelocity[iVelo]).norm();
                 }
-                vMaxNorm = min(vMaxNorm, velocityCap);
-            }else{
-                //95% clamp
-                vector<Real> fluidParticlesAbsoluteVelocity(fluidParticles->getNumberOfParticles());
-                for (int iVelo=0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++){
-                    fluidParticlesAbsoluteVelocity[iVelo] = (fluidParticlesVelocity[iVelo]).norm();
-                }
-                std::sort(fluidParticlesAbsoluteVelocity.begin(),fluidParticlesAbsoluteVelocity.end());
-                Real vClamp = fluidParticlesAbsoluteVelocity[int(fluidParticles->getNumberOfParticles()*0.95)];
-                vMaxNorm = min(vClamp, velocityCap);
             }
-
-
+            vMaxNorm = min(vMaxNorm, velocityCap);
 
             Real delTimeCFL = 0.5*0.5*(fluidParticles->getParticleDiameter()/vMaxNorm);
             Real delTime;
@@ -139,13 +118,8 @@ int main(int argc, char** argv)
                 delTime = (1-timeSimulation)*defaultTimeStep;
                 timeSimulation=1;
             }else{
-//                delTime = defaultTimeStep;
-//                while (delTime>delTimeCFL){
-//                    delTime *=0.5;
-//                }
                 delTime = delTimeCFL;
                 timeSimulation += delTime/defaultTimeStep;
-//                std::cout<<"interpolate: "<<to_string(t + timeSimulation)<<std::endl;
             }
 
             if (not with_smoothing){

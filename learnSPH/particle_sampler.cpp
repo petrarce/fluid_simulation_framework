@@ -140,8 +140,6 @@ opcode ParticleSampler::sample_border_points_in_triangle(
 												vector<Vector3R>& borderParticles,
 												bool hexagonal)
 {
-	std::cout << "sampling a triangle face of the border" << std::endl;
-
 	vector<Vector3R> faceParticles;
 
 	Vector3R corner_a;
@@ -281,9 +279,7 @@ ParticleDataSet* ParticleSampler::sample_border_triangle(const Vector3R& corner_
 
 	//calculate fluid border particle volume theoretically as if all particles where in fluid cube
 	//TODO: check if different fluid volume and border volume influences on simulation
-	return new BorderPartDataSet(borderParticleSet, 
-									particleDensities, 
-									pow3(samplingDistance)*borderParticleSet.size());
+	return new BorderPartDataSet(borderParticleSet, particleDensities, pow3(samplingDistance) * borderParticleSet.size());
 };
 
 
@@ -401,10 +397,5 @@ ParticleDataSet* ParticleSampler::sample_border_box(
 							borderParticles,
 							hexagonal);
 
-	std::cout << borderParticles.size() << " particles sampled" << std::endl;
-	
-	//calculate fluid border particle volume theoretically as if all particles where in fluid cube
-	//TODO: check if different fluid volume and border volume influences on simulation
-	return new BorderPartDataSet(borderParticles, particleDensities, 
-		borderParticles.size() * pow3(samplingDistance));
+	return new BorderPartDataSet(borderParticles, particleDensities, borderParticles.size() * pow3(samplingDistance));
 }
