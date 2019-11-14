@@ -166,7 +166,7 @@ int main(int argc, char** argv)
         // Save
         std::string filename;
 
-        vector<PositionVector>& particlePositions = fluidParticles->getParticlePositions();
+        vector<Vector3R>& particlePositions = fluidParticles->getParticlePositions();
         const Real maxRadius = 200.0; // To avoid exploded particles moves too far from center => view vanish
         bool beyondSphere = false;
         for (unsigned particleIndex = 0; particleIndex<fluidParticles->getNumberOfParticles(); particleIndex++){

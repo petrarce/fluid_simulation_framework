@@ -9,15 +9,11 @@ using namespace std;
 using namespace Eigen;
 using namespace CompactNSearch;
 
-typedef Vector3R VelocVector;
-typedef Vector3R PositionVector;
-typedef Vector3R ForceVector;
-
 namespace learnSPH
 {
 	class ParticleDataSet {
 	protected:
-		vector<PositionVector> particlePositions;
+		vector<Vector3R> particlePositions;
 		Real restDensity;
 		Real particleDiameter;
 		Real particleMass;
@@ -53,14 +49,14 @@ namespace learnSPH
 		/*
 			get particlePositions vector directly (required for vtk generation)
 		*/
-		vector<PositionVector>& getParticlePositions() 
+		vector<Vector3R>& getParticlePositions()
 		{
 			return particlePositions;
 		};
 		
-		const PositionVector* getParticlePositionsData() const
+		const Vector3R* getParticlePositionsData() const
 		{
-			return static_cast<const PositionVector*>(particlePositions.data());
+			return static_cast<const Vector3R*>(particlePositions.data());
 		}; 
 		
 		size_t getNumberOfParticles() const
@@ -68,7 +64,7 @@ namespace learnSPH
 			return particlePositions.size();
 		};
 		
-		ParticleDataSet(vector<PositionVector>& particlePositions, 
+		ParticleDataSet(vector<Vector3R>& particlePositions,
 						Real restDensity,
 						Real fluidVolume):
 			restDensity(restDensity)
@@ -108,7 +104,7 @@ namespace learnSPH
 			return static_cast<const Real*>(particleVolume.data());
 		};
 
-		BorderPartDataSet(vector<PositionVector>& particlePositions, 
+		BorderPartDataSet(vector<Vector3R>& particlePositions,
 							Real restDensity,
 							Real fluidVolume):
 			ParticleDataSet(particlePositions, restDensity, fluidVolume)
@@ -182,24 +178,24 @@ namespace learnSPH
 		{
 			return particleDencities.data();
 		};
-		vector<VelocVector>& getParticleVelocities()
+		vector<Vector3R>& getParticleVelocities()
 		{
 			return particleVelocities;
 		};
 		
-		const VelocVector* getParticleVelocitiesData() const
+		const Vector3R* getParticleVelocitiesData() const
 		{
 			return particleVelocities.data();
 		};
 
-		const ForceVector* getParticleForcesdata() const{
+		const Vector3R* getParticleForcesdata() const{
 		    return particleExternalForces.data();
 		};
 
 
         // Default constructor with no external force.
-		NormalPartDataSet(vector<PositionVector>& particlePositions,
-							vector<VelocVector>& particleVelocities,
+		NormalPartDataSet(vector<Vector3R>& particlePositions,
+							vector<Vector3R>& particleVelocities,
 							vector<Real>& particleDencities,
 							Real restDensity,
 							Real fluidVolume):
@@ -212,8 +208,8 @@ namespace learnSPH
 			this->particleExternalForces = vector<Vector3R>(this->particlePositions.size(),Eigen::Vector3d(0.0,0.0,0.0));
 		};
 
-        NormalPartDataSet(vector<PositionVector>& particlePositions,
-                          vector<VelocVector>& particleVelocities,
+        NormalPartDataSet(vector<Vector3R>& particlePositions,
+                          vector<Vector3R>& particleVelocities,
                           vector<Real>& particleDencities,
                           vector<Vector3R>& particleExternalForces,
                           Real restDensity,

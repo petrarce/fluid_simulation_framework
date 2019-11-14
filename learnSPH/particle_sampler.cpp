@@ -30,8 +30,8 @@ ParticleDataSet* ParticleSampler::sample_normal_particles(const Vector3R& upperC
 										num_of_part_y_direction*
 										num_of_part_z_direction;
 
-	vector<PositionVector> particlePositions;
-	vector<VelocVector> particleVelocities;
+	vector<Vector3R> particlePositions;
+	vector<Vector3R> particleVelocities;
 	vector<Real> particleDensities;
 
 	particlePositions.resize(totalNumOfPrticles);
