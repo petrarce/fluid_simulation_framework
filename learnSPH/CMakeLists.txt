@@ -24,8 +24,11 @@ set(SOURCE_FILES
 	${CMAKE_SOURCE_DIR}/include/data_set.h
 	${CMAKE_SOURCE_DIR}/include/particle_sampler.h
 	${CMAKE_SOURCE_DIR}/include/solver.h
+	${CMAKE_SOURCE_DIR}/include/marching_cubes.h
+	${CMAKE_SOURCE_DIR}/include/triangle_table.h
 	particle_sampler.cpp
-	solver.cpp)
+	solver.cpp
+	marching_cubes.cpp)
 
 # Create a library version so it can be linked with other modules
 add_library(learnSPH ${SOURCE_FILES})
