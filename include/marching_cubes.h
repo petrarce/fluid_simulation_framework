@@ -19,8 +19,8 @@ class Sphere : public Object3D
 public:
 	virtual bool query(const Vector3R& pt, Real& intVal) const
 	{
-		intVal = (center - pt).norm();
-		if(intVal - radius < 0){
+		intVal = (center - pt).squaredNorm() - radius*radius;
+		if(intVal < 0){
 			return true;
 		} 
 		return false;
@@ -28,22 +28,10 @@ public:
 
 	virtual Vector3R lerp(const Vector3R& pt1, const Real val1, const Vector3R& pt2, const Real val2) const
 	{
-		Vector3R distVec = (pt1 - pt2)/2;
-		Vector3R targPt = pt2 + distVec;
-		/*for(int i = 0; i < 5; i++){
-			Real normVal = (center - targPt).norm();
-			if(fabs(normVal - radius) < threshold){
-				break;
-			}
-
-			if(normVal - radius > 0){
-				targPt -= distVec;
-			} else {
-				targPt += distVec;
-			}
-
-			distVec = distVec / 2;
-		}*/
+		Vector3R distVec = (pt1 - pt2);
+		Real relation = fabs(val2/(fabs(val1)+fabs(val2)));
+		pr_dbg("relation = %f", relation);
+		Vector3R targPt = pt2 + distVec * relation;
 		return targPt;
 	};
 
