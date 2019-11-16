@@ -40,6 +40,18 @@ int main(int argc, char** argv)
 									triangle_mesh, 
 									dummyScalarVec, 
 									triangle_mesh);
+
+	Thorus thr(sphereRadius, 0.5*sphereRadius, sphereCenter);
+	mcb.setObject(&thr);
+	mcb.getTriangleMesh(triangle_mesh);
+	dummyScalarVec.resize(triangle_mesh.size());
+
+	filename = "../res/marching_cube_thorus_mesh.vtk";
+	learnSPH::saveParticlesToVTK(filename, 
+									triangle_mesh, 
+									dummyScalarVec, 
+									triangle_mesh);
+
  
 	std::cout << "completed!" << std::endl;
 	std::cout << "The scene files have been saved in the folder `<build_folder>/res`. You can visualize them with Paraview." << std::endl;

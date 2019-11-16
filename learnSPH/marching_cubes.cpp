@@ -18,8 +18,8 @@ opcode learnSPH::MarchingCubes::getTriangleMesh(vector<Vector3R>& triangleMesh) 
 	size_t cubesY = int(distVec(1)/this->cubesResolution(1)) + 1;
 	size_t cubesZ = int(distVec(2)/this->cubesResolution(2)) + 1;
 
+	triangleMesh.clear();
 	triangleMesh.reserve(cubesX*cubesY*cubesZ * 12);
-
 	//represents offset for each point of the cube
 	const Vector3R cubePtOffset[8] = {
 		{0,							0,							0},
