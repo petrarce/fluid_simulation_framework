@@ -48,7 +48,7 @@ namespace learnSPH
 			return particlePositions;
 		};
 
-		size_t getNumberOfParticles() const
+		size_t size() const
 		{
 			return particlePositions.size();
 		};
@@ -62,8 +62,8 @@ namespace learnSPH
 			assert(fluidVolume > 0);
 
 			this->particlePositions.swap(particlePositions);
-			this->particleMass = (this->restDensity * fluidVolume)/this->particlePositions.size();
-			this->particleDiameter = cbrt(this->particleMass/this->restDensity);
+			this->particleMass = (this->restDensity * fluidVolume) / this->particlePositions.size();
+			this->particleDiameter = cbrt(this->particleMass / this->restDensity);
 		};
 		virtual ~ParticleDataSet(){};
 	};
@@ -94,7 +94,9 @@ namespace learnSPH
 			ParticleDataSet(particlePositions, restDensity, fluidVolume)
 		{
 			this->particleVolume.resize(this->particlePositions.size());
+
 			NeighborhoodSearch ns(this->particleDiameter*1.2, false);
+
 			unsigned int pset = ns.add_point_set(&this->particlePositions[0](0), 
 								this->particlePositions.size(),
 								true,

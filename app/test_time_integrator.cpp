@@ -44,19 +44,19 @@ int main(int argc, char** argv)
 
 	NeighborhoodSearch ns(fluidParticles->getCompactSupport());
 
-	auto fluidPointSet = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()), fluidParticles->getNumberOfParticles(), true);
+	auto fluidPointSet = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()), fluidParticles->size(), true);
 
-	cout << "Number of fluid particles: " << fluidParticles->getNumberOfParticles() << endl;
+	cout << "Number of fluid particles: " << fluidParticles->size() << endl;
 
 	BorderPartDataSet* borderParticles = sample_border_box(lover_corner_box, upper_corner_box, 3000, sampling_distance * 0.5, true);
 
-	cout << "Number of border particles: " << borderParticles->getNumberOfParticles() << endl;
+	cout << "Number of border particles: " << borderParticles->size() << endl;
 
-	ns.add_point_set((Real*)borderParticles->getParticlePositions().data(), borderParticles->getNumberOfParticles(), false);
+	ns.add_point_set((Real*)borderParticles->getParticlePositions().data(), borderParticles->size(), false);
 
 	vector<vector<vector<unsigned int>>> particleNeighbors;
 
-	particleNeighbors.resize(fluidParticles->getNumberOfParticles());
+	particleNeighbors.resize(fluidParticles->size());
 
 	const Vector3R gravity(0.0, -9.7, 0.0);
 
@@ -72,7 +72,7 @@ int main(int argc, char** argv)
 
 	string filename = "res/assignment2/border.vtk";
 
-	vector<Vector3R> dummyVector(borderParticles->getNumberOfParticles());
+	vector<Vector3R> dummyVector(borderParticles->size());
 
 	learnSPH::saveParticlesToVTK(filename, borderParticles->getParticlePositions(), borderParticles->getParticleVolume(), dummyVector);
 
@@ -85,12 +85,12 @@ int main(int argc, char** argv)
 		while (timeSimulation < 1) {
 			ns.update_point_sets();
 
-			for(int i = 0; i < fluidParticles->getNumberOfParticles(); i++) ns.find_neighbors(fluidPointSet, i, particleNeighbors[i]);
+			for(int i = 0; i < fluidParticles->size(); i++) ns.find_neighbors(fluidPointSet, i, particleNeighbors[i]);
 
 			learnSPH::calculate_dencities(fluidParticles, borderParticles, particleNeighbors, fluidParticles->getSmoothingLength());
 
 
-			vector<Vector3R> fluidParticlesAccelerations(fluidParticles->getNumberOfParticles(), gravity);
+			vector<Vector3R> fluidParticlesAccelerations(fluidParticles->size(), gravity);
 
 			learnSPH::calculate_acceleration(
 											fluidParticlesAccelerations,
@@ -102,11 +102,11 @@ int main(int argc, char** argv)
 											preasureStiffness,
 											fluidParticles->getSmoothingLength());
 
-			Real velocityCap = 300.0;
-			Real vMaxNorm = 0;
+			Real velocityCap = 100.0;
+			Real vMaxNorm = 0.0;
 			auto fluidParticlesVelocity = fluidParticles->getParticleVelocities().data();
 
-			for (int iVelo = 0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++) vMaxNorm = max(fluidParticlesVelocity[iVelo].norm(), vMaxNorm);
+			for (int iVelo = 0; iVelo < fluidParticles->size(); iVelo++) vMaxNorm = max(fluidParticlesVelocity[iVelo].norm(), vMaxNorm);
 
 			vMaxNorm = min(vMaxNorm, velocityCap);
 

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cassert>
 #include <marching_cubes.h>
 #include <triangle_table.h>
 
@@ -90,14 +91,6 @@ opcode learnSPH::MarchingCubes::init(const Vector3R& loverCorner,
 										const Vector3R& upperCorner, 
 										const Vector3R& cbResol)
 {
-#ifdef DEBUG
-	Vector3R distVec = upperCorner - loverCorner;
-	assert(distVec(0)*distVec(1)*distVec(2) != 0);
-	assert(cbResol(0) > 0 && cbResol(1) > 0 && cbResol(2) > 0);
-	//assume, distVec lies in first quarder of coordinate system
-	assert(Vector3R(1,1,1).dot(distVec) > 0, "distVec[%f, %f, %f]", distVec(0), distVec(1), distVec(2));
-#endif
-
 	this->spaceLowerCorner = loverCorner;
 	this->spaceUpperCorner = upperCorner;
 	this->cubesResolution = cbResol;

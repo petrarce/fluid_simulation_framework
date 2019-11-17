@@ -10,7 +10,7 @@ void learnSPH::calculate_dencities(
 								const Real smoothingLength)
 {
 	assert(smoothingLength > 0.0);
-	assert(fluidParticleNeighbours.size() == fluidParticles->getNumberOfParticles());
+	assert(fluidParticleNeighbours.size() == fluidParticles->size());
 	assert(fluidParticleNeighbours.size() == 0 || fluidParticleNeighbours[0].size() == 2);
 
 	vector<Real>& fluidParticlesDensities = fluidParticles->getParticleDencities();
@@ -21,7 +21,7 @@ void learnSPH::calculate_dencities(
 
 	#pragma omp parallel for schedule(guided, 100)
 
-	for(int i = 0; i < fluidParticles->getNumberOfParticles(); i++){
+	for(int i = 0; i < fluidParticles->size(); i++){
 
 		Real fluidDensity = 0.0;  // calculate density depending on neighbor fluid particles
 
@@ -60,7 +60,7 @@ void learnSPH::calculate_acceleration(
 
 	#pragma omp parallel for schedule(guided, 100)
 
-	for(unsigned int i = 0; i < fluidParticles->getNumberOfParticles(); i++) {
+	for(unsigned int i = 0; i < fluidParticles->size(); i++) {
 
 		Vector3R acce_pressure_ff(0.0, 0.0, 0.0);  // fluid-fluid interactions
 		Vector3R acce_viscosity_ff(0.0, 0.0, 0.0);  // fluid-fluid frictions
