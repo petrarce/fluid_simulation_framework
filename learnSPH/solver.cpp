@@ -13,11 +13,11 @@ void learnSPH::calculate_dencities(
 	assert(fluidParticleNeighbours.size() == fluidParticles->size());
 	assert(fluidParticleNeighbours.size() == 0 || fluidParticleNeighbours[0].size() == 2);
 
-	vector<Real>& fluidParticlesDensities = fluidParticles->getParticleDencities();
+	vector<Real>& fluidParticlesDensities = fluidParticles->getDensities();
 
-	auto fluidParticlesPositions = fluidParticles->getParticlePositions();
-	auto borderParticlePositions = borderParticles->getParticlePositions();
-	auto borderParticlesVolumes = borderParticles->getParticleVolumes();
+	auto fluidParticlesPositions = fluidParticles->getPositions();
+	auto borderParticlePositions = borderParticles->getPositions();
+	auto borderParticlesVolumes = borderParticles->getVolumes();
 
 	#pragma omp parallel for schedule(guided, 100)
 
@@ -27,7 +27,7 @@ void learnSPH::calculate_dencities(
 
 		for(int j : fluidParticleNeighbours[i][0]) fluidDensity += kernelFunction(fluidParticlesPositions[i], fluidParticlesPositions[j], smoothingLength);
 
-		fluidDensity *= fluidParticles->getParticleMass();
+		fluidDensity *= fluidParticles->getMass();
 
 		Real borderDensity = 0.0;  // calculate density depending on neighbor border particles
 
@@ -51,12 +51,12 @@ void learnSPH::calculate_acceleration(
 									const Real stiffness_para,
 									const Real smoothingLength)
 {
-	auto fluidParticlesDensities = fluidParticles->getParticleDencities();
-	auto fluidParticlesPositions = fluidParticles->getParticlePositions();
-	auto borderParticlePositions = borderParticles->getParticlePositions();
-	auto fluidParticlesVelocities = fluidParticles->getParticleVelocities();
+	auto fluidParticlesDensities = fluidParticles->getDensities();
+	auto fluidParticlesPositions = fluidParticles->getPositions();
+	auto borderParticlePositions = borderParticles->getPositions();
+	auto fluidParticlesVelocities = fluidParticles->getVelocities();
 	auto fluidParticlesForces = fluidParticles->getExternalForces();
-	auto borderParticlesVolumes = borderParticles->getParticleVolumes();
+	auto borderParticlesVolumes = borderParticles->getVolumes();
 
 	#pragma omp parallel for schedule(guided, 100)
 
@@ -87,8 +87,8 @@ void learnSPH::calculate_acceleration(
 
 			acce_viscosity_ff += diff_ij.dot(grad_W_ij) / (rho_j * (diff_ij.dot(diff_ij) + 0.01 * smoothingLength * smoothingLength)) * diff_velo_ij;
 		}
-		acce_pressure_ff = fluidParticles->getParticleMass() * acce_pressure_ff;
-		acce_viscosity_ff = 2.0 * fluid_viscosity * fluidParticles->getParticleMass() * acce_viscosity_ff;
+		acce_pressure_ff = fluidParticles->getMass() * acce_pressure_ff;
+		acce_viscosity_ff = 2.0 * fluid_viscosity * fluidParticles->getMass() * acce_viscosity_ff;
 
 		for(unsigned int k : fluidParticleNeighbours[i][1]) {
 
@@ -108,9 +108,9 @@ void learnSPH::calculate_acceleration(
 
 		Vector3R acce_viscosity_fs = 2.0 * friction_para * acce_viscosity_fs_factor * fluidParticlesVelocities[i];
 
-		assert(fluidParticles->getParticleMass() > threshold);
+		assert(fluidParticles->getMass() > threshold);
 
-		Vector3R acce_external = 1.0 / fluidParticles->getParticleMass() * fluidParticlesForces[i];
+		Vector3R acce_external = 1.0 / fluidParticles->getMass() * fluidParticlesForces[i];
 
 		fluidParticlesAccelerations[i] = - acce_pressure_ff - acce_pressure_fs + acce_viscosity_ff + acce_viscosity_fs + acce_external;
     }
@@ -121,8 +121,8 @@ void learnSPH::symplectic_euler(
 							NormalPartDataSet *fluidParticles,
 							const Real time_frame)
 {
-	vector<Vector3R>& fluidParticlesVelocities = fluidParticles->getParticleVelocities();
-	vector<Vector3R>& fluidParticlesPositions = fluidParticles->getParticlePositions();
+	vector<Vector3R>& fluidParticlesVelocities = fluidParticles->getVelocities();
+	vector<Vector3R>& fluidParticlesPositions = fluidParticles->getPositions();
 
 	#pragma omp parallel for schedule(guided, 100)
 
@@ -140,10 +140,10 @@ void learnSPH::smooth_symplectic_euler(
 									const Real time_frame,
 									const Real smoothingLengthFactor)
 {
-	vector<Vector3R>& fluidParticlesVelocities = fluidParticles->getParticleVelocities();
-	vector<Vector3R>& fluidParticlesPositions = fluidParticles->getParticlePositions();
+	vector<Vector3R>& fluidParticlesVelocities = fluidParticles->getVelocities();
+	vector<Vector3R>& fluidParticlesPositions = fluidParticles->getPositions();
 
-	auto fluidParticlesDensities = fluidParticles->getParticleDencities();
+	auto fluidParticlesDensities = fluidParticles->getDensities();
 	
 	#pragma omp parallel for schedule(guided, 100)
 
@@ -163,11 +163,11 @@ void learnSPH::smooth_symplectic_euler(
 
 			auxiliary_velocity += kernelFunction(fluidParticlesPositions[i], fluidParticlesPositions[j], smoothingLengthFactor) / (fluidParticlesDensities[i] + fluidParticlesDensities[j] + threshold) * diff_velo_ji;
 		}
-		auxiliary_velocity = fluidParticlesVelocities[i] + 2.0 * scaling_para * fluidParticles->getParticleMass() * auxiliary_velocity;
+		auxiliary_velocity = fluidParticlesVelocities[i] + 2.0 * scaling_para * fluidParticles->getMass() * auxiliary_velocity;
 
 		assert(auxiliary_velocity.norm() < 1e5);
 
 		newFluidPositions[i] = fluidParticlesPositions[i] + time_frame * auxiliary_velocity;
 	}
-	fluidParticles->setParticlePositions(newFluidPositions);
+	fluidParticles->setPositions(newFluidPositions);
 }

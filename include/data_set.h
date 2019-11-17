@@ -15,7 +15,7 @@ namespace learnSPH
 	class ParticleDataSet
 	{
 		protected:
-			vector<Vector3R> particlePositions;
+			vector<Vector3R> positions;
 			Real restDensity;
 
 		public:
@@ -24,21 +24,21 @@ namespace learnSPH
 				return this->restDensity;
 			}
 
-			vector<Vector3R>& getParticlePositions()
+			vector<Vector3R>& getPositions()
 			{
-				return particlePositions;
+				return positions;
 			};
 
 			size_t size() const
 			{
-				return particlePositions.size();
+				return positions.size();
 			};
 
-			ParticleDataSet(vector<Vector3R>& particlePositions, Real restDensity):restDensity(restDensity)
+			ParticleDataSet(vector<Vector3R>& positions, Real restDensity):restDensity(restDensity)
 			{
 				assert(restDensity > 0);
 
-				this->particlePositions.assign(particlePositions.begin(), particlePositions.end());
+				this->positions.assign(positions.begin(), positions.end());
 			};
 
 			virtual ~ParticleDataSet(){};
@@ -47,42 +47,42 @@ namespace learnSPH
 	class BorderPartDataSet:public ParticleDataSet
 	{
 		private:
-			vector<Real> particleVolumes;
+			vector<Real> volumes;
 
 		public:
-			vector<Real>& getParticleVolumes()
+			vector<Real>& getVolumes()
 			{
-				return particleVolumes;
+				return volumes;
 			};
 
-			BorderPartDataSet(vector<Vector3R>& particlePositions, Real restDensity, Real diameter, Real eta):ParticleDataSet(particlePositions, restDensity)
+			BorderPartDataSet(vector<Vector3R>& positions, Real restDensity, Real diameter, Real eta):ParticleDataSet(positions, restDensity)
 			{
-				this->particleVolumes.resize(this->particlePositions.size());
+				this->volumes.resize(this->positions.size());
 
 				NeighborhoodSearch ns(diameter * eta * 2.0, false);
 
-				ns.add_point_set((Real*)(this->particlePositions.data()), this->particlePositions.size(), false);
+				ns.add_point_set((Real*)(this->positions.data()), this->positions.size(), false);
 
 				ns.update_point_sets();
 
 				vector<vector<unsigned int> > neighbours;
 
-				for(int i = 0; i < this->particlePositions.size(); i++){
+				for(int i = 0; i < this->positions.size(); i++){
 
 					ns.find_neighbors(0, i, neighbours);
 
 					if (neighbours[0].empty()) {
 
-						this->particleVolumes[i] = pow3(diameter);
+						this->volumes[i] = pow3(diameter);
 						continue;
 					}
 					Real sum = 0.0;
 
-					for(int j : neighbours[0]) sum += kernelFunction(this->particlePositions[i], this->particlePositions[j], diameter * eta);
+					for(int j : neighbours[0]) sum += kernelFunction(this->positions[i], this->positions[j], diameter * eta);
 
 					assert(sum > 0.0);
 
-					this->particleVolumes[i] = 1.0 / sum;
+					this->volumes[i] = 1.0 / sum;
 				}
 			};
 
@@ -92,73 +92,73 @@ namespace learnSPH
 	class NormalPartDataSet:public ParticleDataSet
 	{
 		private:
-			Real particleMass;
-			Real particleDiameter;
-			Real smoothingLength;
-			Real compactSupport;
+			Real mass;
+			Real diameter;
+			Real smooth_length;
+			Real compact_support;
 
-			vector<Real> particleDencities;
-			vector<Vector3R> particleVelocities;
-			vector<Vector3R> particleExternalForces;
+			vector<Real> dencities;
+			vector<Vector3R> velocities;
+			vector<Vector3R> external_forces;
 
 		public:
-			void setParticlePositions(vector<Vector3R>& newPositions)
+			void setPositions(vector<Vector3R>& newPositions)
 			{
-				assert(this->particlePositions.size() == newPositions.size());
-				this->particlePositions.assign(newPositions.begin(), newPositions.end());
+				assert(this->positions.size() == newPositions.size());
+				this->positions.assign(newPositions.begin(), newPositions.end());
 			}
 
-			Real getParticleDiameter() const
+			Real getDiameter() const
 			{
-				return this->particleDiameter;
+				return this->diameter;
 			}
 
-			Real getParticleMass() const
+			Real getMass() const
 			{
-				return this->particleMass;
+				return this->mass;
 			}
 
 			Real getSmoothingLength()
 			{
-				return this->smoothingLength;
+				return this->smooth_length;
 			}
 
 			Real getCompactSupport()
 			{
-				return this->compactSupport;
+				return this->compact_support;
 			}
 
-			vector<Real>& getParticleDencities()
+			vector<Real>& getDensities()
 			{
-				return particleDencities;
+				return dencities;
 			};
 
-			vector<Vector3R>& getParticleVelocities()
+			vector<Vector3R>& getVelocities()
 			{
-				return particleVelocities;
+				return velocities;
 			};
 
 			vector<Vector3R>& getExternalForces()
 			{
-				return particleExternalForces;
+				return external_forces;
 			};
 
 			NormalPartDataSet(
-							vector<Vector3R>& particlePositions,
-							vector<Vector3R>& particleVelocities,
-							vector<Real>& particleDencities,
+							vector<Vector3R>& positions,
+							vector<Vector3R>& velocities,
+							vector<Real>& dencities,
 							Real restDensity,
 							Real fluidVolume,
-							Real eta):ParticleDataSet(particlePositions, restDensity)
+							Real eta):ParticleDataSet(positions, restDensity)
 			{
-				this->particleMass = (this->restDensity * fluidVolume) / this->particlePositions.size();
-				this->particleDiameter = cbrt(this->particleMass / this->restDensity);
-				this->smoothingLength = eta * this->particleDiameter;
-				this->compactSupport = 2.0 * this->smoothingLength;
+				this->mass = (this->restDensity * fluidVolume) / this->positions.size();
+				this->diameter = cbrt(this->mass / this->restDensity);
+				this->smooth_length = eta * this->diameter;
+				this->compact_support = 2.0 * this->smooth_length;
 
-				this->particleDencities.assign(particleDencities.begin(), particleDencities.end());
-				this->particleVelocities.assign(particleVelocities.begin(), particleVelocities.end());
-				this->particleExternalForces = vector<Vector3R>(this->particlePositions.size(), Vector3R(0.0, 0.0, 0.0));
+				this->dencities.assign(dencities.begin(), dencities.end());
+				this->velocities.assign(velocities.begin(), velocities.end());
+				this->external_forces = vector<Vector3R>(this->positions.size(), Vector3R(0.0, 0.0, 0.0));
 			};
 			~NormalPartDataSet(){};
 	};
