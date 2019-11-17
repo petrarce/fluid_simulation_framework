@@ -7,7 +7,7 @@ using namespace std;
 using namespace learnSPH;
 using namespace learnSPH::kernel;
 
-FluidSystem* learnSPH::sample_fluid_cube(const Vector3R& upperCorner, const Vector3R& lowerCorner, const Real restDensity, const Real samplingDistance, const Real eta)
+FluidSystem* learnSPH::sample_fluid_cube(const Vector3R& lowerCorner, const Vector3R& upperCorner, const Real restDensity, const Real samplingDistance, const Real eta)
 {
 	
 	assert(restDensity > 0.0);

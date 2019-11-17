@@ -98,6 +98,7 @@ namespace learnSPH
 			Real compact_support;
 
 			vector<Real> dencities;
+			vector<bool> activeness;
 			vector<Vector3R> velocities;
 			vector<Vector3R> external_forces;
 
@@ -126,6 +127,11 @@ namespace learnSPH
 			Real getCompactSupport()
 			{
 				return this->compact_support;
+			}
+
+			vector<bool>& getActiveness()
+			{
+				return this->activeness;
 			}
 
 			vector<Real>& getDensities()
@@ -158,7 +164,9 @@ namespace learnSPH
 
 				this->dencities.assign(dencities.begin(), dencities.end());
 				this->velocities.assign(velocities.begin(), velocities.end());
-				this->external_forces = vector<Vector3R>(this->positions.size(), Vector3R(0.0, 0.0, 0.0));
+
+				this->activeness.assign(this->positions.size(), true);
+				this->external_forces.assign(this->positions.size(), Vector3R(0.0, 0.0, 0.0));
 			};
 			~FluidSystem(){};
 	};
