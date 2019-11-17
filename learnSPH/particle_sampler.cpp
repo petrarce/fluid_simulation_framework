@@ -7,7 +7,7 @@ using namespace std;
 using namespace learnSPH;
 using namespace learnSPH::kernel;
 
-NormalPartDataSet* learnSPH::sample_fluid_cube(const Vector3R& upperCorner, const Vector3R& lowerCorner, const Real restDensity, const Real samplingDistance)
+NormalPartDataSet* learnSPH::sample_fluid_cube(const Vector3R& upperCorner, const Vector3R& lowerCorner, const Real restDensity, const Real samplingDistance, const Real eta)
 {
 	
 	assert(restDensity > 0.0);
@@ -65,7 +65,7 @@ NormalPartDataSet* learnSPH::sample_fluid_cube(const Vector3R& upperCorner, cons
 
 	Real fluidVolume = width * height * length;
 
-	return new NormalPartDataSet(particlePositions, particleVelocities, particleDensities, restDensity, fluidVolume);
+	return new NormalPartDataSet(particlePositions, particleVelocities, particleDensities, restDensity, fluidVolume, eta);
 }
 
 
@@ -245,7 +245,7 @@ void learnSPH::sample_border_face(const Vector3R& vertex_a, const Vector3R& vert
 	borderParticles.insert(borderParticles.end(), faceParticles.begin(), faceParticles.end());
 }
 
-BorderPartDataSet* learnSPH::sample_border_box(const Vector3R& lower_corner, const Vector3R& upper_corner, const Real restDensity, const Real samplingDistance, bool hexagonal)
+BorderPartDataSet* learnSPH::sample_border_box(const Vector3R& lower_corner, const Vector3R& upper_corner, const Real restDensity, const Real samplingDistance, const Real eta, const bool hexagonal)
 {
 	vector<Vector3R> borderParticles;
 
@@ -271,5 +271,5 @@ BorderPartDataSet* learnSPH::sample_border_box(const Vector3R& lower_corner, con
 	sample_border_face(vertexA, vertexE, vertexF, samplingDistance, borderParticles, hexagonal);
 	sample_border_face(vertexA, vertexB, vertexF, samplingDistance, borderParticles, hexagonal);
 
-	return new BorderPartDataSet(borderParticles, restDensity, borderParticles.size() * pow3(samplingDistance));
+	return new BorderPartDataSet(borderParticles, restDensity, samplingDistance, eta);
 }

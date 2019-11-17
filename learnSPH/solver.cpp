@@ -17,7 +17,7 @@ void learnSPH::calculate_dencities(
 
 	auto fluidParticlesPositions = fluidParticles->getParticlePositions();
 	auto borderParticlePositions = borderParticles->getParticlePositions();
-	auto borderParticlesVolumes = borderParticles->getParticleVolume();
+	auto borderParticlesVolumes = borderParticles->getParticleVolumes();
 
 	#pragma omp parallel for schedule(guided, 100)
 
@@ -56,7 +56,7 @@ void learnSPH::calculate_acceleration(
 	auto borderParticlePositions = borderParticles->getParticlePositions();
 	auto fluidParticlesVelocities = fluidParticles->getParticleVelocities();
 	auto fluidParticlesForces = fluidParticles->getExternalForces();
-	auto borderParticlesVolumes = borderParticles->getParticleVolume();
+	auto borderParticlesVolumes = borderParticles->getParticleVolumes();
 
 	#pragma omp parallel for schedule(guided, 100)
 

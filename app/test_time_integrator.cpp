@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 	Vector3R upper_corner_box = {stod(argv[7]),stod(argv[8]),stod(argv[9])};
 	Vector3R lover_corner_box = {stod(argv[10]),stod(argv[11]),stod(argv[12])};
 	Real sampling_distance = stod(argv[13]);
-	Real compactSupportFactor = stod(argv[14]);
+	Real eta = stod(argv[14]);
 	Real preasureStiffness = stod(argv[15]);
 	Real viscosity = stod(argv[16]);
 	Real friction = stod(argv[17]);
@@ -38,19 +38,17 @@ int main(int argc, char** argv)
 	Real simulateDuration = (stod(argv[20])); // duration of the simulation
 	string expName = argv[21]; // name of experience
 
-	NormalPartDataSet* fluidParticles = sample_fluid_cube(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance);
-
-	fluidParticles->setCompactSupportFactor(compactSupportFactor);
-
-	NeighborhoodSearch ns(fluidParticles->getCompactSupport());
-
-	auto fluidPointSet = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()), fluidParticles->size(), true);
+	NormalPartDataSet* fluidParticles = sample_fluid_cube(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance, eta);
 
 	cout << "Number of fluid particles: " << fluidParticles->size() << endl;
 
-	BorderPartDataSet* borderParticles = sample_border_box(lover_corner_box, upper_corner_box, 3000, sampling_distance * 0.5, true);
+	BorderPartDataSet* borderParticles = sample_border_box(lover_corner_box, upper_corner_box, 3000, sampling_distance * 0.5, eta * 0.5, true);
 
 	cout << "Number of border particles: " << borderParticles->size() << endl;
+
+	NeighborhoodSearch ns(fluidParticles->getCompactSupport());
+
+	ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()), fluidParticles->size(), true);
 
 	ns.add_point_set((Real*)borderParticles->getParticlePositions().data(), borderParticles->size(), false);
 
@@ -74,7 +72,7 @@ int main(int argc, char** argv)
 
 	vector<Vector3R> dummyVector(borderParticles->size());
 
-	learnSPH::saveParticlesToVTK(filename, borderParticles->getParticlePositions(), borderParticles->getParticleVolume(), dummyVector);
+	learnSPH::saveParticlesToVTK(filename, borderParticles->getParticlePositions(), borderParticles->getParticleVolumes(), dummyVector);
 
 	for (unsigned int t = 0; t < nsamples; t++) {
 
@@ -85,7 +83,7 @@ int main(int argc, char** argv)
 		while (timeSimulation < 1) {
 			ns.update_point_sets();
 
-			for(int i = 0; i < fluidParticles->size(); i++) ns.find_neighbors(fluidPointSet, i, particleNeighbors[i]);
+			for(int i = 0; i < fluidParticles->size(); i++) ns.find_neighbors(0, i, particleNeighbors[i]);
 
 			learnSPH::calculate_dencities(fluidParticles, borderParticles, particleNeighbors, fluidParticles->getSmoothingLength());
 

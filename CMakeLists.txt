@@ -23,7 +23,6 @@ include_directories("${CMAKE_SOURCE_DIR}/include/"
 
 # Modules
 add_subdirectory(learnSPH)
-# add_subdirectory(tests)
 add_subdirectory(app)
 add_subdirectory(CompactNSearch)
 
