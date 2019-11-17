@@ -12,7 +12,7 @@ using namespace learnSPH::kernel;
 
 namespace learnSPH
 {
-	class ParticleDataSet
+	class ParticleSystem
 	{
 		protected:
 			vector<Vector3R> positions;
@@ -34,17 +34,17 @@ namespace learnSPH
 				return positions.size();
 			};
 
-			ParticleDataSet(vector<Vector3R>& positions, Real restDensity):restDensity(restDensity)
+			ParticleSystem(vector<Vector3R>& positions, Real restDensity):restDensity(restDensity)
 			{
 				assert(restDensity > 0);
 
 				this->positions.assign(positions.begin(), positions.end());
 			};
 
-			virtual ~ParticleDataSet(){};
+			virtual ~ParticleSystem(){};
 	};
 
-	class BorderPartDataSet:public ParticleDataSet
+	class BorderSystem:public ParticleSystem
 	{
 		private:
 			vector<Real> volumes;
@@ -55,7 +55,7 @@ namespace learnSPH
 				return volumes;
 			};
 
-			BorderPartDataSet(vector<Vector3R>& positions, Real restDensity, Real diameter, Real eta):ParticleDataSet(positions, restDensity)
+			BorderSystem(vector<Vector3R>& positions, Real restDensity, Real diameter, Real eta):ParticleSystem(positions, restDensity)
 			{
 				this->volumes.resize(this->positions.size());
 
@@ -86,10 +86,10 @@ namespace learnSPH
 				}
 			};
 
-			~BorderPartDataSet(){};
+			~BorderSystem(){};
 	};
 
-	class NormalPartDataSet:public ParticleDataSet
+	class FluidSystem:public ParticleSystem
 	{
 		private:
 			Real mass;
@@ -143,13 +143,13 @@ namespace learnSPH
 				return external_forces;
 			};
 
-			NormalPartDataSet(
+			FluidSystem(
 							vector<Vector3R>& positions,
 							vector<Vector3R>& velocities,
 							vector<Real>& dencities,
 							Real restDensity,
 							Real fluidVolume,
-							Real eta):ParticleDataSet(positions, restDensity)
+							Real eta):ParticleSystem(positions, restDensity)
 			{
 				this->mass = (this->restDensity * fluidVolume) / this->positions.size();
 				this->diameter = cbrt(this->mass / this->restDensity);
@@ -160,6 +160,6 @@ namespace learnSPH
 				this->velocities.assign(velocities.begin(), velocities.end());
 				this->external_forces = vector<Vector3R>(this->positions.size(), Vector3R(0.0, 0.0, 0.0));
 			};
-			~NormalPartDataSet(){};
+			~FluidSystem(){};
 	};
 };

@@ -6,7 +6,7 @@
 #include <math.h>
 
 #include <Eigen/Dense>
-#include <data_set.h>
+#include <storage.h>
 #include <types.hpp>
 #include <particle_sampler.h>
 #include <CompactNSearch>
@@ -38,11 +38,11 @@ int main(int argc, char** argv)
 	Real simulateDuration = (stod(argv[20])); // duration of the simulation
 	string expName = argv[21]; // name of experience
 
-	NormalPartDataSet* fluidParticles = sample_fluid_cube(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance, eta);
+	FluidSystem* fluidParticles = sample_fluid_cube(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance, eta);
 
 	cout << "Number of fluid particles: " << fluidParticles->size() << endl;
 
-	BorderPartDataSet* borderParticles = sample_border_box(lover_corner_box, upper_corner_box, 3000, sampling_distance * 0.5, eta * 0.5, true);
+	BorderSystem* borderParticles = sample_border_box(lover_corner_box, upper_corner_box, 3000, sampling_distance * 0.5, eta * 0.5, true);
 
 	cout << "Number of border particles: " << borderParticles->size() << endl;
 

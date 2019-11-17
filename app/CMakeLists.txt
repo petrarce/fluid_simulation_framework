@@ -9,8 +9,8 @@ add_executable(test_time_integrator ${SOURCE_FILES_test_time_integrator})
 add_dependencies(test_time_integrator learnSPH CompactNSearch)
 target_link_libraries(test_time_integrator learnSPH CompactNSearch)
 
-set(SOURCE_FILES_test_marching_cubes
-       test_marching_cubes.cpp)
+set(SOURCE_FILES_test_marching_cubes test_marching_cubes.cpp)
+
 add_executable(test_marching_cubes ${SOURCE_FILES_test_marching_cubes})
 add_dependencies(test_marching_cubes learnSPH)
 target_link_libraries(test_marching_cubes learnSPH)

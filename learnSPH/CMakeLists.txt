@@ -21,7 +21,7 @@ set(SOURCE_FILES
 	NBsearch.cpp
 	${CMAKE_SOURCE_DIR}/include/NBsearch.hpp
 	${CMAKE_SOURCE_DIR}/include/types.hpp
-	${CMAKE_SOURCE_DIR}/include/data_set.h
+	${CMAKE_SOURCE_DIR}/include/storage.h
 	${CMAKE_SOURCE_DIR}/include/particle_sampler.h
 	${CMAKE_SOURCE_DIR}/include/solver.h
 	${CMAKE_SOURCE_DIR}/include/marching_cubes.h
