@@ -70,6 +70,7 @@ int main(int argc, char** argv)
 
 	unsigned int nsamples = int(sim_duration / render_step);
 
+	cout << "Diameter: " << fluidParticles->getDiameter() << endl;
 	cout << "Duration: " << sim_duration << endl;
 	cout << "Default time step: "<< render_step << endl;
 	cout << "number of frames: "<< sim_duration / render_step << endl;
@@ -106,17 +107,18 @@ int main(int argc, char** argv)
 											stiffness,
 											fluidParticles->getSmoothingLength());
 
-			Real velocityCap = 100.0;
 			Real vMaxNorm = 0.0;
 
-			auto fluidVelocities = fluidParticles->getVelocities();
-			auto fluidActiveness = fluidParticles->getActiveness();
+			vector<bool> &fluidActiveness = fluidParticles->getActiveness();
+
+			vector<Vector3R> &fluidVelocities = fluidParticles->getVelocities();
 
 			for (int i = 0; i < fluidParticles->size(); i++) if (fluidActiveness[i]) vMaxNorm = max(fluidVelocities[i].norm(), vMaxNorm);
 
-			vMaxNorm = min(vMaxNorm, velocityCap);
-
 			Real logic_step_upper_bound = 0.5 * (fluidParticles->getDiameter() / vMaxNorm);
+
+			cout << "\t| vMaxNorm: " << vMaxNorm << " | CFL-Step: " << logic_step_upper_bound << endl;
+
 			Real logic_time_step;
 
 			if (timeSimulation * render_step + logic_step_upper_bound >= render_step) {
@@ -132,19 +134,24 @@ int main(int argc, char** argv)
 			else
 				learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, neighbors, 0.5, logic_time_step, fluidParticles->getSmoothingLength());
 
-			auto fluidPositions = fluidParticles->getPositions();
+			Real velocityCap = 50.0;
+
+			vector<Vector3R> &fluidPositions = fluidParticles->getPositions();
 
 			for (int i = 0; i < fluidParticles->size(); i++) {
 
 				if (!fluidActiveness[i])
 					continue;
 
-				if ((fluidPositions[i] - box_center).norm() >= max_shift)
+				if (fluidVelocities[i].norm() > velocityCap)
+					fluidVelocities[i] = velocityCap * fluidVelocities[i].normalized();
+
+				if ((fluidPositions[i] - box_center).norm() > max_shift)
 					fluidActiveness[i] = false;
 			}
 			physical_steps++;
 		}
-		cout << "[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "]" << endl;
+		cout << "\n[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "]" << endl;
 
 		string filename = "res/assignment2/" + sim_name + '_' + std::to_string(t) + ".vtk";
 
