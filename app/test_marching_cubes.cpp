@@ -39,7 +39,7 @@ int main(int argc, char** argv)
 	vector<array<int, 3>> triangles;
 	for(int i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
 
-	std::string filename = "../res/marching_cube_sphere_mesh.vtk";
+	std::string filename = "res/marching_cube_sphere_mesh.vtk";
 	learnSPH::saveTriMeshToVTK(filename, triangle_mesh, triangles);
 
 	triangle_mesh.clear();
@@ -49,7 +49,7 @@ int main(int argc, char** argv)
 	triangles.clear();
 	for(int i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
 
-	filename = "../res/marching_cube_thorus_mesh.vtk";
+	filename = "res/marching_cube_thorus_mesh.vtk";
 	learnSPH::saveTriMeshToVTK(filename, triangle_mesh, triangles);
 
 	std::cout << "completed!" << std::endl;
