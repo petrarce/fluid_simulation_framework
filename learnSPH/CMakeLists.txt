@@ -14,7 +14,7 @@ if( NOT EIGEN3_INCLUDE_DIR )
 endif()
 
 set(SOURCE_FILES
-	util/vtk_writer.cpp
+	vtk_writer.cpp
 	${CMAKE_SOURCE_DIR}/include/vtk_writer.h
 	kernel.cpp
 	${CMAKE_SOURCE_DIR}/include/kernel.h

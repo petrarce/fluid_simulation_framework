@@ -1,4 +1,65 @@
-#include <vtk_writer.h>
+#include "vtk_writer.h"
+
+void learnSPH::saveTriMeshToVTK(std::string path, const std::vector<Eigen::Vector3d>& vertices, const std::vector<std::array<int, 3>>& triangles)
+{
+	// Open the file
+	std::ofstream outfile(path, std::ios::binary);
+	if (!outfile) {
+		std::cout << "learnSPH error in saveTriMeshToVTK: Cannot open the file " << path << std::endl;
+		abort();
+	}
+
+	// Parameters
+	int n_particles = (int)vertices.size();
+	int n_triangles = (int)triangles.size();
+
+	// Header
+	outfile << "# vtk DataFile Version 4.2\n";
+	outfile << "\n";
+	outfile << "BINARY\n";
+	outfile << "DATASET UNSTRUCTURED_GRID\n";
+
+	// Vertices
+	{
+		outfile << "POINTS " << n_particles << " double\n";
+		std::vector<double> particles_to_write;
+		particles_to_write.reserve(3 * n_particles);
+		for (const Eigen::Vector3d& vertex : vertices) {
+			particles_to_write.push_back(vertex[0]);
+			particles_to_write.push_back(vertex[1]);
+			particles_to_write.push_back(vertex[2]);
+		}
+		swapBytesInplace<double>(&particles_to_write[0], (int)particles_to_write.size());
+		outfile.write(reinterpret_cast<char*>(&particles_to_write[0]), particles_to_write.size() * sizeof(double));
+		outfile << "\n";
+	}
+
+	// Connectivity
+	{
+		outfile << "CELLS " << n_triangles << " " << 4 * n_triangles << "\n";
+		std::vector<int> connectivity_to_write;
+		connectivity_to_write.reserve(4 * n_triangles);
+		for (int tri_i = 0; tri_i < n_triangles; tri_i++) {
+			connectivity_to_write.push_back(3);
+			connectivity_to_write.push_back(triangles[tri_i][0]);
+			connectivity_to_write.push_back(triangles[tri_i][1]);
+			connectivity_to_write.push_back(triangles[tri_i][2]);
+		}
+		swapBytesInplace<int>(&connectivity_to_write[0], (int)connectivity_to_write.size());
+		outfile.write(reinterpret_cast<char*>(&connectivity_to_write[0]), connectivity_to_write.size() * sizeof(int));
+		outfile << "\n";
+	}
+
+	// Cell types
+	{
+		outfile << "CELL_TYPES " << n_triangles << "\n";
+		int cell_type_swapped = 5;
+		swapBytesInplace<int>(&cell_type_swapped, 1);
+		std::vector<int> cell_type_arr(n_triangles, cell_type_swapped);
+		outfile.write(reinterpret_cast<char*>(&cell_type_arr[0]), cell_type_arr.size() * sizeof(int));
+		outfile << "\n";
+	}
+}
 
 void learnSPH::saveParticlesToVTK(std::string path, const std::vector<Eigen::Vector3d>& particles, const std::vector<double>& particle_scalar_data, const std::vector<Eigen::Vector3d>& particle_vector_data)
 {

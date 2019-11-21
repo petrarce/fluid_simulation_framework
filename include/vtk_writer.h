@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <array>
 #include <fstream>
 #include <iostream>
 
@@ -8,6 +9,7 @@
 namespace learnSPH
 {
 	void saveParticlesToVTK(std::string path, const std::vector<Eigen::Vector3d>& particles, const std::vector<double>& particle_scalar_data, const std::vector<Eigen::Vector3d>& particle_vector_data);
+	void saveTriMeshToVTK(std::string path, const std::vector<Eigen::Vector3d>& vertices, const std::vector<std::array<int, 3>>& triangles);
 
 	template<class T>
 	void swapBytesInplace(T* arr, const int size)
