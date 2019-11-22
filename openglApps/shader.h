@@ -92,4 +92,6 @@ public:
 		glUseProgram(this->prog_id);
 	};
 
+  unsigned int getId(){return prog_id;};
+
 };

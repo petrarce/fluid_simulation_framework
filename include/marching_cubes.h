@@ -1,8 +1,9 @@
 #pragma once
 #include <iostream>
-#include <types.hpp>
 #include <vector>
 #include <kernel.h>
+#include <types.hpp>
+
 
 using namespace learnSPH::kernel;
 
