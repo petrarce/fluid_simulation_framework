@@ -54,6 +54,7 @@ public:
   		if(!success){
   			glGetShaderInfoLog(vertex, 512, NULL, infoLog);
   			printf("VERTEX SHADER COMPILTION ERRORS: %s\n", infoLog);
+        exit(-1);
   			return;
   		}
 
@@ -64,6 +65,7 @@ public:
   		if(!success){
   			glGetShaderInfoLog(fragment, 512, NULL, infoLog);
   			printf("FRAGMENT SHADER COMPILTION ERRORS: %s\n", infoLog);
+        exit(-1);
   			return;
   		}
 
@@ -76,6 +78,7 @@ public:
   		if(!success){
   			glGetProgramInfoLog(this->prog_id, 512, NULL, infoLog);
    			printf("Falied to link final shaders: %s\n", infoLog);
+        exit(-1);
   			return;
  		}
 

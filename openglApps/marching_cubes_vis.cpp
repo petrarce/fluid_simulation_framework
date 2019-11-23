@@ -5,17 +5,22 @@
 #include <shader.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-
+#include <Eigen/Dense>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+using namespace glm;
 using namespace std;
 using namespace learnSPH;
+using namespace Eigen;
 
-
+int wiewWidth = 500, wiewHeight = 500;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
+    wiewWidth = width;
+    wiewHeight = height;
 }  
 
 void processInput(GLFWwindow* window)
@@ -29,16 +34,16 @@ int main(int argc, char** argv)
 {
 
 
-    assert(argc == 18);
-    Vector3R lower_corner = {stod(argv[1]), stod(argv[2]), stod(argv[3])};
-    Vector3R upper_corner = {stod(argv[4]), stod(argv[5]), stod(argv[6])};
-    Vector3R cubeResolution = {stod(argv[7]), stod(argv[8]), stod(argv[9])};
-    Vector3R sphereCenter = {stod(argv[10]), stod(argv[11]), stod(argv[12])};
-    Real sphereRadius = stod(argv[13]);
-    string shaders_dir = string(argv[14]);
-    string texturePath1 = string(argv[15]);
-    string texturePath2 = string(argv[16]);
-    Real textureMixRate = stod(argv[17]);
+    assert(argc == 6);
+    Vector3R lower_corner = {-1, -1, -1};
+    Vector3R upper_corner = {1, 1, 1};
+    Vector3R cubeResolution = {0.1, 0.1, 0.1};
+    Vector3R sphereCenter = {0, 0, 0};
+    Real sphereRadius = 0.5;
+    string shaders_dir = string(argv[1]);
+    string texturePath1 = string(argv[2]);
+    string texturePath2 = string(argv[3]);
+    Real textureMixRate = stod(argv[4]);
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -46,7 +51,7 @@ int main(int argc, char** argv)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   
-    GLFWwindow* window = glfwCreateWindow(500, 500, "tutorial 1", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(wiewWidth, wiewHeight, "tutorial 1", NULL, NULL);
     if(window == NULL){
     	cout << "failed to create glfw window" << endl;
     	glfwTerminate();
@@ -83,15 +88,6 @@ int main(int argc, char** argv)
         data_array.push_back((pt(0) + 1)/2);
         data_array.push_back((pt(1) + 1)/2);
     }
-/*
-    data_array = {  -0.5,       -0.5,   0, 0, 0,
-                    -0.5,       0.5,    0, 0, 1,
-                    0.5,        0.5,    0, 1, 1,
-                    -0.5,       -0.5,   0, 0, 0,
-                    0.5,        0.5,    0, 1, 1,
-                    0.5,        -0.5,   0, 1, 0
-            };
-*/
 
     unsigned int VBO, VAO;//, EBO;
 
@@ -141,8 +137,8 @@ int main(int argc, char** argv)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);   // set texture wrapping to GL_REPEAT (default wrapping method)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     // set texture filtering parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
     stbi_set_flip_vertically_on_load(true);      
     texData = stbi_load(texturePath2.c_str(), &wdth, &hgh, &nchan, 0);
     if(!texData){
@@ -155,30 +151,84 @@ int main(int argc, char** argv)
     stbi_image_free(texData);
 
     myShaiders.use();
+    Matrix4d transformationMatr = Matrix4d::Identity();
+    mat4 scl    = scale(mat4(1), vec3(1, 1, 1));
+    mat4 rot;
+    mat4 transformMatr;
     glUniform1i(glGetUniformLocation(myShaiders.getId(), "texture1"), 0);
     glUniform1i(glGetUniformLocation(myShaiders.getId(), "texture2"), 1);
     glUniform1f(glGetUniformLocation(myShaiders.getId(), "textureMixRate"), textureMixRate);
+    glEnable(GL_DEPTH_TEST);
+
     //unbind VAO and VBO
 	glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    float grad = 0;
+    int i = 0;
+    glfwSetTime(0);
+    int frames = 0;
     while(!glfwWindowShouldClose(window)){
+        i++;
+        frames++;
     	processInput(window);
 
     	glClearColor( 	0, 0, 0, 0.3);
     	glClear(GL_COLOR_BUFFER_BIT);
-
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         //glBindTexture(GL_TEXTURE_2D, texture);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture1);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, texture2);
-    	myShaiders.use();
-    	glBindVertexArray(VAO);
-    	glDrawArrays(GL_TRIANGLES, 0, triangle_mesh.size());
+        glBindVertexArray(VAO);
+
+        myShaiders.use();
+
+        mat4 view = lookAt(vec3(0,0,3+1*sin(radians(float(i)))), vec3(0,0,0), vec3(0,1,0));
+        glUniformMatrix4fv(glGetUniformLocation(myShaiders.getId(), "view"), 
+                            1, 
+                            GL_FALSE, 
+                            (float*)&view);
+        mat4 proj = perspective(radians(45.0f), float(wiewWidth)/wiewHeight, 0.1f, 100.0f);
+        glUniformMatrix4fv(glGetUniformLocation(myShaiders.getId(), "perspective"), 
+                            1, 
+                            GL_FALSE, 
+                            (float*)&proj);
+        grad = int(grad + 1)%360;
+        rot    = rotate(mat4(1), radians(grad), vec3(1,1,1));
+        mat4 trans;
+/*
+        trans = translate(mat4(1.0f), vec3(0,0,0));
+        transformMatr = trans * (scl * rot);
+        glUniformMatrix4fv(glGetUniformLocation(myShaiders.getId(), "transform"), 
+                            1, 
+                            GL_FALSE, 
+                            (float*)&transformMatr);
+        glDrawArrays(GL_TRIANGLES, 0, triangle_mesh.size());
+
+*/
+       int maxObj = stoi(argv[5]);
+        for(int j = 0; j < sqrt(maxObj); j++){
+            for(int k = 0; k < sqrt(maxObj); k++){
+                trans = translate(mat4(1.0f), vec3(j/sqrt(maxObj),k/sqrt(maxObj),0));
+                transformMatr = trans * (scl * rot);
+                glUniformMatrix4fv(glGetUniformLocation(myShaiders.getId(), "transform"), 
+                                    1, 
+                                    GL_FALSE, 
+                                    (float*)&transformMatr);
+                glDrawArrays(GL_TRIANGLES, 0, triangle_mesh.size());
+            }
+        }
+
 
     	glfwPollEvents();
     	glfwSwapBuffers(window);
+        if(glfwGetTime() > 1){
+            pr_dbg("frame rate: %d fps", frames);
+            glfwSetTime(0);
+            frames = 0;
+        }
     }
 
     glfwTerminate();
