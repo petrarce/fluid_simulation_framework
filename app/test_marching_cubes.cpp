@@ -29,8 +29,8 @@ int main(int argc, char** argv)
 	MarchingCubes mcb;
 	mcb.init(lower_corner, upper_corner, cubeResolution);
 
-	Sphere sphr(sphereRadius, sphereCenter);
-	Thorus thr(sphereRadius, 0.5*sphereRadius, sphereCenter);
+	Sphere sphr(sphereRadius, sphereCenter, lower_corner, upper_corner, cubeResolution);
+	Thorus thr(sphereRadius, 0.5*sphereRadius, sphereCenter, lower_corner, upper_corner, cubeResolution);
 
 	vector<Vector3R> triangle_mesh;
 	mcb.setObject(&sphr);
