@@ -18,8 +18,6 @@ set(SOURCE_FILES
 	${CMAKE_SOURCE_DIR}/include/vtk_writer.h
 	kernel.cpp
 	${CMAKE_SOURCE_DIR}/include/kernel.h
-	NBsearch.cpp
-	${CMAKE_SOURCE_DIR}/include/NBsearch.hpp
 	${CMAKE_SOURCE_DIR}/include/types.hpp
 	${CMAKE_SOURCE_DIR}/include/storage.h
 	${CMAKE_SOURCE_DIR}/include/particle_sampler.h
