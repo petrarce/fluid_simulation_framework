@@ -1,5 +1,5 @@
 #pragma once
-#include <data_set.h>
+#include <storage.h>
 
 using namespace std;
 
@@ -23,7 +23,7 @@ namespace learnSPH{
 	 *		restDensity			- rest density for the fluid (assumed as constant among all particles)
 	 *		samplingDistance	- distance between the centers of each two adjacent particles
 	 */
-	NormalPartDataSet* sample_fluid_cube(const Vector3R& upperCorner, const Vector3R& lowerCorner, const Real restDensity, const Real samplingDistance);
+	FluidSystem* sample_fluid_cube(const Vector3R& lowerCorner, const Vector3R& upperCorner, const Real restDensity, const Real samplingDistance, const Real eta);
 	/*
 	 *	samples border particles on the faces of a cube
 	 *	Args:
@@ -32,6 +32,7 @@ namespace learnSPH{
 	 *		restDensity			- rest density for the border (assumed as constant among all particles)
 	 *		samplingDistance	- distance between the centers of each two adjacent particles
 	 *		hexagonal			- whether to employ hexagonal patterns when sampling the particles (default: false)
+	 *		diameter			- particle diameter for the border (assumed as constant among all particles)
 	 */
-	BorderPartDataSet* sample_border_box(const Vector3R& upperCorner, const Vector3R& lowerCorner, const Real restDensity, const Real samplingDistance, bool hexagonal = false);
+	BorderSystem* sample_border_box(const Vector3R& lowerCorner, const Vector3R& upperCorner, const Real restDensity, const Real samplingDistance, const Real eta, const bool hexagonal);
 };

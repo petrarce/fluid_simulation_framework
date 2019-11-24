@@ -14,18 +14,17 @@ if( NOT EIGEN3_INCLUDE_DIR )
 endif()
 
 set(SOURCE_FILES
-	util/vtk_writer.cpp
+	vtk_writer.cpp
 	${CMAKE_SOURCE_DIR}/include/vtk_writer.h
 	kernel.cpp
 	${CMAKE_SOURCE_DIR}/include/kernel.h
-	NBsearch.cpp
-	${CMAKE_SOURCE_DIR}/include/NBsearch.hpp
 	${CMAKE_SOURCE_DIR}/include/types.hpp
-	${CMAKE_SOURCE_DIR}/include/data_set.h
+	${CMAKE_SOURCE_DIR}/include/storage.h
 	${CMAKE_SOURCE_DIR}/include/particle_sampler.h
 	${CMAKE_SOURCE_DIR}/include/solver.h
 	${CMAKE_SOURCE_DIR}/include/marching_cubes.h
 	${CMAKE_SOURCE_DIR}/include/triangle_table.h
+	${CMAKE_SOURCE_DIR}/include/marching_cubes_lut.hpp
 	particle_sampler.cpp
 	solver.cpp
 	marching_cubes.cpp)

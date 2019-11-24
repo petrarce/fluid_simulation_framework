@@ -6,7 +6,7 @@
 #include <math.h>
 
 #include <Eigen/Dense>
-#include <data_set.h>
+#include <storage.h>
 #include <types.hpp>
 #include <particle_sampler.h>
 #include <CompactNSearch>
@@ -18,63 +18,68 @@
 using namespace CompactNSearch;
 using namespace learnSPH;
 
+
 int main(int argc, char** argv)
 {
 	assert(argc == 22);
 	std::cout << "Welcome to the learnSPH framework!!" << std::endl;
 	std::cout << "Generating test sample for Assignment 2...";
 
-	Vector3R upper_corner_fluid = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
-	Vector3R lower_corner_fluid = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
-	Vector3R upper_corner_box = {stod(argv[7]),stod(argv[8]),stod(argv[9])};
-	Vector3R lover_corner_box = {stod(argv[10]),stod(argv[11]),stod(argv[12])};
+	Vector3R lower_corner_fluid = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
+	Vector3R upper_corner_fluid = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
+
+	Vector3R lower_corner_box = {stod(argv[7]),stod(argv[8]),stod(argv[9])};
+	Vector3R upper_corner_box = {stod(argv[10]),stod(argv[11]),stod(argv[12])};
+
+	auto box_center = (lower_corner_box + upper_corner_box) / 2.0;
+	auto max_shift = (box_center - lower_corner_box).norm() * 1.2;
+
 	Real sampling_distance = stod(argv[13]);
-	Real compactSupportFactor = stod(argv[14]);
-	Real preasureStiffness = stod(argv[15]);
+	Real eta = stod(argv[14]);
+	Real stiffness = stod(argv[15]);
 	Real viscosity = stod(argv[16]);
 	Real friction = stod(argv[17]);
-	bool with_smoothing = stoi(argv[18]);
-	Real render_step = (stod(argv[19])); // time frame
-	Real simulateDuration = (stod(argv[20])); // duration of the simulation
-	string expName = argv[21]; // name of experience
+	bool do_velo_smooth = stoi(argv[18]);
+	Real render_step = (stod(argv[19]));
+	Real sim_duration = (stod(argv[20]));
+	string sim_name = argv[21];
 
-	NormalPartDataSet* fluidParticles = sample_fluid_cube(upper_corner_fluid, lower_corner_fluid, 1000, sampling_distance);
+	FluidSystem* fluidParticles = sample_fluid_cube(lower_corner_fluid, upper_corner_fluid, 1000.0, sampling_distance, eta);
 
-	fluidParticles->setCompactSupportFactor(compactSupportFactor);
+	cout << "Number of fluid particles: " << fluidParticles->size() << endl;
+
+	BorderSystem* borderParticles = sample_border_box(lower_corner_box, upper_corner_box, 3000.0, sampling_distance * 0.5, eta * 0.5, true);
+
+	cout << "Number of border particles: " << borderParticles->size() << endl;
 
 	NeighborhoodSearch ns(fluidParticles->getCompactSupport());
 
-	auto fluidPointSet = ns.add_point_set((Real*)(fluidParticles->getParticlePositions().data()), fluidParticles->getNumberOfParticles(), true);
+	ns.add_point_set((Real*)(fluidParticles->getPositions().data()), fluidParticles->size(), true);
 
-	cout << "Number of fluid particles: " << fluidParticles->getNumberOfParticles() << endl;
+	ns.add_point_set((Real*)borderParticles->getPositions().data(), borderParticles->size(), false);
 
-	BorderPartDataSet* borderParticles = sample_border_box(lover_corner_box, upper_corner_box, 3000, sampling_distance * 0.5, true);
+	vector<vector<vector<unsigned int> > > neighbors;
 
-	cout << "Number of border particles: " << borderParticles->getNumberOfParticles() << endl;
-
-	ns.add_point_set((Real*)borderParticles->getParticlePositions().data(), borderParticles->getNumberOfParticles(), false);
-
-	vector<vector<vector<unsigned int>>> particleNeighbors;
-
-	particleNeighbors.resize(fluidParticles->getNumberOfParticles());
+	neighbors.resize(fluidParticles->size());
 
 	const Vector3R gravity(0.0, -9.7, 0.0);
 
 	vector<Vector3R>& particleForces = fluidParticles->getExternalForces();
 
-	for(unsigned int i = 0; i < particleForces.size(); i++) particleForces[i] = fluidParticles->getParticleMass() * gravity;
+	for(unsigned int i = 0; i < particleForces.size(); i++) particleForces[i] = fluidParticles->getMass() * gravity;
 
-	unsigned int nsamples = int(simulateDuration / render_step);
+	unsigned int nsamples = int(sim_duration / render_step);
 
-	cout << "Duration: " << simulateDuration << endl;
+	cout << "Diameter: " << fluidParticles->getDiameter() << endl;
+	cout << "Duration: " << sim_duration << endl;
 	cout << "Default time step: "<< render_step << endl;
-	cout << "number of frames: "<< simulateDuration / render_step << endl;
+	cout << "number of frames: "<< sim_duration / render_step << endl;
 
 	string filename = "res/assignment2/border.vtk";
 
-	vector<Vector3R> dummyVector(borderParticles->getNumberOfParticles());
+	vector<Vector3R> dummyVector(borderParticles->size());
 
-	learnSPH::saveParticlesToVTK(filename, borderParticles->getParticlePositions(), borderParticles->getParticleVolume(), dummyVector);
+	learnSPH::saveParticlesToVTK(filename, borderParticles->getPositions(), borderParticles->getVolumes(), dummyVector);
 
 	for (unsigned int t = 0; t < nsamples; t++) {
 
@@ -85,35 +90,38 @@ int main(int argc, char** argv)
 		while (timeSimulation < 1) {
 			ns.update_point_sets();
 
-			for(int i = 0; i < fluidParticles->getNumberOfParticles(); i++) ns.find_neighbors(fluidPointSet, i, particleNeighbors[i]);
+			for(int i = 0; i < fluidParticles->size(); i++) ns.find_neighbors(0, i, neighbors[i]);
 
-			learnSPH::calculate_dencities(fluidParticles, borderParticles, particleNeighbors, fluidParticles->getSmoothingLength());
+			learnSPH::calculate_dencities(fluidParticles, borderParticles, neighbors, fluidParticles->getSmoothingLength());
 
 
-			vector<Vector3R> fluidParticlesAccelerations(fluidParticles->getNumberOfParticles(), gravity);
+			vector<Vector3R> accelerations(fluidParticles->size(), gravity);
 
 			learnSPH::calculate_acceleration(
-											fluidParticlesAccelerations,
+											accelerations,
 											fluidParticles,
 											borderParticles,
-											particleNeighbors,
+											neighbors,
 											viscosity,
 											friction,
-											preasureStiffness,
+											stiffness,
 											fluidParticles->getSmoothingLength());
 
-			Real velocityCap = 300.0;
-			Real vMaxNorm = 0;
-			auto fluidParticlesVelocity = fluidParticles->getParticleVelocities().data();
+			Real vMaxNorm = 0.0;
 
-			for (int iVelo = 0; iVelo < fluidParticles->getNumberOfParticles(); iVelo++) vMaxNorm = max(fluidParticlesVelocity[iVelo].norm(), vMaxNorm);
+			vector<bool> &fluidActiveness = fluidParticles->getActiveness();
 
-			vMaxNorm = min(vMaxNorm, velocityCap);
+			vector<Vector3R> &fluidVelocities = fluidParticles->getVelocities();
 
-			Real logic_step_upper_bound = 0.5 * (fluidParticles->getParticleDiameter() / vMaxNorm);
+			for (int i = 0; i < fluidParticles->size(); i++) if (fluidActiveness[i]) vMaxNorm = max(fluidVelocities[i].norm(), vMaxNorm);
+
+			Real logic_step_upper_bound = 0.5 * (fluidParticles->getDiameter() / vMaxNorm);
+
+			cout << "\t| vMaxNorm: " << vMaxNorm << " | CFL-Step: " << logic_step_upper_bound << endl;
+
 			Real logic_time_step;
 
-			if (timeSimulation * render_step + logic_step_upper_bound >= render_step){
+			if (timeSimulation * render_step + logic_step_upper_bound >= render_step) {
 				logic_time_step = (1 - timeSimulation) * render_step;
 				timeSimulation = 1;
 			} else {
@@ -121,24 +129,33 @@ int main(int argc, char** argv)
 				timeSimulation += logic_time_step / render_step;
 			}
 
-			if (!with_smoothing) {
-				learnSPH::symplectic_euler(fluidParticlesAccelerations, fluidParticles, logic_time_step);
-			} else {
-				learnSPH::smooth_symplectic_euler(
-												fluidParticlesAccelerations,
-												fluidParticles,
-												particleNeighbors,
-												0.5,
-												logic_time_step,
-												fluidParticles->getSmoothingLength());
+			if (!do_velo_smooth)
+				learnSPH::symplectic_euler(accelerations, fluidParticles, logic_time_step);
+			else
+				learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, neighbors, 0.5, logic_time_step, fluidParticles->getSmoothingLength());
+
+			Real velocityCap = 50.0;
+
+			vector<Vector3R> &fluidPositions = fluidParticles->getPositions();
+
+			for (int i = 0; i < fluidParticles->size(); i++) {
+
+				if (!fluidActiveness[i])
+					continue;
+
+				if (fluidVelocities[i].norm() > velocityCap)
+					fluidVelocities[i] = velocityCap * fluidVelocities[i].normalized();
+
+				if ((fluidPositions[i] - box_center).norm() > max_shift)
+					fluidActiveness[i] = false;
 			}
 			physical_steps++;
 		}
-		cout << "[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "]" << endl;
+		cout << "\n[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "]" << endl;
 
-		string filename = "res/assignment2/" + expName + '_' + std::to_string(t) + ".vtk";
+		string filename = "res/assignment2/" + sim_name + '_' + std::to_string(t) + ".vtk";
 
-		learnSPH::saveParticlesToVTK(filename, fluidParticles->getParticlePositions(), fluidParticles->getParticleDencities(), fluidParticles->getParticleVelocities());
+		learnSPH::saveParticlesToVTK(filename, fluidParticles->getPositions(), fluidParticles->getDensities(), fluidParticles->getVelocities());
 	}
 	delete fluidParticles;
 	std::cout << "completed!" << std::endl;
