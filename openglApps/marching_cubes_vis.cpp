@@ -3,8 +3,7 @@
 #include <iostream>
 #include <marching_cubes.h>
 #include <shader.h>
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include <texture.hpp>
 #include <Eigen/Dense>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -16,6 +15,9 @@ using namespace learnSPH;
 using namespace Eigen;
 
 int wiewWidth = 500, wiewHeight = 500;
+float curAngle1 = 0;
+float curAngle2 = 0;
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
@@ -27,7 +29,15 @@ void processInput(GLFWwindow* window)
 {
 	if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
 		glfwSetWindowShouldClose(window, true);
-	}
+	} else if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
+        curAngle1  += 1*radians(3.);
+    } else if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
+        curAngle2  += -1*radians(3.);
+    } else if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
+        curAngle1  += -1*radians(3.);
+    } else if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
+        curAngle2  += +1*radians(3.);
+    } 
 }
 
 int main(int argc, char** argv)
@@ -37,7 +47,7 @@ int main(int argc, char** argv)
     assert(argc == 6);
     Vector3R lower_corner = {-1, -1, -1};
     Vector3R upper_corner = {1, 1, 1};
-    Vector3R cubeResolution = {0.1, 0.1, 0.1};
+    Vector3R cubeResolution = {0.5, 0.5, 0.5};
     Vector3R sphereCenter = {0, 0, 0};
     Real sphereRadius = 0.5;
     string shaders_dir = string(argv[1]);
@@ -74,10 +84,10 @@ int main(int argc, char** argv)
 
     vector<Real> data_array;
     vector<Vector3R> triangle_mesh;
-    Thorus sphr(sphereRadius, sphereRadius/2, sphereCenter);
+    Thorus thr(sphereRadius, 0.5*sphereRadius, sphereCenter, lower_corner, upper_corner, cubeResolution);;
     MarchingCubes mcb;
     mcb.init(lower_corner, upper_corner, cubeResolution);
-    mcb.setObject(&sphr);
+    mcb.setObject(&thr);
     mcb.getTriangleMesh(triangle_mesh);
 
     for(const Vector3R& pt : triangle_mesh)
@@ -110,46 +120,9 @@ int main(int argc, char** argv)
     glVertexAttribPointer(1, 2, GL_DOUBLE, GL_FALSE, stride, (void*)(sizeof(data_array[0])*3));
     glEnableVertexAttribArray(1);
 
-    unsigned int texture1, texture2;
-    glGenTextures(1, &texture1);
-    //glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-
-    int wdth, hgh, nchan;
-    uint8_t* texData = stbi_load(texturePath1.c_str(), &wdth, &hgh, &nchan, 0);
-    if(!texData){
-        printf("failed to load texture image");
-        return -1;
-    } else {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, wdth, hgh, 0, GL_RGB, GL_UNSIGNED_BYTE, texData);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    stbi_image_free(texData);
-
-    glGenTextures(1, &texture2);
-    //glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, texture2);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);   // set texture wrapping to GL_REPEAT (default wrapping method)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    // set texture filtering parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
-    stbi_set_flip_vertically_on_load(true);      
-    texData = stbi_load(texturePath2.c_str(), &wdth, &hgh, &nchan, 0);
-    if(!texData){
-        printf("failed to load texture image");
-        return -1;
-    } else {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, wdth, hgh, 0, GL_RGBA, GL_UNSIGNED_BYTE, texData);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    stbi_image_free(texData);
-
+    texture tex1(texturePath1, GL_TEXTURE_2D, GL_REPEAT, GL_LINEAR, GL_RGB, GL_RGB);
+    texture tex2(texturePath2, GL_TEXTURE_2D, GL_REPEAT, GL_NEAREST, GL_RGBA, GL_RGBA);
     myShaiders.use();
     Matrix4d transformationMatr = Matrix4d::Identity();
     mat4 scl    = scale(mat4(1), vec3(1, 1, 1));
@@ -178,9 +151,9 @@ int main(int argc, char** argv)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         //glBindTexture(GL_TEXTURE_2D, texture);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture1);
+        tex1.use();
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texture2);
+        tex2.use();
         glBindVertexArray(VAO);
 
         myShaiders.use();
@@ -196,27 +169,18 @@ int main(int argc, char** argv)
                             GL_FALSE, 
                             (float*)&proj);
         grad = int(grad + 1)%360;
-        rot    = rotate(mat4(1), radians(grad), vec3(1,1,1));
-        mat4 trans;
-/*
-        trans = translate(mat4(1.0f), vec3(0,0,0));
-        transformMatr = trans * (scl * rot);
-        glUniformMatrix4fv(glGetUniformLocation(myShaiders.getId(), "transform"), 
-                            1, 
-                            GL_FALSE, 
-                            (float*)&transformMatr);
-        glDrawArrays(GL_TRIANGLES, 0, triangle_mesh.size());
+        auto axisW = vec3(1, 0, 0);
+        auto axisS = vec3(0, 1, 0);
+        rot = rotate(mat4(1), curAngle1, axisW) * rotate(mat4(1), curAngle2, axisS);
 
-*/
        int maxObj = stoi(argv[5]);
         for(int j = 0; j < sqrt(maxObj); j++){
             for(int k = 0; k < sqrt(maxObj); k++){
-                trans = translate(mat4(1.0f), vec3(j/sqrt(maxObj),k/sqrt(maxObj),0));
-                transformMatr = trans * (scl * rot);
-                glUniformMatrix4fv(glGetUniformLocation(myShaiders.getId(), "transform"), 
+                auto trans = translate(mat4(1.0f), vec3(j/sqrt(maxObj),k/sqrt(maxObj),0))*rot;
+                glUniformMatrix4fv(glGetUniformLocation(myShaiders.getId(), "world"), 
                                     1, 
                                     GL_FALSE, 
-                                    (float*)&transformMatr);
+                                    (float*)&trans);
                 glDrawArrays(GL_TRIANGLES, 0, triangle_mesh.size());
             }
         }

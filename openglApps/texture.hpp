@@ -17,11 +17,12 @@ private:
 	GLint texFilter;
 	GLint texNumColorComp;
 	GLenum texFormat;
+	GLenum texBinding;
 public:
 	opcode setTexBehaviout(GLint texBehaviour)
 	{
 		unsigned int curBoundTexture;
-		glGetIntegerv(texType, (int*)&curBoundTexture);
+		glGetIntegerv(texBinding, (int*)&curBoundTexture);
 		glBindTexture(texType, this->texId);
 		this->texBehaviour = texBehaviour;
 	    glTexParameteri(texType, GL_TEXTURE_WRAP_S, texBehaviour);
@@ -33,7 +34,7 @@ public:
 	opcode setTexFilter(GLint texFilter)
 	{
 		unsigned int curBoundTexture;
-		glGetIntegerv(texType, (int*)&curBoundTexture);
+		glGetIntegerv(texBinding, (int*)&curBoundTexture);
 		glBindTexture(texType, this->texId);
 		this->texFilter = texFilter;
 	    glTexParameteri(texType, GL_TEXTURE_MIN_FILTER, texFilter);
@@ -60,11 +61,23 @@ public:
 				texNumColorComp(texNumColorComp),
 				texFormat(texFormat)	
 	{
+
 	    glGenTextures(1, &this->texId);
 	    glBindTexture(texType, this->texId);
-		setTexBehaviout(texBehaviour);
+	    switch(texType){
+	    	case GL_TEXTURE_2D:
+	    		texBinding = GL_TEXTURE_BINDING_2D;
+	    		break;
+	    	default:
+	    		exit(-1);
+	    		break;
+	    }
+	    //glTexParameteri(texType, GL_TEXTURE_WRAP_S, texBehaviour);
+	    //glTexParameteri(texType, GL_TEXTURE_WRAP_T, texBehaviour);
+	    setTexBehaviout(texBehaviour);
+	    //glTexParameteri(texType, GL_TEXTURE_MIN_FILTER, texFilter);
+	    //glTexParameteri(texType, GL_TEXTURE_MAG_FILTER, texFilter);
 	    setTexFilter(texFilter);
-	    
 	    int wdth, hgh, nchan;
 	    uint8_t* texData = stbi_load(pathToTexture.c_str(), &wdth, &hgh, &nchan, 0);
 	    if(!texData){
