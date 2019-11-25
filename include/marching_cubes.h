@@ -195,9 +195,12 @@ class GeneralShape : public Object3D{
                 neighbors.clear();
                 ns.find_neighbors(particleSetID, particleID, neighbors);
                 for(unsigned int gridPointID: neighbors[verticeSetID]){
+//                    gridPointImplicitFuncs[gridPointID] += fluidParticles->getMass()/
+//                            fluidParticles->getDensities()[particleID] *
+//                            kernelFunction(gridPointPositions[gridPointID], fluidParticles->getPositions()[particleID], fluidParticles->getCompactSupport());
                     gridPointImplicitFuncs[gridPointID] += fluidParticles->getMass()/
-                            fluidParticles->getDensities()[particleID] *
-                            kernelFunction(gridPointPositions[gridPointID], fluidParticles->getPositions()[particleID], fluidParticles->getCompactSupport());
+                                                           fluidParticles->getRestDensity() *
+                                                           kernelFunction(gridPointPositions[gridPointID], fluidParticles->getPositions()[particleID], fluidParticles->getCompactSupport());
                 }
 
             }
