@@ -23,8 +23,7 @@ set(SOURCE_FILES
 	${CMAKE_SOURCE_DIR}/include/particle_sampler.h
 	${CMAKE_SOURCE_DIR}/include/solver.h
 	${CMAKE_SOURCE_DIR}/include/marching_cubes.h
-	${CMAKE_SOURCE_DIR}/include/triangle_table.h
-	${CMAKE_SOURCE_DIR}/include/marching_cubes_lut.hpp
+	${CMAKE_SOURCE_DIR}/include/look_up_tables.hpp
 	particle_sampler.cpp
 	solver.cpp
 	marching_cubes.cpp)

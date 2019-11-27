@@ -111,14 +111,14 @@ int main(int argc, char** argv)
             vector<Vector3R> accelerations(fluidParticles->size(), gravity);
 
             learnSPH::calculate_acceleration(
-                    accelerations,
-                    fluidParticles,
-                    borderParticles,
-                    neighbors,
-                    viscosity,
-                    friction,
-                    stiffness,
-                    fluidParticles->getSmoothingLength());
+                                            accelerations,
+                                            fluidParticles,
+                                            borderParticles,
+                                            neighbors,
+                                            viscosity,
+                                            friction,
+                                            stiffness,
+                                            fluidParticles->getSmoothingLength());
 
             Real vMaxNorm = 0.0;
 
@@ -129,8 +129,6 @@ int main(int argc, char** argv)
             for (int i = 0; i < fluidParticles->size(); i++) if (fluidActiveness[i]) vMaxNorm = max(fluidVelocities[i].norm(), vMaxNorm);
 
             Real logic_step_upper_bound = 0.5 * (fluidParticles->getDiameter() / vMaxNorm);
-
-//            cout << "\t| vMaxNorm: " << vMaxNorm << " | CFL-Step: " << logic_step_upper_bound << endl;
 
             Real logic_time_step;
 
@@ -170,7 +168,7 @@ int main(int argc, char** argv)
 
         learnSPH::saveParticlesToVTK(filename, fluidParticles->getPositions(), fluidParticles->getDensities(), fluidParticles->getVelocities());
 
-        GeneralShape fluidObject( fluidParticles, initValue, lower_corner_grid, upper_corner_grid, cubeResolution);
+        GeneralShape fluidObject(fluidParticles, initValue, lower_corner_grid, upper_corner_grid, cubeResolution);
         mcb.setObject(&fluidObject);
 
         triangle_mesh.clear();
@@ -181,9 +179,6 @@ int main(int argc, char** argv)
 
         std::string surface_filename = "res/assignment3/" + sim_name + "_surface" + std::to_string(t) + ".vtk";
         learnSPH::saveTriMeshToVTK(surface_filename, triangle_mesh, triangles);
-
-
-
     }
     delete fluidParticles;
     std::cout << "completed!" << std::endl;

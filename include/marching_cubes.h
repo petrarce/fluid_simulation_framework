@@ -19,38 +19,38 @@ class Object3D
         vector<Vector3R> gridPointPositions;
 
         Vector3R alignedCuberResolution;
-        bool objectDefined=false;
+        bool objectDefined = false;
+
 	public:
         size_t cubesX, cubesY, cubesZ;
-//		virtual bool query(const Vector3R&, Real& intVal) const = 0;
-		
-//		virtual Vector3R lerp(const Vector3R&, const Real, const Vector3R&, const Real) const = 0;
 
-        bool query(const size_t x, const size_t y, const size_t z) const{
+        bool query(const size_t x, const size_t y, const size_t z) const
+        {
             assert(objectDefined);
-            return (gridPointImplicitFuncs[x*cubesY*cubesZ + y*cubesZ + z] < 0);
+            return (gridPointImplicitFuncs[x * cubesY * cubesZ + y * cubesZ + z] < 0);
         }
 
-        Vector3R interpolate(const size_t x1, const size_t y1, const size_t z1,
-                             const size_t x2, const size_t y2, const size_t z2) const{
+        Vector3R interpolate(const size_t x1, const size_t y1, const size_t z1, const size_t x2, const size_t y2, const size_t z2) const
+        {
             assert(objectDefined);
-            Vector3R pt1 = gridPointPositions[x1*cubesY*cubesZ + y1*cubesZ + z1];
-            Vector3R pt2 = gridPointPositions[x2*cubesY*cubesZ + y2*cubesZ + z2];
-            Real val1 = gridPointImplicitFuncs[x1*cubesY*cubesZ + y1*cubesZ + z1];
-            Real val2 = gridPointImplicitFuncs[x2*cubesY*cubesZ + y2*cubesZ + z2];
+            
+            Vector3R pt1 = gridPointPositions[x1 * cubesY * cubesZ + y1 * cubesZ + z1];
+            Vector3R pt2 = gridPointPositions[x2 * cubesY * cubesZ + y2 * cubesZ + z2];
+
+            Real val1 = gridPointImplicitFuncs[x1 * cubesY * cubesZ + y1 * cubesZ + z1];
+            Real val2 = gridPointImplicitFuncs[x2 * cubesY * cubesZ + y2 * cubesZ + z2];
+            
             Vector3R distVec = (pt1 - pt2);
 
-//            Real relation = fabs(val2) / (fabs(val1) + fabs(val2));
             Real relation = val1 / (-val2 + val1);
 
-            if (relation <0 || relation > 1) std::cout<<relation<<std::endl;
-//            assert(relation>=0 && relation<=1);
-            return pt1*(1-relation) + pt2*relation;
-//            return pt2 + distVec * relation;
+            assert(0.0 <= relation && relation <= 1.0);
+
+            return pt1 * (1.0 - relation) + pt2 * relation;
         }
 
-		Object3D(const Vector3R& loverCorner, const Vector3R& upperCorner, const Vector3R& cbResol):
-		spaceLowerCorner(loverCorner), spaceUpperCorner(upperCorner), cubesResolution(cbResol){
+		Object3D(const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol):spaceLowerCorner(lCorner), spaceUpperCorner(uCorner), cubesResolution(cbResol)
+        {
             Vector3R distVec = spaceUpperCorner - spaceLowerCorner;
 
             alignedCuberResolution(0) = distVec(0) / (int(distVec(0) / this->cubesResolution(0)) + 1);
@@ -89,32 +89,15 @@ class Sphere : public Object3D
 		Vector3R center;
 
 	public:
-//		virtual bool query(const Vector3R& pt, Real& intVal) const
-//		{
-//		    intVal = (center - pt).squaredNorm() - radius * radius;
-//			return intVal < 0;
-//		};
-
-
-		virtual Vector3R lerp(const Vector3R& pt1, const Real val1, const Vector3R& pt2, const Real val2) const
-		{
-			Vector3R distVec = (pt1 - pt2);
-
-			Real relation = fabs(val2) / (fabs(val1) + fabs(val2));
-
-			return pt2 + distVec * relation;
-		};
-
-		Sphere(const Real rad, const Vector3R& cntr, const Vector3R& loverCorner,
-		        const Vector3R& upperCorner, const Vector3R& cbResol):
-		        radius(rad), center(cntr),  Object3D(loverCorner, upperCorner, cbResol){
-
+		Sphere(const Real rad, const Vector3R& cntr, const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol):radius(rad), center(cntr), Object3D(lCorner, uCorner, cbResol)
+        {
             Vector3R curCubePosition = this->spaceLowerCorner;
+
             for(size_t i = 0; i < cubesX; i++) {
                 for (size_t j = 0; j < cubesY; j++) {
                     for (size_t k = 0; k < cubesZ; k++) {
 
-                        curCubePosition = gridPointPositions[i*cubesY*cubesZ + j*cubesZ + k];
+                        curCubePosition = gridPointPositions[i * cubesY * cubesZ + j * cubesZ + k];
                         gridPointImplicitFuncs.push_back((center - curCubePosition).squaredNorm() - radius * radius);
                     }
                 }
@@ -128,41 +111,22 @@ class Sphere : public Object3D
 class Thorus : public Object3D
 {
 	protected:
-		Real rMaj;
-		Real rMin;
+		Real r_a;
+		Real r_b;
 		Vector3R center;
 
 	public:
-//		virtual bool query(const Vector3R& pt, Real& intVal) const
-//		{
-//			Vector3R posVec = pt - center;
-//
-//			intVal = pow2(rMin) - pow2(sqrt(pow2(posVec(0)) + pow2(posVec(1))) - rMaj) - pow2(posVec(2));
-//
-//			return intVal < 0;
-//		};
-
-		virtual Vector3R lerp(const Vector3R& pt1, const Real val1, const Vector3R& pt2, const Real val2) const
-		{
-			Vector3R distVec = (pt1 - pt2);
-
-			Real relation = fabs(val2) / (fabs(val1) + fabs(val2));
-
-			return pt2 + distVec * relation;
-		};
-
-		Thorus(Real rmj, Real rmn, Vector3R cntr, const Vector3R& loverCorner,
-               const Vector3R& upperCorner, const Vector3R& cbResol):
-               rMaj(rmj), rMin(rmn), center(cntr),  Object3D(loverCorner, upperCorner, cbResol){
-
+		Thorus(Real r_A, Real r_B, Vector3R cntr, const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol):r_a(r_A), r_b(r_B), center(cntr), Object3D(lCorner, uCorner, cbResol)
+        {
 		    Vector3R curCubePosition = this->spaceLowerCorner;
+
             for(size_t i = 0; i < cubesX; i++) {
                 for (size_t j = 0; j < cubesY; j++) {
                     for (size_t k = 0; k < cubesZ; k++) {
 
-                        curCubePosition = gridPointPositions[i*cubesY*cubesZ + j*cubesZ + k];
+                        curCubePosition = gridPointPositions[i * cubesY * cubesZ + j * cubesZ + k];
                         Vector3R posVec = curCubePosition - center;
-                        gridPointImplicitFuncs.push_back(pow2(rMin) - pow2(sqrt(pow2(posVec(0)) + pow2(posVec(1))) - rMaj) - pow2(posVec(2)));
+                        gridPointImplicitFuncs.push_back(pow2(r_b) - pow2(sqrt(pow2(posVec(0)) + pow2(posVec(1))) - r_a) - pow2(posVec(2)));
                     }
                 }
             }
@@ -174,35 +138,34 @@ class Thorus : public Object3D
 
 class GeneralShape : public Object3D{
     protected:
-        learnSPH::FluidSystem* fluidParticles;
+        learnSPH::FluidSystem * fluidParticles;
         Real initValue;
+
     public:
-        GeneralShape(learnSPH::FluidSystem* particleSet, Real initValue, const Vector3R& loverCorner,
-                     const Vector3R& upperCorner, const Vector3R& cbResol):
-                     fluidParticles(particleSet), initValue(initValue), Object3D(loverCorner, upperCorner, cbResol){
-            gridPointImplicitFuncs.clear();
-            for(size_t i = 0; i < cubesX; i++) {
-                for (size_t j = 0; j < cubesY; j++) {
-                    for (size_t k = 0; k < cubesZ; k++) {
-                        gridPointImplicitFuncs.push_back(-initValue);
-                    }}}
+        GeneralShape(learnSPH::FluidSystem *particleSet, Real initValue, const Vector3R &lCorner, const Vector3R &uCorner, const Vector3R &cbResol):fluidParticles(particleSet), initValue(initValue), Object3D(lCorner, uCorner, cbResol)
+        {
+            gridPointImplicitFuncs.assign(cubesX * cubesY * cubesZ, -initValue);
+
             NeighborhoodSearch ns(fluidParticles->getCompactSupport());
+
             unsigned int particleSetID = ns.add_point_set((Real*)(fluidParticles->getPositions().data()), fluidParticles->size());
             unsigned int verticeSetID = ns.add_point_set((Real*)(gridPointPositions.data()), gridPointPositions.size());
+            
             ns.update_point_sets();
-            vector<vector<unsigned int>> neighbors;
-            for(unsigned int particleID=0; particleID < fluidParticles->size(); particleID++){
+
+            vector<vector<unsigned int> > neighbors;
+
+            for(unsigned int particleID = 0; particleID < fluidParticles->size(); particleID ++) {
+
                 neighbors.clear();
                 ns.find_neighbors(particleSetID, particleID, neighbors);
-                for(unsigned int gridPointID: neighbors[verticeSetID]){
-//                    gridPointImplicitFuncs[gridPointID] += fluidParticles->getMass()/
-//                            fluidParticles->getDensities()[particleID] *
-//                            kernelFunction(gridPointPositions[gridPointID], fluidParticles->getPositions()[particleID], fluidParticles->getCompactSupport());
-                    gridPointImplicitFuncs[gridPointID] += fluidParticles->getMass()/
-                                                           fluidParticles->getRestDensity() *
-                                                           kernelFunction(gridPointPositions[gridPointID], fluidParticles->getPositions()[particleID], fluidParticles->getCompactSupport());
-                }
 
+                for(unsigned int gridPointID: neighbors[verticeSetID]) {
+
+                    auto weight = kernelFunction(gridPointPositions[gridPointID], fluidParticles->getPositions()[particleID], fluidParticles->getCompactSupport());
+
+                    gridPointImplicitFuncs[gridPointID] += fluidParticles->getMass() / fluidParticles->getRestDensity() * weight;
+                }
             }
             objectDefined = true;
         }
@@ -223,7 +186,7 @@ namespace learnSPH
 
 			opcode setObject(const Object3D* const obj);
 
-			opcode init(const Vector3R& loverCorner, const Vector3R& upperCorner, const Vector3R& cbResol);
+			opcode init(const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol);
 
 			MarchingCubes();
 

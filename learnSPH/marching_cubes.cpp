@@ -1,8 +1,7 @@
 #include <iostream>
 #include <cassert>
 #include <marching_cubes.h>
-#include <triangle_table.h>
-#include "marching_cubes_lut.hpp"
+#include <look_up_tables.hpp>
 
 using namespace std;
 
@@ -19,11 +18,11 @@ opcode learnSPH::MarchingCubes::getTriangleMesh(vector<Vector3R>& triangleMesh) 
 	triangleMesh.clear();
 	triangleMesh.reserve(cubesX * cubesY * cubesZ * 12);
 
-	for(size_t i = 0; i < cubesX; i++) {
+	for(size_t i = 0; i < cubesX - 1; i++) {
 
-		for(size_t j = 0; j < cubesY; j++) {
+		for(size_t j = 0; j < cubesY - 1; j++) {
 
-			for(size_t k = 0; k < cubesZ; k++) {
+			for(size_t k = 0; k < cubesZ - 1; k++) {
 
 				std::array<bool, 8> ptsConfig;
 
@@ -32,23 +31,8 @@ opcode learnSPH::MarchingCubes::getTriangleMesh(vector<Vector3R>& triangleMesh) 
 				std::array<std::array<int, 3>, 5> triangle_type = getMarchingCubesCellTriangulation(ptsConfig);
 
 				for(size_t l = 0; l < 5; l++) {
-
-					bool in_border = true;
-
-					for(size_t m = 0; m < 3; m++) {
-
-						in_border &= (i + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][0] < cubesX);
-						in_border &= (i + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][0] < cubesX);
-						in_border &= (j + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][1] < cubesY);
-						in_border &= (j + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][1] < cubesY);
-						in_border &= (k + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][2] < cubesZ);
-						in_border &= (k + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][2] < cubesZ);
-					}
-
-                    if (!in_border)
-                    	continue;
                     
-					for(size_t m=0; m < 3; m++) {
+					for(size_t m = 0; m < 3; m++) {
 						if(triangle_type[l][m] == -1) break;
 
 						Vector3R interpolatedPt = this->obj3D->interpolate(
@@ -61,7 +45,6 @@ opcode learnSPH::MarchingCubes::getTriangleMesh(vector<Vector3R>& triangleMesh) 
 
 						triangleMesh.push_back(interpolatedPt);
 					}
-					
 				}
 			}
 		}

@@ -117,8 +117,6 @@ int main(int argc, char** argv)
 
 			Real logic_step_upper_bound = 0.5 * (fluidParticles->getDiameter() / vMaxNorm);
 
-			cout << "\t| vMaxNorm: " << vMaxNorm << " | CFL-Step: " << logic_step_upper_bound << endl;
-
 			Real logic_time_step;
 
 			if (timeSimulation * render_step + logic_step_upper_bound >= render_step) {
