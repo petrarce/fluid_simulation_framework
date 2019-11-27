@@ -187,7 +187,7 @@ int main(int argc, char** argv)
     }
     delete fluidParticles;
     std::cout << "completed!" << std::endl;
-    std::cout << "The scene files have been saved in the folder `<build_folder>/res/assignment2/`. You can visualize them with Paraview." << std::endl;
+    std::cout << "The scene files have been saved in the folder `<build_folder>/res/assignment3/`. You can visualize them with Paraview." << std::endl;
 
     return 0;
 }
