@@ -20,3 +20,9 @@ set(SOURCE_FILES_test_cereal test_cereal.cpp)
 add_executable(test_cereal ${SOURCE_FILES_test_cereal})
 add_dependencies(test_cereal learnSPH)
 target_link_libraries(test_cereal learnSPH)
+
+set(SOURCE_FILES_test_surface_reconstruction test_surface_reconstruction.cpp)
+
+add_executable(test_surface_reconstruction ${SOURCE_FILES_test_surface_reconstruction})
+add_dependencies(test_surface_reconstruction learnSPH)
+target_link_libraries(test_surface_reconstruction learnSPH)

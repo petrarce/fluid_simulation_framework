@@ -25,7 +25,7 @@ using namespace learnSPH;
 
 int main(int argc, char** argv)
 {
-    assert(argc == 25);
+    assert(argc == 26);
     std::cout << "Welcome to the learnSPH framework!!" << std::endl;
     std::cout << "Generating test sample for Assignment 3.2...";
 
@@ -48,6 +48,10 @@ int main(int argc, char** argv)
     Real sim_duration = (stod(argv[20]));
     string sim_name = argv[21];
     Vector3R cubeResolution = {stod(argv[22]), stod(argv[23]), stod(argv[24])};
+    Real initValue = stod(argv[25]);
+
+    Vector3R lower_corner_grid = lower_corner_box; // left for future customize
+    Vector3R upper_corner_grid = upper_corner_box;
 
     FluidSystem* fluidParticles = sample_fluid_cube(lower_corner_fluid, upper_corner_fluid, 1000.0, sampling_distance, eta);
 
@@ -166,7 +170,7 @@ int main(int argc, char** argv)
 
         learnSPH::saveParticlesToVTK(filename, fluidParticles->getPositions(), fluidParticles->getDensities(), fluidParticles->getVelocities());
 
-        GeneralShape fluidObject( fluidParticles, 0.6, lower_corner_box, upper_corner_box, cubeResolution);
+        GeneralShape fluidObject( fluidParticles, initValue, lower_corner_grid, upper_corner_grid, cubeResolution);
         mcb.setObject(&fluidObject);
 
         triangle_mesh.clear();
