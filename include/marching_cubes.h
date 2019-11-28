@@ -161,11 +161,11 @@ class Fluid : public Object3D{
             objectDefined = true;
         }
 
-        Fluid(Real compact_support, Real smooth_length, Real fluid_mass, Real rest_density, vector<Vector3R> &positions, vector<Real> &densities, Real initValue, const Vector3R &lCorner, const Vector3R &uCorner, const Vector3R &cbResol):Object3D(lCorner, uCorner, cbResol)
+        Fluid(vector<Real> &params, vector<Vector3R> &positions, vector<Real> &densities, Real initValue, const Vector3R &lCorner, const Vector3R &uCorner, const Vector3R &cbResol):Object3D(lCorner, uCorner, cbResol)
         {
             gridPointImplicitFuncs.assign(cubesX * cubesY * cubesZ, -initValue);
 
-            NeighborhoodSearch ns(compact_support);
+            NeighborhoodSearch ns(params[0]);
 
             ns.add_point_set((Real*)(positions.data()), positions.size());
             ns.add_point_set((Real*)(gridPointPositions.data()), gridPointPositions.size());
@@ -181,9 +181,9 @@ class Fluid : public Object3D{
 
                 for(unsigned int gridPointID: neighbors[1]) {
 
-                    auto weight = kernelFunction(gridPointPositions[gridPointID], positions[particleID], smooth_length);
+                    auto weight = kernelFunction(gridPointPositions[gridPointID], positions[particleID], params[1]);
 
-                    gridPointImplicitFuncs[gridPointID] += fluid_mass / max(densities[particleID], rest_density) * weight;
+                    gridPointImplicitFuncs[gridPointID] += params[2] / max(densities[particleID], params[3]) * weight;
                 }
             }
             objectDefined = true;
