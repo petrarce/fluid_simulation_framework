@@ -26,11 +26,11 @@ int main(int argc, char** argv)
 
     std::cout << "Simulation running" << std::endl;
 
-    Vector3R lower_corner_fluid = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
-    Vector3R upper_corner_fluid = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
+    Vector3R lower_corner_fluid(stod(argv[1]), stod(argv[2]), stod(argv[3]));
+    Vector3R upper_corner_fluid(stod(argv[4]), stod(argv[5]), stod(argv[6]));
 
-    Vector3R lower_corner_box = {stod(argv[7]),stod(argv[8]),stod(argv[9])};
-    Vector3R upper_corner_box = {stod(argv[10]),stod(argv[11]),stod(argv[12])};
+    Vector3R lower_corner_box(stod(argv[7]), stod(argv[8]), stod(argv[9]));
+    Vector3R upper_corner_box(stod(argv[10]), stod(argv[11]), stod(argv[12]));
 
     auto box_center = (lower_corner_box + upper_corner_box) / 2.0;
     auto max_shift = (box_center - lower_corner_box).norm() * 1.2;
@@ -41,12 +41,15 @@ int main(int argc, char** argv)
     Real viscosity = stod(argv[16]);
     Real friction = stod(argv[17]);
     bool do_velo_smooth = stoi(argv[18]);
-    Real render_step = (stod(argv[19]));
-    Real sim_duration = (stod(argv[20]));
+
+    Real render_step = stod(argv[19]);
+    Real sim_duration = stod(argv[20]);
     string sim_name = argv[21];
 
-    Vector3R cubeResolution = {stod(argv[22]), stod(argv[23]), stod(argv[24])};
+    Vector3R cubeResolution(stod(argv[22]), stod(argv[23]), stod(argv[24]));
+
     Real initValue = stod(argv[25]);
+
     MarchingCubes mcb(lower_corner_box, upper_corner_box, cubeResolution);
 
     FluidSystem* fluidParticles = sample_fluid_cube(lower_corner_fluid, upper_corner_fluid, 1000.0, sampling_distance, eta);
@@ -73,8 +76,6 @@ int main(int argc, char** argv)
 
     for(unsigned int i = 0; i < particleForces.size(); i++) particleForces[i] = fluidParticles->getMass() * gravity;
 
-    unsigned int nsamples = int(sim_duration / render_step);
-
     cout << "Diameter: " << fluidParticles->getDiameter() << endl;
     cout << "Duration: " << sim_duration << endl;
     cout << "Default time step: "<< render_step << endl;
@@ -85,6 +86,8 @@ int main(int argc, char** argv)
     vector<Vector3R> dummyVector(borderParticles->size());
 
     learnSPH::saveParticlesToVTK(filename, borderParticles->getPositions(), borderParticles->getVolumes(), dummyVector);
+
+    unsigned int nsamples = int(sim_duration / render_step);
 
     for (unsigned int t = 0; t < nsamples; t++) {
 

@@ -1,8 +1,8 @@
-#include <stdlib.h>     // rand
+#include <stdlib.h>
 #include <iostream>
 #include <vector>
 #include <string>
-#include <algorithm>    // std::max
+#include <algorithm>
 
 #include <Eigen/Dense>
 #include <types.hpp>
@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 	MarchingCubes mcb(lower_corner, upper_corner, cubeResolution);
 
 	Sphere sphr(sphereRadius, sphereCenter, lower_corner, upper_corner, cubeResolution);
-	Thorus thr(sphereRadius, 0.5*sphereRadius, sphereCenter, lower_corner, upper_corner, cubeResolution);
+	Thorus thr(sphereRadius, 0.5 * sphereRadius, sphereCenter, lower_corner, upper_corner, cubeResolution);
 
 	vector<Vector3R> triangle_mesh;
 	mcb.setObject(&sphr);

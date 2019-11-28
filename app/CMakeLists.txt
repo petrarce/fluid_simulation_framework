@@ -15,14 +15,14 @@ add_executable(test_marching_cubes ${SOURCE_FILES_test_marching_cubes})
 add_dependencies(test_marching_cubes learnSPH)
 target_link_libraries(test_marching_cubes learnSPH)
 
-set(SOURCE_FILES_test_cereal test_cereal.cpp)
-
-add_executable(test_cereal ${SOURCE_FILES_test_cereal})
-add_dependencies(test_cereal learnSPH)
-target_link_libraries(test_cereal learnSPH)
-
 set(SOURCE_FILES_test_sim_recon test_sim_recon.cpp)
 
 add_executable(test_sim_recon ${SOURCE_FILES_test_sim_recon})
 add_dependencies(test_sim_recon learnSPH)
 target_link_libraries(test_sim_recon learnSPH)
+
+set(SOURCE_FILES_test_recon test_recon.cpp)
+
+add_executable(test_recon ${SOURCE_FILES_test_recon})
+add_dependencies(test_recon learnSPH)
+target_link_libraries(test_recon learnSPH)
