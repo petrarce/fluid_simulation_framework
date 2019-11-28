@@ -15,15 +15,40 @@
 #include <solver.h>
 #include <chrono>
 
+#include <cereal/types/memory.hpp>
+#include <cereal/archives/binary.hpp>
+
 using namespace CompactNSearch;
 using namespace learnSPH;
 
 
+void save_vectors(const std::string &path, std::vector<Vector3R> &data)
+{
+	std::ofstream os(path, std::ios::binary);
+
+	cereal::BinaryOutputArchive boa(os);
+
+	boa(data.size());
+
+	for (Vector3R &vec : data) boa(vec(0), vec(1), vec(2));
+}
+
+void save_scalars(const std::string &path, std::vector<Real> &data)
+{
+	std::ofstream os(path, std::ios::binary);
+
+	cereal::BinaryOutputArchive boa(os);
+
+	boa(data.size());
+
+	for (auto val : data) boa(val);
+}
+
 int main(int argc, char** argv)
 {
 	assert(argc == 22);
-	std::cout << "Welcome to the learnSPH framework!!" << std::endl;
-	std::cout << "Generating test sample for Assignment 2...";
+
+	std::cout << "Simulation running" << std::endl;
 
 	Vector3R lower_corner_fluid = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
 	Vector3R upper_corner_fluid = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
@@ -75,7 +100,7 @@ int main(int argc, char** argv)
 	cout << "Default time step: "<< render_step << endl;
 	cout << "number of frames: "<< sim_duration / render_step << endl;
 
-	string filename = "res/assignment2/border.vtk";
+	string filename = "res/assignment3/border.vtk";
 
 	vector<Vector3R> dummyVector(borderParticles->size());
 
@@ -151,13 +176,32 @@ int main(int argc, char** argv)
 		}
 		cout << "\n[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "]" << endl;
 
-		string filename = "res/assignment2/" + sim_name + '_' + std::to_string(t) + ".vtk";
+		string filename = "res/assignment3/" + sim_name + '_' + std::to_string(t) + ".vtk";
 
 		learnSPH::saveParticlesToVTK(filename, fluidParticles->getPositions(), fluidParticles->getDensities(), fluidParticles->getVelocities());
+
+		vector<Real> params;
+
+		params.push_back(fluidParticles->getCompactSupport());
+		params.push_back(fluidParticles->getSmoothingLength());
+		params.push_back(fluidParticles->getMass());
+		params.push_back(fluidParticles->getRestDensity());
+
+		filename = "res/assignment3/" + sim_name + "_params_" + std::to_string(t) + ".cereal";
+
+		save_scalars(filename, params);
+
+		filename = "res/assignment3/" + sim_name + "_positions_" + std::to_string(t) + ".cereal";
+
+		save_vectors(filename, fluidParticles->getPositions());
+
+		filename = "res/assignment3/" + sim_name + "_densities_" + std::to_string(t) + ".cereal";
+
+		save_scalars(filename, fluidParticles->getDensities());
 	}
 	delete fluidParticles;
-	std::cout << "completed!" << std::endl;
-	std::cout << "The scene files have been saved in the folder `<build_folder>/res/assignment2/`. You can visualize them with Paraview." << std::endl;
+	std::cout << "Simulation finished" << std::endl;
+	std::cout << "The scene files have been saved to [build/res/assignment3]" << std::endl;
 
 	return 0;
 }

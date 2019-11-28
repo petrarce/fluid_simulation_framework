@@ -1,6 +1,3 @@
-//
-// Created by nelson on 2019/11/23.
-//
 #include <stdlib.h>
 #include <iostream>
 #include <vector>
@@ -26,8 +23,8 @@ using namespace learnSPH;
 int main(int argc, char** argv)
 {
     assert(argc == 26);
-    std::cout << "Welcome to the learnSPH framework!!" << std::endl;
-    std::cout << "Generating test sample for Assignment 3.2...";
+
+    std::cout << "Simulation running" << std::endl;
 
     Vector3R lower_corner_fluid = {stod(argv[1]),stod(argv[2]),stod(argv[3])};
     Vector3R upper_corner_fluid = {stod(argv[4]),stod(argv[5]),stod(argv[6])};
@@ -47,11 +44,10 @@ int main(int argc, char** argv)
     Real render_step = (stod(argv[19]));
     Real sim_duration = (stod(argv[20]));
     string sim_name = argv[21];
+
     Vector3R cubeResolution = {stod(argv[22]), stod(argv[23]), stod(argv[24])};
     Real initValue = stod(argv[25]);
-
-    Vector3R lower_corner_grid = lower_corner_box; // left for future customize
-    Vector3R upper_corner_grid = upper_corner_box;
+    MarchingCubes mcb(lower_corner_box, upper_corner_box, cubeResolution);
 
     FluidSystem* fluidParticles = sample_fluid_cube(lower_corner_fluid, upper_corner_fluid, 1000.0, sampling_distance, eta);
 
@@ -74,10 +70,6 @@ int main(int argc, char** argv)
     const Vector3R gravity(0.0, -9.7, 0.0);
 
     vector<Vector3R>& particleForces = fluidParticles->getExternalForces();
-
-    MarchingCubes mcb(lower_corner_box, upper_corner_box, cubeResolution);
-
-    vector<Vector3R> triangle_mesh;
 
     for(unsigned int i = 0; i < particleForces.size(); i++) particleForces[i] = fluidParticles->getMass() * gravity;
 
@@ -168,16 +160,18 @@ int main(int argc, char** argv)
 
         learnSPH::saveParticlesToVTK(filename, fluidParticles->getPositions(), fluidParticles->getDensities(), fluidParticles->getVelocities());
 
-        Fluid *fluid = new Fluid(fluidParticles, initValue, lower_corner_grid, upper_corner_grid, cubeResolution);
-        mcb.setObject(fluid);
+        mcb.setObject(new Fluid(fluidParticles, initValue, lower_corner_box, upper_corner_box, cubeResolution));
 
-        triangle_mesh.clear();
+        vector<Vector3R> triangle_mesh;
+
         mcb.getTriangleMesh(triangle_mesh);
 
         vector<array<int, 3>> triangles;
+
         for(int i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
 
         std::string surface_filename = "res/assignment3/" + sim_name + "_surface" + std::to_string(t) + ".vtk";
+
         learnSPH::saveTriMeshToVTK(surface_filename, triangle_mesh, triangles);
     }
     delete fluidParticles;
