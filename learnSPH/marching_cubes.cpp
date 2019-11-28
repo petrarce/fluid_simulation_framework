@@ -5,9 +5,9 @@
 
 using namespace std;
 
-opcode learnSPH::MarchingCubes::getTriangleMesh(vector<Vector3R>& triangleMesh) const
+void learnSPH::MarchingCubes::getTriangleMesh(vector<Vector3R>& triangleMesh) const
 {
-	assert(this->obj3D != NULL);
+	assert(this->object != NULL);
 
 	Vector3R distVec = this->spaceUpperCorner - this->spaceLowerCorner;
 
@@ -26,7 +26,7 @@ opcode learnSPH::MarchingCubes::getTriangleMesh(vector<Vector3R>& triangleMesh) 
 
 				std::array<bool, 8> ptsConfig;
 
-				for(int l = 0; l < 8; l++) ptsConfig[l] = this->obj3D->query(i + CELL_VERTICES[l][0], j + CELL_VERTICES[l][1], k + CELL_VERTICES[l][2]);
+				for(int l = 0; l < 8; l++) ptsConfig[l] = this->object->query(i + CELL_VERTICES[l][0], j + CELL_VERTICES[l][1], k + CELL_VERTICES[l][2]);
 
 				std::array<std::array<int, 3>, 5> triangle_type = getMarchingCubesCellTriangulation(ptsConfig);
 
@@ -35,7 +35,7 @@ opcode learnSPH::MarchingCubes::getTriangleMesh(vector<Vector3R>& triangleMesh) 
 					for(size_t m = 0; m < 3; m++) {
 						if(triangle_type[l][m] == -1) break;
 
-						Vector3R interpolatedPt = this->obj3D->interpolate(
+						Vector3R interpolatedPt = this->object->interpolate(
 																		i + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][0],
 																		j + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][1],
 																		k + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][2],
@@ -49,24 +49,19 @@ opcode learnSPH::MarchingCubes::getTriangleMesh(vector<Vector3R>& triangleMesh) 
 			}
 		}
 	}
-	return STATUS_OK;
 }
 
-opcode learnSPH::MarchingCubes::init(const Vector3R& loverCorner, const Vector3R& upperCorner, const Vector3R& cbResol)
+void learnSPH::MarchingCubes::setObject(Object3D* object)
 {
-	this->spaceLowerCorner = loverCorner;
-	this->spaceUpperCorner = upperCorner;
+	assert(object != NULL);
+	this->object = object;
+}
+
+learnSPH::MarchingCubes::MarchingCubes(const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol)
+{
+	this->object = NULL;
+
+	this->spaceLowerCorner = lCorner;
+	this->spaceUpperCorner = uCorner;
 	this->cubesResolution = cbResol;
-	return STATUS_OK;
 }
-
-opcode learnSPH::MarchingCubes::setObject(const Object3D* const obj)
-{
-	assert(obj != NULL);
-	this->obj3D = obj;
-	return STATUS_OK;
-}
-
-learnSPH::MarchingCubes::MarchingCubes():obj3D(NULL){}
-
-learnSPH::MarchingCubes::~MarchingCubes(){}

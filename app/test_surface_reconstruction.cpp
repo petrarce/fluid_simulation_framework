@@ -75,8 +75,8 @@ int main(int argc, char** argv)
 
     vector<Vector3R>& particleForces = fluidParticles->getExternalForces();
 
-    MarchingCubes mcb;
-    mcb.init(lower_corner_box, upper_corner_box, cubeResolution);
+    MarchingCubes mcb(lower_corner_box, upper_corner_box, cubeResolution);
+
     vector<Vector3R> triangle_mesh;
 
     for(unsigned int i = 0; i < particleForces.size(); i++) particleForces[i] = fluidParticles->getMass() * gravity;
@@ -168,8 +168,8 @@ int main(int argc, char** argv)
 
         learnSPH::saveParticlesToVTK(filename, fluidParticles->getPositions(), fluidParticles->getDensities(), fluidParticles->getVelocities());
 
-        GeneralShape fluidObject(fluidParticles, initValue, lower_corner_grid, upper_corner_grid, cubeResolution);
-        mcb.setObject(&fluidObject);
+        Fluid *fluid = new Fluid(fluidParticles, initValue, lower_corner_grid, upper_corner_grid, cubeResolution);
+        mcb.setObject(fluid);
 
         triangle_mesh.clear();
         mcb.getTriangleMesh(triangle_mesh);

@@ -26,8 +26,7 @@ int main(int argc, char** argv)
 
 	Real sphereRadius = stod(argv[13]);
 
-	MarchingCubes mcb;
-	mcb.init(lower_corner, upper_corner, cubeResolution);
+	MarchingCubes mcb(lower_corner, upper_corner, cubeResolution);
 
 	Sphere sphr(sphereRadius, sphereCenter, lower_corner, upper_corner, cubeResolution);
 	Thorus thr(sphereRadius, 0.5*sphereRadius, sphereCenter, lower_corner, upper_corner, cubeResolution);

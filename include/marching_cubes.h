@@ -12,18 +12,15 @@ using namespace std;
 class Object3D
 {
     protected:
-        Vector3R spaceLowerCorner;
-        Vector3R spaceUpperCorner;
-        Vector3R cubesResolution;
+        size_t cubesX, cubesY, cubesZ;
+
         vector<Real> gridPointImplicitFuncs;
         vector<Vector3R> gridPointPositions;
 
         Vector3R alignedCuberResolution;
         bool objectDefined = false;
 
-	public:
-        size_t cubesX, cubesY, cubesZ;
-
+    public:
         bool query(const size_t x, const size_t y, const size_t z) const
         {
             assert(objectDefined);
@@ -49,84 +46,78 @@ class Object3D
             return pt1 * (1.0 - relation) + pt2 * relation;
         }
 
-		Object3D(const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol):spaceLowerCorner(lCorner), spaceUpperCorner(uCorner), cubesResolution(cbResol)
+		Object3D(const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol)
         {
-            Vector3R distVec = spaceUpperCorner - spaceLowerCorner;
+            Vector3R distVec = uCorner - lCorner;
 
-            alignedCuberResolution(0) = distVec(0) / (int(distVec(0) / this->cubesResolution(0)) + 1);
-            alignedCuberResolution(1) = distVec(1) / (int(distVec(1) / this->cubesResolution(1)) + 1);
-            alignedCuberResolution(2) = distVec(2) / (int(distVec(2) / this->cubesResolution(2)) + 1);
+            alignedCuberResolution(0) = distVec(0) / (int(distVec(0) / cbResol(0)) + 1);
+            alignedCuberResolution(1) = distVec(1) / (int(distVec(1) / cbResol(1)) + 1);
+            alignedCuberResolution(2) = distVec(2) / (int(distVec(2) / cbResol(2)) + 1);
 
-            cubesX = int(distVec(0) / this->cubesResolution(0)) + 1;
-            cubesY = int(distVec(1) / this->cubesResolution(1)) + 1;
-            cubesZ = int(distVec(2) / this->cubesResolution(2)) + 1;
+            cubesX = int(distVec(0) / cbResol(0)) + 1;
+            cubesY = int(distVec(1) / cbResol(1)) + 1;
+            cubesZ = int(distVec(2) / cbResol(2)) + 1;
 
-            Vector3R curCubePosition = this->spaceLowerCorner;
+            Vector3R curCubePosition;
 
             for(size_t i = 0; i < cubesX; i++) {
 
-                curCubePosition(0) = this->spaceLowerCorner(0) + i * alignedCuberResolution(0);
+                curCubePosition(0) = lCorner(0) + i * alignedCuberResolution(0);
 
                 for (size_t j = 0; j < cubesY; j++) {
 
-                    curCubePosition(1) = this->spaceLowerCorner(1) + j * alignedCuberResolution(1);
+                    curCubePosition(1) = lCorner(1) + j * alignedCuberResolution(1);
 
                     for (size_t k = 0; k < cubesZ; k++) {
 
-                        curCubePosition(2) = this->spaceLowerCorner(2) + k * alignedCuberResolution(2);
+                        curCubePosition(2) = lCorner(2) + k * alignedCuberResolution(2);
 
                         gridPointPositions.push_back(curCubePosition);
                     }
                 }
             }
-		};
+        };
 };
 
 class Sphere : public Object3D
 {
-	protected:
-		Real radius;
-		Vector3R center;
+    protected:
+        Vector3R center;
 
-	public:
-		Sphere(const Real rad, const Vector3R& cntr, const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol):radius(rad), center(cntr), Object3D(lCorner, uCorner, cbResol)
+    public:
+        Sphere(const Real radius, const Vector3R& center, const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol):Object3D(lCorner, uCorner, cbResol)
         {
-            Vector3R curCubePosition = this->spaceLowerCorner;
-
             for(size_t i = 0; i < cubesX; i++) {
+
                 for (size_t j = 0; j < cubesY; j++) {
+
                     for (size_t k = 0; k < cubesZ; k++) {
 
-                        curCubePosition = gridPointPositions[i * cubesY * cubesZ + j * cubesZ + k];
+                        auto curCubePosition = gridPointPositions[i * cubesY * cubesZ + j * cubesZ + k];
                         gridPointImplicitFuncs.push_back((center - curCubePosition).squaredNorm() - radius * radius);
                     }
                 }
             }
             objectDefined = true;
-		};
+        };
 
-		virtual ~Sphere(){};
+        virtual ~Sphere(){};
 };
 
 class Thorus : public Object3D
 {
-	protected:
-		Real r_a;
-		Real r_b;
-		Vector3R center;
-
-	public:
-		Thorus(Real r_A, Real r_B, Vector3R cntr, const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol):r_a(r_A), r_b(r_B), center(cntr), Object3D(lCorner, uCorner, cbResol)
+    public:
+        Thorus(Real r_major, Real r_minor, Vector3R center, const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol):Object3D(lCorner, uCorner, cbResol)
         {
-		    Vector3R curCubePosition = this->spaceLowerCorner;
-
             for(size_t i = 0; i < cubesX; i++) {
+
                 for (size_t j = 0; j < cubesY; j++) {
+
                     for (size_t k = 0; k < cubesZ; k++) {
 
-                        curCubePosition = gridPointPositions[i * cubesY * cubesZ + j * cubesZ + k];
-                        Vector3R posVec = curCubePosition - center;
-                        gridPointImplicitFuncs.push_back(pow2(r_b) - pow2(sqrt(pow2(posVec(0)) + pow2(posVec(1))) - r_a) - pow2(posVec(2)));
+                        auto posVec = gridPointPositions[i * cubesY * cubesZ + j * cubesZ + k] - center;
+                        
+                        gridPointImplicitFuncs.push_back(pow2(r_minor) - pow2(sqrt(pow2(posVec(0)) + pow2(posVec(1))) - r_major) - pow2(posVec(2)));
                     }
                 }
             }
@@ -136,60 +127,86 @@ class Thorus : public Object3D
 		~Thorus(){};
 };
 
-class GeneralShape : public Object3D{
-    protected:
-        learnSPH::FluidSystem * fluidParticles;
-        Real initValue;
+class Fluid : public Object3D{
 
     public:
-        GeneralShape(learnSPH::FluidSystem *particleSet, Real initValue, const Vector3R &lCorner, const Vector3R &uCorner, const Vector3R &cbResol):fluidParticles(particleSet), initValue(initValue), Object3D(lCorner, uCorner, cbResol)
+        Fluid(learnSPH::FluidSystem *fluidParticles, Real initValue, const Vector3R &lCorner, const Vector3R &uCorner, const Vector3R &cbResol):Object3D(lCorner, uCorner, cbResol)
         {
             gridPointImplicitFuncs.assign(cubesX * cubesY * cubesZ, -initValue);
 
             NeighborhoodSearch ns(fluidParticles->getCompactSupport());
 
-            unsigned int particleSetID = ns.add_point_set((Real*)(fluidParticles->getPositions().data()), fluidParticles->size());
-            unsigned int verticeSetID = ns.add_point_set((Real*)(gridPointPositions.data()), gridPointPositions.size());
-            
+            ns.add_point_set((Real*)(fluidParticles->getPositions().data()), fluidParticles->size());
+            ns.add_point_set((Real*)(gridPointPositions.data()), gridPointPositions.size());
+
             ns.update_point_sets();
 
             vector<vector<unsigned int> > neighbors;
 
+            auto fluidPositions = fluidParticles->getPositions();
+            auto fluidDensities = fluidParticles->getDensities();
+
             for(unsigned int particleID = 0; particleID < fluidParticles->size(); particleID ++) {
 
                 neighbors.clear();
-                ns.find_neighbors(particleSetID, particleID, neighbors);
+                ns.find_neighbors(0, particleID, neighbors);
 
-                for(unsigned int gridPointID: neighbors[verticeSetID]) {
+                for(unsigned int gridPointID: neighbors[1]) {
 
-                    auto weight = kernelFunction(gridPointPositions[gridPointID], fluidParticles->getPositions()[particleID], fluidParticles->getCompactSupport());
+                    auto weight = kernelFunction(gridPointPositions[gridPointID], fluidPositions[particleID], fluidParticles->getSmoothingLength());
 
-                    gridPointImplicitFuncs[gridPointID] += fluidParticles->getMass() / fluidParticles->getRestDensity() * weight;
+                    gridPointImplicitFuncs[gridPointID] += fluidParticles->getMass() / max(fluidDensities[particleID], fluidParticles->getRestDensity()) * weight;
+                }
+            }
+            objectDefined = true;
+        }
+
+        Fluid(Real compact_support, Real smooth_length, Real fluid_mass, Real rest_density, vector<Vector3R> &positions, vector<Real> &densities, Real initValue, const Vector3R &lCorner, const Vector3R &uCorner, const Vector3R &cbResol):Object3D(lCorner, uCorner, cbResol)
+        {
+            gridPointImplicitFuncs.assign(cubesX * cubesY * cubesZ, -initValue);
+
+            NeighborhoodSearch ns(compact_support);
+
+            ns.add_point_set((Real*)(positions.data()), positions.size());
+            ns.add_point_set((Real*)(gridPointPositions.data()), gridPointPositions.size());
+
+            ns.update_point_sets();
+
+            vector<vector<unsigned int> > neighbors;
+
+            for(unsigned int particleID = 0; particleID < positions.size(); particleID ++) {
+
+                neighbors.clear();
+                ns.find_neighbors(0, particleID, neighbors);
+
+                for(unsigned int gridPointID: neighbors[1]) {
+
+                    auto weight = kernelFunction(gridPointPositions[gridPointID], positions[particleID], smooth_length);
+
+                    gridPointImplicitFuncs[gridPointID] += fluid_mass / max(densities[particleID], rest_density) * weight;
                 }
             }
             objectDefined = true;
         }
 };
 
+
 namespace learnSPH
 {
-	class MarchingCubes {
+    class MarchingCubes {
 
-		private:
-			const Object3D* obj3D;
-			Vector3R spaceLowerCorner;
-			Vector3R spaceUpperCorner;
-			Vector3R cubesResolution;
+        private:
+            Object3D* object;
 
-		public:
-			opcode getTriangleMesh(vector<Vector3R>& triangleMesh) const;
+            Vector3R spaceLowerCorner;
+            Vector3R spaceUpperCorner;
+            Vector3R cubesResolution;
 
-			opcode setObject(const Object3D* const obj);
+        public:
+            void getTriangleMesh(vector<Vector3R>& triangleMesh) const;
 
-			opcode init(const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol);
+            void setObject(Object3D* object);
 
-			MarchingCubes();
-
-			~MarchingCubes();
-	};
+            MarchingCubes(const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol);
+    };
 }
