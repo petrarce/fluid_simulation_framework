@@ -173,13 +173,13 @@ int main(int argc, char** argv)
 
         for(int i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
 
-        std::string surface_filename = "res/assignment3/" + sim_name + "_surface" + std::to_string(t) + ".vtk";
+        std::string surface_filename = "res/assignment3/" + sim_name + "_surface_" + std::to_string(t) + ".vtk";
 
         learnSPH::saveTriMeshToVTK(surface_filename, triangle_mesh, triangles);
     }
     delete fluidParticles;
     std::cout << "completed!" << std::endl;
-    std::cout << "The scene files have been saved in the folder `<build_folder>/res/assignment3/`. You can visualize them with Paraview." << std::endl;
+    std::cout << "The scene files have been saved in the folder [build/res/assignment3]" << std::endl;
 
     return 0;
 }

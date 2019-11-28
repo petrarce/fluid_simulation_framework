@@ -9,12 +9,6 @@ void learnSPH::MarchingCubes::getTriangleMesh(vector<Vector3R>& triangleMesh) co
 {
 	assert(this->object != NULL);
 
-	Vector3R distVec = this->spaceUpperCorner - this->spaceLowerCorner;
-
-	size_t cubesX = int(distVec(0) / this->cubesResolution(0)) + 1;
-	size_t cubesY = int(distVec(1) / this->cubesResolution(1)) + 1;
-	size_t cubesZ = int(distVec(2) / this->cubesResolution(2)) + 1;
-
 	triangleMesh.clear();
 	triangleMesh.reserve(cubesX * cubesY * cubesZ * 12);
 
@@ -54,6 +48,14 @@ void learnSPH::MarchingCubes::getTriangleMesh(vector<Vector3R>& triangleMesh) co
 void learnSPH::MarchingCubes::setObject(Object3D* object)
 {
 	assert(object != NULL);
+
+	assert(object->lowerCorner == this->lowerCorner);
+	assert(object->upperCorner == this->upperCorner);
+
+	assert(object->cubesX == this->cubesX);
+	assert(object->cubesY == this->cubesY);
+	assert(object->cubesZ == this->cubesZ);
+
 	this->object = object;
 }
 
@@ -61,7 +63,12 @@ learnSPH::MarchingCubes::MarchingCubes(const Vector3R& lCorner, const Vector3R& 
 {
 	this->object = NULL;
 
-	this->spaceLowerCorner = lCorner;
-	this->spaceUpperCorner = uCorner;
-	this->cubesResolution = cbResol;
+	this->lowerCorner = lCorner;
+	this->upperCorner = uCorner;
+
+	Vector3R distVec = uCorner - lCorner;
+
+	this->cubesX = int(distVec(0) / cbResol(0)) + 1;
+	this->cubesY = int(distVec(1) / cbResol(1)) + 1;
+	this->cubesZ = int(distVec(2) / cbResol(2)) + 1;
 }

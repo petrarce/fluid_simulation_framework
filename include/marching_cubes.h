@@ -12,13 +12,16 @@ using namespace std;
 class Object3D
 {
     protected:
-        size_t cubesX, cubesY, cubesZ;
+        bool objectDefined = false;
 
         vector<Real> gridPointImplicitFuncs;
         vector<Vector3R> gridPointPositions;
 
-        Vector3R alignedCuberResolution;
-        bool objectDefined = false;
+    public:
+        size_t cubesX, cubesY, cubesZ;
+
+        Vector3R lowerCorner;
+        Vector3R upperCorner;
 
     public:
         bool query(const size_t x, const size_t y, const size_t z) const
@@ -48,29 +51,34 @@ class Object3D
 
 		Object3D(const Vector3R& lCorner, const Vector3R& uCorner, const Vector3R& cbResol)
         {
+            this->lowerCorner = lCorner;
+            this->upperCorner = uCorner;
+
             Vector3R distVec = uCorner - lCorner;
 
-            alignedCuberResolution(0) = distVec(0) / (int(distVec(0) / cbResol(0)) + 1);
-            alignedCuberResolution(1) = distVec(1) / (int(distVec(1) / cbResol(1)) + 1);
-            alignedCuberResolution(2) = distVec(2) / (int(distVec(2) / cbResol(2)) + 1);
+            this->cubesX = int(distVec(0) / cbResol(0)) + 1;
+            this->cubesY = int(distVec(1) / cbResol(1)) + 1;
+            this->cubesZ = int(distVec(2) / cbResol(2)) + 1;
 
-            cubesX = int(distVec(0) / cbResol(0)) + 1;
-            cubesY = int(distVec(1) / cbResol(1)) + 1;
-            cubesZ = int(distVec(2) / cbResol(2)) + 1;
+            Vector3R unit_march_vec;
+
+            unit_march_vec(0) = distVec(0) / (int(distVec(0) / cbResol(0)) + 1);
+            unit_march_vec(1) = distVec(1) / (int(distVec(1) / cbResol(1)) + 1);
+            unit_march_vec(2) = distVec(2) / (int(distVec(2) / cbResol(2)) + 1);
 
             Vector3R curCubePosition;
 
             for(size_t i = 0; i < cubesX; i++) {
 
-                curCubePosition(0) = lCorner(0) + i * alignedCuberResolution(0);
+                curCubePosition(0) = lCorner(0) + i * unit_march_vec(0);
 
                 for (size_t j = 0; j < cubesY; j++) {
 
-                    curCubePosition(1) = lCorner(1) + j * alignedCuberResolution(1);
+                    curCubePosition(1) = lCorner(1) + j * unit_march_vec(1);
 
                     for (size_t k = 0; k < cubesZ; k++) {
 
-                        curCubePosition(2) = lCorner(2) + k * alignedCuberResolution(2);
+                        curCubePosition(2) = lCorner(2) + k * unit_march_vec(2);
 
                         gridPointPositions.push_back(curCubePosition);
                     }
@@ -198,9 +206,12 @@ namespace learnSPH
         private:
             Object3D* object;
 
-            Vector3R spaceLowerCorner;
-            Vector3R spaceUpperCorner;
-            Vector3R cubesResolution;
+            Vector3R lowerCorner;
+            Vector3R upperCorner;
+
+            size_t cubesX;
+            size_t cubesY;
+            size_t cubesZ;
 
         public:
             void getTriangleMesh(vector<Vector3R>& triangleMesh) const;
