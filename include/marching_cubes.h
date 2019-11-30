@@ -1,9 +1,10 @@
 #pragma once
 #include <iostream>
+#include <cmath>
 #include <types.hpp>
 #include <vector>
 #include <kernel.h>
-#include "storage.h"
+#include <storage.h>
 
 using namespace learnSPH::kernel;
 
@@ -16,6 +17,8 @@ class Object3D
 
         vector<Real> gridPointImplicitFuncs;
         vector<Vector3R> gridPointPositions;
+
+        Vector3R unit_march_vec;
 
     public:
         size_t cubesX, cubesY, cubesZ;
@@ -56,15 +59,13 @@ class Object3D
 
             Vector3R distVec = uCorner - lCorner;
 
-            this->cubesX = int(distVec(0) / cbResol(0)) + 1;
-            this->cubesY = int(distVec(1) / cbResol(1)) + 1;
-            this->cubesZ = int(distVec(2) / cbResol(2)) + 1;
+            this->cubesX = ceil(distVec(0) / cbResol(0));
+            this->cubesY = ceil(distVec(1) / cbResol(1));
+            this->cubesZ = ceil(distVec(2) / cbResol(2));
 
-            Vector3R unit_march_vec;
-
-            unit_march_vec(0) = distVec(0) / (int(distVec(0) / cbResol(0)) + 1);
-            unit_march_vec(1) = distVec(1) / (int(distVec(1) / cbResol(1)) + 1);
-            unit_march_vec(2) = distVec(2) / (int(distVec(2) / cbResol(2)) + 1);
+            unit_march_vec(0) = distVec(0) / (this->cubesX - 1);
+            unit_march_vec(1) = distVec(1) / (this->cubesY - 1);
+            unit_march_vec(2) = distVec(2) / (this->cubesZ - 1);
 
             Vector3R curCubePosition;
 
@@ -173,25 +174,39 @@ class Fluid : public Object3D{
         {
             gridPointImplicitFuncs.assign(cubesX * cubesY * cubesZ, -initValue);
 
-            NeighborhoodSearch ns(params[0]);
+            for (size_t particleID = 0; particleID < positions.size(); particleID ++) {
 
-            ns.add_point_set((Real*)(positions.data()), positions.size());
-            ns.add_point_set((Real*)(gridPointPositions.data()), gridPointPositions.size());
+                auto offset = positions[particleID] - lowerCorner;
 
-            ns.update_point_sets();
+                int grid_x_near = floor((offset(0) - params[0]) / unit_march_vec(0));
+                int grid_y_near = floor((offset(1) - params[0]) / unit_march_vec(1));
+                int grid_z_near = floor((offset(2) - params[0]) / unit_march_vec(2));
 
-            vector<vector<unsigned int> > neighbors;
+                grid_x_near = std::max(grid_x_near, 0);
+                grid_y_near = std::max(grid_y_near, 0);
+                grid_z_near = std::max(grid_z_near, 0);
 
-            for(unsigned int particleID = 0; particleID < positions.size(); particleID ++) {
+                int grid_x_far = ceil((offset(0) + params[0]) / unit_march_vec(0));
+                int grid_y_far = ceil((offset(1) + params[0]) / unit_march_vec(1));
+                int grid_z_far = ceil((offset(2) + params[0]) / unit_march_vec(2));
 
-                neighbors.clear();
-                ns.find_neighbors(0, particleID, neighbors);
+                grid_x_far = std::min(grid_x_far, int(cubesX - 1));
+                grid_y_far = std::min(grid_y_far, int(cubesY - 1));
+                grid_z_far = std::min(grid_z_far, int(cubesZ - 1));
 
-                for(unsigned int gridPointID: neighbors[1]) {
+                for (size_t x = grid_x_near; x <= grid_x_far; x ++) {
 
-                    auto weight = kernelFunction(gridPointPositions[gridPointID], positions[particleID], params[1]);
+                    for (size_t y = grid_y_near; y <= grid_y_far; y ++) {
 
-                    gridPointImplicitFuncs[gridPointID] += params[2] / max(densities[particleID], params[3]) * weight;
+                        for (size_t z = grid_z_near; z <= grid_z_far; z ++) {
+
+                            auto grid_idx = x * cubesY * cubesZ + y * cubesZ + z;
+
+                            auto weight = kernelFunction(gridPointPositions[grid_idx], positions[particleID], params[1]);
+
+                            gridPointImplicitFuncs[grid_idx] += params[2] / max(densities[particleID], params[3]) * weight;
+                        }
+                    }
                 }
             }
             objectDefined = true;

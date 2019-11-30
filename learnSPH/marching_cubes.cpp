@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cassert>
+#include <cmath>
 #include <marching_cubes.h>
 #include <look_up_tables.hpp>
 
@@ -68,7 +69,7 @@ learnSPH::MarchingCubes::MarchingCubes(const Vector3R& lCorner, const Vector3R& 
 
 	Vector3R distVec = uCorner - lCorner;
 
-	this->cubesX = int(distVec(0) / cbResol(0)) + 1;
-	this->cubesY = int(distVec(1) / cbResol(1)) + 1;
-	this->cubesZ = int(distVec(2) / cbResol(2)) + 1;
+	this->cubesX = ceil(distVec(0) / cbResol(0));
+	this->cubesY = ceil(distVec(1) / cbResol(1));
+	this->cubesZ = ceil(distVec(2) / cbResol(2));
 }
