@@ -15,8 +15,20 @@ using namespace learnSPH;
 using namespace Eigen;
 
 int wiewWidth = 500, wiewHeight = 500;
-float curAngle1 = 0;
-float curAngle2 = 0;
+
+bool firstMouse = true;
+float yawV   = -90.0f;   // yawV is initialized to -90.0 degrees since a yawV of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
+float pitchV =  0.0f;
+float lastX =  800.0f / 2.0;
+float lastY =  600.0 / 2.0;
+float fov   =  45.0f;
+
+glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
+
+float deltaTime = 0.01f; // time between current frame and last frame
+float lastFrame = 0.0f;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -25,19 +37,55 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     wiewHeight = height;
 }  
 
-void processInput(GLFWwindow* window)
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
-	if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
-		glfwSetWindowShouldClose(window, true);
-	} else if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
-        curAngle1  += 1*radians(3.);
-    } else if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
-        curAngle2  += -1*radians(3.);
-    } else if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
-        curAngle1  += -1*radians(3.);
-    } else if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
-        curAngle2  += +1*radians(3.);
-    } 
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    lastX = xpos;
+    lastY = ypos;
+
+    float sensitivity = 0.1f; // change this value to your liking
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yawV += xoffset;
+    pitchV += yoffset;
+
+    // make sure that when pitchV is out of bounds, screen doesn't get flipped
+    if (pitchV > 89.0f)
+        pitchV = 89.0f;
+    if (pitchV < -89.0f)
+        pitchV = -89.0f;
+
+    glm::vec3 front;
+    front.x = cos(glm::radians(yawV)) * cos(glm::radians(pitchV));
+    front.y = sin(glm::radians(pitchV));
+    front.z = sin(glm::radians(yawV)) * cos(glm::radians(pitchV));
+    cameraFront = glm::normalize(front);
+
+}
+
+void processInput(GLFWwindow *window)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    float cameraSpeed = 2.5 * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        cameraPos += cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        cameraPos -= cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 }
 
 int main(int argc, char** argv)
@@ -47,7 +95,7 @@ int main(int argc, char** argv)
     assert(argc == 6);
     Vector3R lower_corner = {-1, -1, -1};
     Vector3R upper_corner = {1, 1, 1};
-    Vector3R cubeResolution = {0.5, 0.5, 0.5};
+    Vector3R cubeResolution = {0.1, 0.1, 0.1};
     Vector3R sphereCenter = {0, 0, 0};
     Real sphereRadius = 0.5;
     string shaders_dir = string(argv[1]);
@@ -77,6 +125,9 @@ int main(int argc, char** argv)
 
     glViewport(0,0,500,500);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);  
+
+    glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 
     //add shader here
@@ -158,12 +209,12 @@ int main(int argc, char** argv)
 
         myShaiders.use();
 
-        mat4 view = lookAt(vec3(0,0,3+1*sin(radians(float(i)))), vec3(0,0,0), vec3(0,1,0));
+        mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glUniformMatrix4fv(glGetUniformLocation(myShaiders.getId(), "view"), 
                             1, 
                             GL_FALSE, 
                             (float*)&view);
-        mat4 proj = perspective(radians(45.0f), float(wiewWidth)/wiewHeight, 0.1f, 100.0f);
+        mat4 proj = perspective(radians(45.0f), float(wiewWidth)/wiewHeight, 0.001f, 100.0f);
         glUniformMatrix4fv(glGetUniformLocation(myShaiders.getId(), "perspective"), 
                             1, 
                             GL_FALSE, 
@@ -171,7 +222,7 @@ int main(int argc, char** argv)
         grad = int(grad + 1)%360;
         auto axisW = vec3(1, 0, 0);
         auto axisS = vec3(0, 1, 0);
-        rot = rotate(mat4(1), curAngle1, axisW) * rotate(mat4(1), curAngle2, axisS);
+        rot = rotate(mat4(1), radians(float(i%360)), axisW) * rotate(mat4(1), radians(float(i%360)), axisS);
 
        int maxObj = stoi(argv[5]);
         for(int j = 0; j < sqrt(maxObj); j++){
