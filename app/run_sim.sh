@@ -1,1 +1,1 @@
-./app/test_sim -0.5 0.4 -0.5 0.5 1.4 0.5 -0.8 0.0 -0.8 2.0 3.0 0.8 0.1 1.2 400.0 0.02 0.02 1 2e-3 2.0 try_out
+LD_PRELOAD=/usr/local/lib/libprofiler.so CPUPROFILE=test_sim.prof ./app/test_sim 0 0 0 1 5 1 -0.5 -0.5 -0.5 1.5 6 4 0.1 1.2 100.0 0.05 0.05 1 0.03 50 try_out
