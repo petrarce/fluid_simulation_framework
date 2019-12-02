@@ -117,11 +117,15 @@ int main(int argc, char** argv)
 
             Real vMaxNorm = 0.0;
 
-            vector<bool> &fluidActiveness = fluidParticles->getActiveness();
+            //vector<bool> &fluidActiveness = fluidParticles->getActiveness();
 
             vector<Vector3R> &fluidVelocities = fluidParticles->getVelocities();
 
-            for (int i = 0; i < fluidParticles->size(); i++) if (fluidActiveness[i]) vMaxNorm = max(fluidVelocities[i].norm(), vMaxNorm);
+            for (int i = 0; i < fluidParticles->size(); i++) {
+                //if (fluidActiveness[i]) {
+                    vMaxNorm = max(fluidVelocities[i].norm(), vMaxNorm);
+                //}
+            }
 
             Real logic_step_upper_bound = 0.5 * (fluidParticles->getDiameter() / vMaxNorm);
 
@@ -140,7 +144,7 @@ int main(int argc, char** argv)
             else
                 learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, neighbors, 0.5, logic_time_step, fluidParticles->getSmoothingLength());
 
-            Real velocityCap = 50.0;
+            /*Real velocityCap = 50.0;
 
             vector<Vector3R> &fluidPositions = fluidParticles->getPositions();
 
@@ -154,7 +158,7 @@ int main(int argc, char** argv)
 
                 if ((fluidPositions[i] - box_center).norm() > max_shift)
                     fluidActiveness[i] = false;
-            }
+            }*/
             physical_steps++;
         }
         cout << "\n[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "]" << endl;
