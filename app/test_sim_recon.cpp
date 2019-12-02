@@ -163,11 +163,13 @@ int main(int argc, char** argv)
 
         learnSPH::saveParticlesToVTK(filename, fluidParticles->getPositions(), fluidParticles->getDensities(), fluidParticles->getVelocities());
 
-        mcb.setObject(new Fluid(fluidParticles, initValue, lower_corner_box, upper_corner_box, cubeResolution));
+        auto fld = new Fluid(fluidParticles, initValue, lower_corner_box, upper_corner_box, cubeResolution);
+        mcb.setObject(fld);
 
         vector<Vector3R> triangle_mesh;
 
         mcb.getTriangleMesh(triangle_mesh);
+        delete fld;
 
         vector<array<int, 3>> triangles;
 
