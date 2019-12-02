@@ -27,6 +27,9 @@ void learnSPH::calculate_dencities(
 
 		for(int j : fluidParticleNeighbours[i][0]) fluidDensity += kernelFunction(fluidPositions[i], fluidPositions[j], smoothingLength);
 
+		//calclate dencity taking particle itself as a naighbor
+		fluidDensity += kernelFunction(fluidPositions[i], fluidPositions[i], smoothingLength);
+
 		fluidDensity *= fluidParticles->getMass();
 
 		Real borderDensity = 0.0;  // calculate density depending on neighbor border particles

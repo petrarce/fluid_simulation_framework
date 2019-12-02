@@ -84,10 +84,6 @@ int main(int argc, char** argv)
 
 	ns.add_point_set((Real*)borderParticles->getPositions().data(), borderParticles->size(), false);
 
-	vector<vector<vector<unsigned int> > > neighbors;
-
-	neighbors.resize(fluidParticles->size());
-
 	const Vector3R gravity(0.0, -9.7, 0.0);
 
 	vector<Vector3R>& particleForces = fluidParticles->getExternalForces();
@@ -114,11 +110,9 @@ int main(int argc, char** argv)
 		int physical_steps = 0;
 
 		while (timeSimulation < 1) {
-			ns.update_point_sets();
+			fluidParticles->findNeighbors(ns);
 
-			for(int i = 0; i < fluidParticles->size(); i++) ns.find_neighbors(0, i, neighbors[i]);
-
-			learnSPH::calculate_dencities(fluidParticles, borderParticles, neighbors, fluidParticles->getSmoothingLength());
+			learnSPH::calculate_dencities(fluidParticles, borderParticles, fluidParticles->getNeighbors(), fluidParticles->getSmoothingLength());
 
 
 			vector<Vector3R> accelerations(fluidParticles->size(), gravity);
@@ -127,7 +121,7 @@ int main(int argc, char** argv)
 											accelerations,
 											fluidParticles,
 											borderParticles,
-											neighbors,
+											fluidParticles->getNeighbors(),
 											viscosity,
 											friction,
 											stiffness,
@@ -156,7 +150,7 @@ int main(int argc, char** argv)
 			if (!do_velo_smooth)
 				learnSPH::symplectic_euler(accelerations, fluidParticles, logic_time_step);
 			else
-				learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, neighbors, 0.5, logic_time_step, fluidParticles->getSmoothingLength());
+				learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, fluidParticles->getNeighbors(), 0.5, logic_time_step, fluidParticles->getSmoothingLength());
 
 			Real velocityCap = 50.0;
 

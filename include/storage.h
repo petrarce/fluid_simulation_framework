@@ -101,6 +101,10 @@ namespace learnSPH
 			vector<bool> activeness;
 			vector<Vector3R> velocities;
 			vector<Vector3R> external_forces;
+			/*WARNING: as usual thise array should be of size [*][2][*]:
+				[*][0][*] - indexes of Fluid neighbor particles
+				[*][1][*] - indexes of Border neighbor particles*/
+			vector<vector<vector<unsigned int>>> neighbors;
 
 		public:
 			void setPositions(vector<Vector3R>& newPositions)
@@ -144,9 +148,23 @@ namespace learnSPH
 				return velocities;
 			};
 
+			const vector<vector<vector<unsigned int>>>& getNeighbors() const
+			{
+				return neighbors;
+			}
+
 			vector<Vector3R>& getExternalForces()
 			{
 				return external_forces;
+			};
+
+			void findNeighbors(NeighborhoodSearch& ns)
+			{
+				ns.update_point_sets();
+
+				for(int i = 0; i < this->size(); i++){
+					ns.find_neighbors(0, i, neighbors[i]);
+				}
 			};
 
 			FluidSystem(
@@ -167,6 +185,7 @@ namespace learnSPH
 
 				this->activeness.assign(this->positions.size(), true);
 				this->external_forces.assign(this->positions.size(), Vector3R(0.0, 0.0, 0.0));
+				this->neighbors.resize(this->size());
 			};
 			~FluidSystem(){};
 	};
