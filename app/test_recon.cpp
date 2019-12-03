@@ -100,19 +100,21 @@ int main(int argc, char** argv)
 
 		load_scalars(filename, densities);
 
-		mcb.setObject(new Fluid(params, positions, densities, initValue, lower_corner_box, upper_corner_box, cubeResolution));
+		auto fluid = new Fluid(params, positions, densities, initValue, lower_corner_box, upper_corner_box, cubeResolution);
+		mcb.setObject(fluid);
 
-        vector<Vector3R> triangle_mesh;
+		vector<Vector3R> triangle_mesh;
 
-        mcb.getTriangleMesh(triangle_mesh);
+		mcb.getTriangleMesh(triangle_mesh);
+		delete fluid;
 
-        vector<array<int, 3>> triangles;
+		vector<array<int, 3>> triangles;
 
-        for(int i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
+		for(int i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
 
-        std::string surface_filename = "res/assignment3/" + sim_name + "_surface_" + std::to_string(t) + ".vtk";
+		std::string surface_filename = "res/assignment3/" + sim_name + "_surface_" + std::to_string(t) + ".vtk";
 
-        learnSPH::saveTriMeshToVTK(surface_filename, triangle_mesh, triangles);
+		learnSPH::saveTriMeshToVTK(surface_filename, triangle_mesh, triangles);
 
 		cout << "\nframe [" << t << "] rendered" << endl;
 	}

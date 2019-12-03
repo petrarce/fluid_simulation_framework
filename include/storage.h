@@ -101,10 +101,8 @@ namespace learnSPH
 			vector<bool> activeness;
 			vector<Vector3R> velocities;
 			vector<Vector3R> external_forces;
-			/*WARNING: as usual thise array should be of size [*][2][*]:
-				[*][0][*] - indexes of Fluid neighbor particles
-				[*][1][*] - indexes of Border neighbor particles*/
-			vector<vector<vector<unsigned int>>> neighbors;
+
+			vector<vector<vector<unsigned int> > > neighbors;
 
 		public:
 			void setPositions(vector<Vector3R>& newPositions)
@@ -148,7 +146,7 @@ namespace learnSPH
 				return velocities;
 			};
 
-			const vector<vector<vector<unsigned int>>>& getNeighbors() const
+			const vector<vector<vector<unsigned int> > >& getNeighbors() const
 			{
 				return neighbors;
 			}
@@ -162,18 +160,10 @@ namespace learnSPH
 			{
 				ns.update_point_sets();
 
-				for(int i = 0; i < this->size(); i++){
-					ns.find_neighbors(0, i, neighbors[i]);
-				}
+				for(int i = 0; i < this->size(); i++) ns.find_neighbors(0, i, neighbors[i]);
 			};
 
-			FluidSystem(
-							vector<Vector3R>& positions,
-							vector<Vector3R>& velocities,
-							vector<Real>& dencities,
-							Real restDensity,
-							Real fluidVolume,
-							Real eta):ParticleSystem(positions, restDensity)
+			FluidSystem(vector<Vector3R>& positions, vector<Vector3R>& velocities, vector<Real>& dencities, Real restDensity, Real fluidVolume, Real eta):ParticleSystem(positions, restDensity)
 			{
 				this->mass = (this->restDensity * fluidVolume) / this->positions.size();
 				this->diameter = cbrt(this->mass / this->restDensity);
@@ -187,6 +177,5 @@ namespace learnSPH
 				this->external_forces.assign(this->positions.size(), Vector3R(0.0, 0.0, 0.0));
 				this->neighbors.resize(this->size());
 			};
-			~FluidSystem(){};
 	};
 };
