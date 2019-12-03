@@ -46,7 +46,7 @@ void save_scalars(const std::string &path, std::vector<Real> &data)
 
 int main(int argc, char** argv)
 {
-	assert(argc == 22);
+	assert(argc == 23);
 
 	std::cout << "Simulation running" << std::endl;
 
@@ -69,12 +69,13 @@ int main(int argc, char** argv)
 	Real render_step = stod(argv[19]);
 	Real sim_duration = stod(argv[20]);
 	string sim_name = argv[21];
+	bool debug = argv[22];
 
 	FluidSystem* fluidParticles = sample_fluid_cube(lower_corner_fluid, upper_corner_fluid, 1000.0, sampling_distance, eta);
 
 	cout << "Number of fluid particles: " << fluidParticles->size() << endl;
 
-	BorderSystem* borderParticles = sample_border_box(lower_corner_box, upper_corner_box, 3000.0, sampling_distance * 0.5, eta * 0.5, true);
+	BorderSystem* borderParticles = sample_border_box(lower_corner_box, upper_corner_box, 3000.0, sampling_distance * 0.5, eta, true);
 
 	cout << "Number of border particles: " << borderParticles->size() << endl;
 
@@ -101,15 +102,16 @@ int main(int argc, char** argv)
 
 	learnSPH::saveParticlesToVTK(filename, borderParticles->getPositions(), borderParticles->getVolumes(), dummyVector);
 
-	unsigned int nsamples = int(sim_duration / render_step);
+    Real cur_sim_time = 0;
+    size_t t = 0;
 
-	for (unsigned int t = 0; t < nsamples; t++) {
+	while (cur_sim_time < sim_duration) {
 
 		Real timeSimulation = 0;
 
 		int physical_steps = 0;
 
-		while (timeSimulation < 1) {
+		while (timeSimulation < render_step) {
 			fluidParticles->findNeighbors(ns);
 
 			learnSPH::calculate_dencities(fluidParticles, borderParticles, fluidParticles->getNeighbors(), fluidParticles->getSmoothingLength());
@@ -129,50 +131,42 @@ int main(int argc, char** argv)
 
 			Real vMaxNorm = 0.0;
 
-			//vector<bool> &fluidActiveness = fluidParticles->getActiveness();
-
 			vector<Vector3R> &fluidVelocities = fluidParticles->getVelocities();
 
 			for (int i = 0; i < fluidParticles->size(); i++) {
-				//if (fluidActiveness[i]) {
 					vMaxNorm = max(fluidVelocities[i].norm(), vMaxNorm);
-				//}
 			}
 
 			Real logic_step_upper_bound = 0.5 * (fluidParticles->getDiameter() / vMaxNorm);
 
-			Real logic_time_step;
+			Real logic_time_step = min(render_step, 
+										max(0.2 * render_step, logic_step_upper_bound)
+									);
 
-			if (timeSimulation * render_step + logic_step_upper_bound >= render_step) {
-				logic_time_step = (1 - timeSimulation) * render_step;
-				timeSimulation = 1;
-			} else {
-				logic_time_step = logic_step_upper_bound;
-				timeSimulation += logic_time_step / render_step;
-			}
+
 
 			if (!do_velo_smooth)
 				learnSPH::symplectic_euler(accelerations, fluidParticles, logic_time_step);
 			else
 				learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, fluidParticles->getNeighbors(), 0.5, logic_time_step, fluidParticles->getSmoothingLength());
 
-			/*Real velocityCap = 50.0;
-
-			vector<Vector3R> &fluidPositions = fluidParticles->getPositions();
-
-			for (int i = 0; i < fluidParticles->size(); i++) {
-
-				if (!fluidActiveness[i])
-					continue;
-
-				if (fluidVelocities[i].norm() > velocityCap)
-					fluidVelocities[i] = velocityCap * fluidVelocities[i].normalized();
-
-				if ((fluidPositions[i] - box_center).norm() > max_shift)
-					fluidActiveness[i] = false;
-			}*/
 			physical_steps++;
+			timeSimulation		+= logic_time_step;
+			cur_sim_time		+= logic_time_step;
+
+			if(debug){
+				break;
+			}
 		}
+
+		//put outside particles back into simulation
+		vector<Vector3R>& fluidPositions = fluidParticles->getPositions();
+		for(Vector3R& pos : fluidPositions){
+			if((box_center - pos).norm() > max_shift){
+				pos = box_center;
+			}
+		}
+
 		cout << "\n[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "]" << endl;
 
 		string filename = "res/assignment3/" + sim_name + '_' + std::to_string(t) + ".vtk";
@@ -197,6 +191,7 @@ int main(int argc, char** argv)
 		filename = "res/assignment3/" + sim_name + "_densities_" + std::to_string(t) + ".cereal";
 
 		save_scalars(filename, fluidParticles->getDensities());
+		t++;
 	}
 	delete fluidParticles;
 	std::cout << "Simulation finished" << std::endl;
