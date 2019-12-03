@@ -10,9 +10,6 @@ if (CMAKE_BUILD_TYPE MATCHES "DEBUG")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG")
 endif()
 
-if(CMAKE_BUILD_TYPE MATCHES "RELEASE")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-endif()
 
 if (MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP") # Parallel compilation in Visual Studio
