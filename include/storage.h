@@ -59,7 +59,7 @@ namespace learnSPH
 			{
 				this->volumes.resize(this->positions.size());
 
-				NeighborhoodSearch ns(diameter * eta * 2.0, false);
+				NeighborhoodSearch ns(diameter * eta, false);
 
 				ns.add_point_set((Real*)(this->positions.data()), this->positions.size(), false);
 
@@ -78,7 +78,7 @@ namespace learnSPH
 					}
 					Real sum = 0.0;
 
-					for(int j : neighbours[0]) sum += kernelFunction(this->positions[i], this->positions[j], diameter * eta);
+					for(int j : neighbours[0]) sum += kernelFunction(this->positions[i], this->positions[j], 0.5 * diameter * eta);
 
 					assert(sum > 0.0);
 
