@@ -245,18 +245,20 @@ void learnSPH::sample_border_face(const Vector3R& vertex_a, const Vector3R& vert
 	borderParticles.insert(borderParticles.end(), faceParticles.begin(), faceParticles.end());
 }
 
-BorderSystem* learnSPH::sample_border_box(const Vector3R& lower_corner, const Vector3R& upper_corner, const Real restDensity, const Real samplingDistance, const Real eta, const bool hexagonal)
+void learnSPH::sample_box_face(const Vector3R& lowerCorner, 
+									const Vector3R& upperCorner, 
+									const Real samplingDistance, 
+									vector<Vector3R>& borderParticles, 
+									bool hexagonal)
 {
-	vector<Vector3R> borderParticles;
-
-	Vector3R vertexA = Vector3R(lower_corner(0), lower_corner(1), lower_corner(2));
-	Vector3R vertexB = Vector3R(lower_corner(0), upper_corner(1), lower_corner(2));
-	Vector3R vertexD = Vector3R(upper_corner(0), lower_corner(1), lower_corner(2));
-	Vector3R vertexC = Vector3R(upper_corner(0), upper_corner(1), lower_corner(2));
-	Vector3R vertexE = Vector3R(lower_corner(0), lower_corner(1), upper_corner(2));
-	Vector3R vertexF = Vector3R(lower_corner(0), upper_corner(1), upper_corner(2));
-	Vector3R vertexH = Vector3R(upper_corner(0), lower_corner(1), upper_corner(2));
-	Vector3R vertexG = Vector3R(upper_corner(0), upper_corner(1), upper_corner(2));
+	Vector3R vertexA = Vector3R(lowerCorner(0), lowerCorner(1), lowerCorner(2));
+	Vector3R vertexB = Vector3R(lowerCorner(0), upperCorner(1), lowerCorner(2));
+	Vector3R vertexD = Vector3R(upperCorner(0), lowerCorner(1), lowerCorner(2));
+	Vector3R vertexC = Vector3R(upperCorner(0), upperCorner(1), lowerCorner(2));
+	Vector3R vertexE = Vector3R(lowerCorner(0), lowerCorner(1), upperCorner(2));
+	Vector3R vertexF = Vector3R(lowerCorner(0), upperCorner(1), upperCorner(2));
+	Vector3R vertexH = Vector3R(upperCorner(0), lowerCorner(1), upperCorner(2));
+	Vector3R vertexG = Vector3R(upperCorner(0), upperCorner(1), upperCorner(2));
 
 	sample_border_face(vertexA, vertexB, vertexC, samplingDistance, borderParticles, hexagonal);
 	sample_border_face(vertexA, vertexD, vertexC, samplingDistance, borderParticles, hexagonal);
@@ -270,6 +272,102 @@ BorderSystem* learnSPH::sample_border_box(const Vector3R& lower_corner, const Ve
 	sample_border_face(vertexE, vertexH, vertexG, samplingDistance, borderParticles, hexagonal);
 	sample_border_face(vertexA, vertexE, vertexF, samplingDistance, borderParticles, hexagonal);
 	sample_border_face(vertexA, vertexB, vertexF, samplingDistance, borderParticles, hexagonal);
+
+}
+
+
+BorderSystem* learnSPH::sample_border_box(const Vector3R& lower_corner, const Vector3R& upper_corner, const Real restDensity, const Real samplingDistance, const Real eta, const bool hexagonal)
+{
+	vector<Vector3R> borderParticles;
+
+	sample_box_face(lower_corner, 
+						upper_corner, samplingDistance, borderParticles, hexagonal);
+	return new BorderSystem(borderParticles, restDensity, samplingDistance, eta);
+}
+
+void learnSPH::sample_border_cone_face(		const Real lowerCircleRadius, 
+										const Vector3R& lowerCircleCenter,
+										const Real upperCircleRadius,
+										const Vector3R& upperCircleCenter,
+										Real samplingDistance,
+										vector<Vector3R>& inpBorderParticles)
+{
+	assert(lowerCircleRadius > 0);
+	assert(upperCircleRadius > 0);
+	assert(samplingDistance > 0);
+	assert((lowerCircleCenter - upperCircleCenter).norm() > threshold);
+	//define axes for cone circles
+	Vector3R normal = upperCircleCenter - lowerCircleCenter;
+
+	Vector3R firstAxe = normal.cross(Vector3R(0,0,1));
+	if(firstAxe.norm() < threshold){
+		firstAxe = normal.cross(Vector3R(0,1,0));
+	}
+	assert(firstAxe.norm() > threshold);
+	Vector3R secndAxe = normal.cross(firstAxe);
+	firstAxe = firstAxe.normalized();
+	secndAxe = secndAxe.normalized();
+
+	vector<Vector3R> borderParticles;
+
+	size_t circleCnt = sqrt(normal.squaredNorm() + pow2(upperCircleRadius - lowerCircleRadius)) / samplingDistance;
+	Real normalSD = normal.norm() / circleCnt;
+	borderParticles.reserve(int((	2 * PI / 
+									(normalSD / (max(upperCircleRadius, lowerCircleRadius) * 2))
+								) * 
+								circleCnt));
+	for(int i = 0; i < circleCnt; i++){
+		Real curCircleRadius = lowerCircleRadius + 
+							( upperCircleRadius - lowerCircleRadius) * 
+								(i*normalSD) / normal.norm();
+		Vector3R curCircleCenter = lowerCircleCenter + normal.normalized() * i * normalSD;
+		Real samplingAngleRad = 2 * samplingDistance / (curCircleRadius * 2);
+		size_t ptsCount = 2 * PI / samplingAngleRad + 1;
+		for(int j = 0; j < ptsCount; j++){
+			Real x = curCircleRadius * std::sin(samplingAngleRad * j);
+			Real y = curCircleRadius * std::cos(samplingAngleRad * j);
+			Vector3R pt = curCircleCenter + x * firstAxe + y * secndAxe;
+			borderParticles.push_back(pt);
+		}
+	}
+	inpBorderParticles.insert(inpBorderParticles.end(), borderParticles.begin(), borderParticles.end());
+}
+
+
+BorderSystem* learnSPH::sample_border_cone(const Real lowerCircleRadius, 
+										const Vector3R& lowerCircleCenter,
+										const Real upperCircleRadius,
+										const Vector3R& upperCircleCenter,
+										Real restDensity,
+										Real samplingDistance,
+										Real eta)
+{
+	assert(eta > 0);
+	assert(restDensity > 0);
+	vector<Vector3R> borderParticles;
+
+	sample_border_cone_face(lowerCircleRadius, lowerCircleCenter, 	upperCircleRadius, 
+							upperCircleCenter, samplingDistance,	borderParticles);
+
+	return new BorderSystem(borderParticles, restDensity, samplingDistance, eta);
+
+}
+
+BorderSystem* learnSPH::sample_border_cone_and_box(	const Real lowerCircleRadius, 
+										const Vector3R& lowerCircleCenter,
+										const Real upperCircleRadius,
+										const Vector3R& upperCircleCenter,
+										const Vector3R& lowerCorner, 
+										const Vector3R& upperCorner,
+										Real restDensity,
+										Real samplingDistance,
+										Real eta,
+										bool hexagonal)
+{
+	vector<Vector3R> borderParticles;
+	sample_box_face(lowerCorner, upperCorner, samplingDistance, borderParticles, hexagonal);
+	sample_border_cone_face(lowerCircleRadius, lowerCircleCenter, upperCircleRadius, 
+						upperCircleCenter, samplingDistance, borderParticles);
 
 	return new BorderSystem(borderParticles, restDensity, samplingDistance, eta);
 }

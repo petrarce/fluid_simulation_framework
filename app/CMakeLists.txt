@@ -20,3 +20,9 @@ set(SOURCE_FILES_test_recon test_recon.cpp)
 add_executable(test_recon ${SOURCE_FILES_test_recon})
 add_dependencies(test_recon learnSPH)
 target_link_libraries(test_recon learnSPH)
+
+set(SOURCE_FILES_test_border_cone test_border_cone.cpp)
+
+add_executable(test_border_cone ${SOURCE_FILES_test_border_cone})
+add_dependencies(test_border_cone learnSPH CompactNSearch)
+target_link_libraries(test_border_cone learnSPH CompactNSearch)
