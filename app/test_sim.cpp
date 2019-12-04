@@ -75,7 +75,7 @@ int main(int argc, char** argv)
 
 	cout << "Number of fluid particles: " << fluidParticles->size() << endl;
 
-	BorderSystem* borderParticles = sample_border_box(lower_corner_box, upper_corner_box, 3000.0, sampling_distance * 0.5, eta * 0.5, true);
+	BorderSystem* borderParticles = sample_border_box(lower_corner_box, upper_corner_box, 3000.0, sampling_distance * 0.5, eta, true);
 
 	cout << "Number of border particles: " << borderParticles->size() << endl;
 
