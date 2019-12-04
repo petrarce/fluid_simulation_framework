@@ -69,6 +69,7 @@ int main(int argc, char** argv)
 	Real render_step = stod(argv[19]);
 	Real sim_duration = stod(argv[20]);
 	string sim_name = argv[21];
+	bool debug = stoi(argv[22]);
 
 	FluidSystem* fluidParticles = sample_fluid_cube(lower_corner_fluid, upper_corner_fluid, 1000.0, sampling_distance, eta);
 
@@ -154,6 +155,9 @@ int main(int argc, char** argv)
 			frame_sim_time		+= logic_time_step;
 			cur_sim_time		+= logic_time_step;
 
+			if(debug){
+				break;
+			}
 		}
 
 		//put outside particles back into simulation
