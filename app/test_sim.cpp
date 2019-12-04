@@ -46,7 +46,7 @@ void save_scalars(const std::string &path, std::vector<Real> &data)
 
 int main(int argc, char** argv)
 {
-	assert(argc == 23);
+	assert(argc == 31);
 
 	std::cout << "Simulation running" << std::endl;
 
@@ -71,11 +71,26 @@ int main(int argc, char** argv)
 	string sim_name = argv[21];
 	bool debug = stoi(argv[22]);
 
+
+	Vector3R lower_cone_center(stod(argv[23]), stod(argv[24]), stod(argv[25]));
+	Vector3R upper_cone_center(stod(argv[26]), stod(argv[27]), stod(argv[28]));
+	Real lower_cone_rad = stod(argv[29]);
+	Real upper_cone_rad = stod(argv[30]);
+
 	FluidSystem* fluidParticles = sample_fluid_cube(lower_corner_fluid, upper_corner_fluid, 1000.0, sampling_distance, eta);
 
 	cout << "Number of fluid particles: " << fluidParticles->size() << endl;
 
-	BorderSystem* borderParticles = sample_border_box(lower_corner_box, upper_corner_box, 3000.0, sampling_distance * 0.5, eta, true);
+	BorderSystem* borderParticles = sample_border_cone_and_box( lower_cone_rad,
+																lower_cone_center,
+																upper_cone_rad,
+																upper_cone_center,
+																lower_corner_box, 
+																upper_corner_box, 
+																3000.0, 
+																sampling_distance * 0.5, 
+																eta, 
+																true);
 
 	cout << "Number of border particles: " << borderParticles->size() << endl;
 
