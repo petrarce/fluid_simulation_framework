@@ -15,9 +15,9 @@ void learnSPH::calculate_dencities(
 
 	vector<Real>& fluidParticlesDensities = fluidParticles->getDensities();
 
-	auto fluidPositions = fluidParticles->getPositions();
-	auto borderParticlePositions = borderParticles->getPositions();
-	auto borderParticlesVolumes = borderParticles->getVolumes();
+	const auto& fluidPositions = fluidParticles->getPositions();
+	const auto& borderParticlePositions = borderParticles->getPositions();
+	const auto& borderParticlesVolumes = borderParticles->getVolumes();
 
 	#pragma omp parallel for schedule(guided, 100)
 
@@ -54,12 +54,12 @@ void learnSPH::calculate_acceleration(
 									const Real stiffness_para,
 									const Real smoothingLength)
 {
-	auto fluidParticlesDensities = fluidParticles->getDensities();
-	auto fluidPositions = fluidParticles->getPositions();
-	auto borderParticlePositions = borderParticles->getPositions();
-	auto fluidVelocities = fluidParticles->getVelocities();
-	auto fluidParticlesForces = fluidParticles->getExternalForces();
-	auto borderParticlesVolumes = borderParticles->getVolumes();
+	const auto& fluidParticlesDensities = fluidParticles->getDensities();
+	const auto& fluidPositions = fluidParticles->getPositions();
+	const auto& borderParticlePositions = borderParticles->getPositions();
+	const auto& fluidVelocities = fluidParticles->getVelocities();
+	const auto& fluidParticlesForces = fluidParticles->getExternalForces();
+	const auto& borderParticlesVolumes = borderParticles->getVolumes();
 
 	#pragma omp parallel for schedule(guided, 100)
 
