@@ -169,7 +169,7 @@ int main(int argc, char** argv)
 			}
 			physical_steps++;
 		}
-		cout << "\n[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "]" << endl;
+		cout << "\n[" << physical_steps << "] physical updates were carried out for rendering frame [" << t << "] / [" << nsamples << "]" << endl;
 
 		string filename = "res/assignment3/" + sim_name + '_' + std::to_string(t) + ".vtk";
 

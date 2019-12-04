@@ -67,18 +67,18 @@ int main(int argc, char** argv)
 
 	std::cout << "Per frame rendering running" << std::endl;
 
-	Vector3R lower_corner_box(stod(argv[1]),stod(argv[2]),stod(argv[3]));
-	Vector3R upper_corner_box(stod(argv[4]),stod(argv[5]),stod(argv[6]));
+	Vector3R lowerCorner(stod(argv[1]),stod(argv[2]),stod(argv[3]));
+	Vector3R upperCorner(stod(argv[4]),stod(argv[5]),stod(argv[6]));
 
 	Real render_step = stod(argv[7]);
 	Real sim_duration = stod(argv[8]);
 	string sim_name = argv[9];
 
-	Vector3R cubeResolution(stod(argv[10]), stod(argv[11]), stod(argv[12]));
+	Vector3R cubeResol(stod(argv[10]), stod(argv[11]), stod(argv[12]));
 
 	Real initValue = stod(argv[13]);
 
-	MarchingCubes mcb(lower_corner_box, upper_corner_box, cubeResolution);
+	MarchingCubes mcb(lowerCorner, upperCorner, cubeResol);
 
 	unsigned int nsamples = int(sim_duration / render_step);
 
@@ -100,7 +100,28 @@ int main(int argc, char** argv)
 
 		load_scalars(filename, densities);
 
-		auto fluid = new Fluid(params, positions, densities, initValue, lower_corner_box, upper_corner_box, cubeResolution);
+		vector<size_t> deadParticles;
+
+		for (size_t particleID = 0; particleID < positions.size(); particleID ++) {
+
+			bool inside = true;
+
+			inside &= (lowerCorner(0) <= positions[particleID](0));
+			inside &= (lowerCorner(1) <= positions[particleID](1));
+			inside &= (lowerCorner(2) <= positions[particleID](2));
+
+			inside &= (positions[particleID](0) <= upperCorner(0));
+			inside &= (positions[particleID](1) <= upperCorner(1));
+			inside &= (positions[particleID](2) <= upperCorner(2));
+
+			if (!inside) deadParticles.push_back(particleID);
+		}
+		std::reverse(deadParticles.begin(), deadParticles.end());
+
+		for (auto particleID : deadParticles) positions.erase(positions.begin() + particleID);
+		for (auto particleID : deadParticles) densities.erase(densities.begin() + particleID);
+
+		auto fluid = new Fluid(params, positions, densities, initValue, lowerCorner, upperCorner, cubeResol);
 		mcb.setObject(fluid);
 
 		vector<Vector3R> triangle_mesh;
