@@ -6,6 +6,7 @@
 //define profiling makroses
 #include <stack>
 #include <chrono>
+/*!!!WARNING BE SURE THAT AFTER PROFILE_START MACROS PROFILE_STOP IS FINALLY REACHED IN THE CODE!!!*/
 static std::stack<std::pair<int, std::chrono::time_point<std::chrono::system_clock>>> profile_stack;
 #define PROFILE_START \
 do{ \
