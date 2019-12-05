@@ -7,32 +7,11 @@ using namespace learnSPH;
 
 namespace learnSPH{
 
-	void calculate_dencities(
-						FluidSystem *normalParticles,
-						BorderSystem *borderParticles,
-						const vector<vector<vector<unsigned int> > >& normalParticleNeighbours,
-						const Real smoothingLengthFactor = 1);
+	void calculate_dencities(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real smooth_length);
 
-	void calculate_acceleration(
-						vector<Vector3R>& fluidParticlesAccelerations,
-						FluidSystem *fluidParticles,
-						BorderSystem *borderParticles,
-						const vector<vector<vector<unsigned int> > >& normalParticleNeighbours,
-						const Real fluid_viscosity,
-						const Real friction_para,
-						const Real stiffness_para,
-						const Real smoothingLength);
+	void calculate_acceleration(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, BorderSystem *borderParticles, Real viscosity, Real friction, Real stiffness, Real smooth_length);
 
-	void symplectic_euler(
-						const vector<Vector3R>& fluidParticlesAccelerations,
-						FluidSystem *normalParticles,
-						const Real time_frame);
+	void symplectic_euler(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, Real time_frame);
 
-	void smooth_symplectic_euler(
-						const vector<Vector3R>& fluidParticlesAccelerations,
-						FluidSystem *fluidParticles,
-						const vector<vector<vector<unsigned int> > >& normalParticleNeighbours,
-						const Real scaling_para,
-						const Real time_frame,
-						const Real smoothingLength);
+	void smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, Real epsilon, Real time_frame, Real smooth_length);
 };

@@ -116,11 +116,11 @@ int main(int argc, char** argv)
 
 			fluidParticles->findNeighbors(ns);
 
-			learnSPH::calculate_dencities(fluidParticles, borderParticles, fluidParticles->getNeighbors(), fluidParticles->getSmoothingLength());
+			learnSPH::calculate_dencities(fluidParticles, borderParticles, fluidParticles->getSmoothingLength());
 
 			vector<Vector3R> accelerations(fluidParticles->size(), gravity);
 
-			learnSPH::calculate_acceleration(accelerations, fluidParticles, borderParticles, fluidParticles->getNeighbors(), viscosity, friction, stiffness, fluidParticles->getSmoothingLength());
+			learnSPH::calculate_acceleration(accelerations, fluidParticles, borderParticles, viscosity, friction, stiffness, fluidParticles->getSmoothingLength());
 
 			Real vMaxNorm = 0.0;
 
@@ -135,7 +135,7 @@ int main(int argc, char** argv)
 			if (!do_velo_smooth)
 				learnSPH::symplectic_euler(accelerations, fluidParticles, update_step);
 			else
-				learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, fluidParticles->getNeighbors(), 0.5, update_step, fluidParticles->getSmoothingLength());
+				learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, 0.5, update_step, fluidParticles->getSmoothingLength());
 
 			cur_sim_time += update_step;
 			sim_time += update_step;

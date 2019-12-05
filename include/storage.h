@@ -104,7 +104,7 @@ namespace learnSPH
 			vector<vector<vector<unsigned int> > > neighbors;
 
 		public:
-			void setPositions(vector<Vector3R>& newPositions)
+			void setPositions(vector<Vector3R> &newPositions)
 			{
 				assert(this->positions.size() == newPositions.size());
 				this->positions.assign(newPositions.begin(), newPositions.end());
@@ -150,14 +150,19 @@ namespace learnSPH
 				return external_forces;
 			};
 
-			void findNeighbors(NeighborhoodSearch& ns)
+			void findNeighbors(NeighborhoodSearch &ns)
 			{
 				ns.update_point_sets();
 
 				for(int i = 0; i < this->size(); i++) ns.find_neighbors(0, i, neighbors[i]);
 			};
 
-			FluidSystem(vector<Vector3R>& positions, vector<Vector3R>& velocities, vector<Real>& dencities, Real restDensity, Real fluidVolume, Real eta):ParticleSystem(positions, restDensity)
+			void clipVelocities(Real capVelo)
+			{
+				for (int i = 0; i < this->size(); i++) if (velocities[i].norm() >= capVelo) velocities[i] = velocities[i].normalized() * capVelo;
+			}
+
+			FluidSystem(vector<Vector3R> &positions, vector<Vector3R> &velocities, vector<Real> &dencities, Real restDensity, Real fluidVolume, Real eta):ParticleSystem(positions, restDensity)
 			{
 				this->mass = (this->restDensity * fluidVolume) / this->positions.size();
 				this->diameter = cbrt(this->mass / this->restDensity);
