@@ -50,14 +50,11 @@ int main(int argc, char** argv)
 
 	std::cout << "Simulation running" << std::endl;
 
-	Vector3R lower_corner_fluid(stod(argv[1]), stod(argv[2]), stod(argv[3]));
-	Vector3R upper_corner_fluid(stod(argv[4]), stod(argv[5]), stod(argv[6]));
+	Vector3R lowerCorner(stod(argv[1]), stod(argv[2]), stod(argv[3]));
+	Vector3R upperCorner(stod(argv[4]), stod(argv[5]), stod(argv[6]));
 
-	Vector3R lower_corner_box(stod(argv[7]), stod(argv[8]), stod(argv[9]));
-	Vector3R upper_corner_box(stod(argv[10]), stod(argv[11]), stod(argv[12]));
-
-	auto box_center = (lower_corner_box + upper_corner_box) / 2.0;
-	auto max_shift = (box_center - lower_corner_box).norm() * 1.2;
+	Vector3R lowerBoxCorner(stod(argv[7]), stod(argv[8]), stod(argv[9]));
+	Vector3R upperBoxCorner(stod(argv[10]), stod(argv[11]), stod(argv[12]));
 
 	Real sampling_distance = stod(argv[13]);
 	Real eta = stod(argv[14]);
@@ -70,17 +67,17 @@ int main(int argc, char** argv)
 	Real sim_duration = stod(argv[20]);
 	string sim_name = argv[21];
 
-	FluidSystem* fluidParticles = sample_fluid_cube(lower_corner_fluid, upper_corner_fluid, 1000.0, sampling_distance, eta);
+	FluidSystem* fluidParticles = sample_fluid_cube(lowerCorner, upperCorner, 1000.0, sampling_distance, eta);
 
 	cout << "Number of fluid particles: " << fluidParticles->size() << endl;
 
-	BorderSystem* borderParticles = sample_border_box(lower_corner_box, upper_corner_box, 3000.0, sampling_distance * 0.5, eta, true);
+	BorderSystem* borderParticles = sample_border_box(lowerBoxCorner, upperBoxCorner, 3000.0, sampling_distance * 0.5, eta, true);
 
 	cout << "Number of border particles: " << borderParticles->size() << endl;
 
 	NeighborhoodSearch ns(fluidParticles->getCompactSupport());
 
-	ns.add_point_set((Real*)(fluidParticles->getPositions().data()), fluidParticles->size(), true);
+	ns.add_point_set((Real*)fluidParticles->getPositions().data(), fluidParticles->size(), true);
 
 	ns.add_point_set((Real*)borderParticles->getPositions().data(), borderParticles->size(), false);
 
@@ -128,24 +125,24 @@ int main(int argc, char** argv)
 
 			for (int i = 0; i < fluidParticles->size(); i++) vMaxNorm = max(fluidVelocities[i].norm(), vMaxNorm);
 
-			Real courant_bound = 0.5 * (fluidParticles->getDiameter() / vMaxNorm);
+			Real courant_bound = 0.5 * fluidParticles->getDiameter() / vMaxNorm;
 
-			Real update_step = min(render_step - cur_sim_time, max(0.2 * render_step, courant_bound));
+			Real update_step = min(render_step - cur_sim_time, courant_bound);
 
 			if (!do_velo_smooth)
 				learnSPH::symplectic_euler(accelerations, fluidParticles, update_step);
 			else
 				learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, 0.5, update_step, fluidParticles->getSmoothingLength());
 
+			fluidParticles->killFugitives(lowerBoxCorner, upperBoxCorner, ns);
+
+			fluidParticles->clipVelocities(50.0);
+
 			cur_sim_time += update_step;
 			sim_time += update_step;
 
 			physical_steps ++;
 		}
-		vector<Vector3R> &fluidPositions = fluidParticles->getPositions();
-
-		for(auto &pos : fluidPositions) if((box_center - pos).norm() > max_shift) pos = box_center;
-
 		cout << "\n[" << physical_steps << "] physical updates were carried out for rendering frame [" << frame << "] / [" << n_frames << "]" << endl;
 
 		string filename = "res/assignment3/" + sim_name + '_' + std::to_string(frame) + ".vtk";

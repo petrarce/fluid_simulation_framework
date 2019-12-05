@@ -97,7 +97,7 @@ namespace learnSPH
 			Real smooth_length;
 			Real compact_support;
 
-			vector<Real> dencities;
+			vector<Real> densities;
 			vector<Vector3R> velocities;
 			vector<Vector3R> external_forces;
 
@@ -132,7 +132,7 @@ namespace learnSPH
 
 			vector<Real>& getDensities()
 			{
-				return dencities;
+				return densities;
 			};
 
 			vector<Vector3R>& getVelocities()
@@ -157,19 +157,58 @@ namespace learnSPH
 				for(int i = 0; i < this->size(); i++) ns.find_neighbors(0, i, neighbors[i]);
 			};
 
+			void killFugitives(Vector3R &lowerCorner, Vector3R &upperCorner, NeighborhoodSearch &ns)
+			{
+				vector<size_t> fugitives;
+
+				for (size_t i = 0; i < this->size(); i ++) {
+
+					bool inside = true;
+
+					inside &= (lowerCorner(0) <= positions[i](0));
+					inside &= (lowerCorner(1) <= positions[i](1));
+					inside &= (lowerCorner(2) <= positions[i](2));
+
+					inside &= (positions[i](0) <= upperCorner(0));
+					inside &= (positions[i](1) <= upperCorner(1));
+					inside &= (positions[i](2) <= upperCorner(2));
+
+					if (!inside) fugitives.push_back(i);
+				}
+				if (fugitives.empty()) return;
+
+				std::reverse(fugitives.begin(), fugitives.end());
+
+				for (auto i : fugitives) {
+
+					positions[i] = positions.back();
+					densities[i] = densities.back();
+					velocities[i] = velocities.back();
+					external_forces[i] = external_forces.back();
+
+					positions.pop_back();
+					densities.pop_back();
+					velocities.pop_back();
+					external_forces.pop_back();
+				}
+				ns.resize_point_set(0, (Real*)positions.data(), positions.size());
+
+				neighbors.resize(this->size());
+			}
+
 			void clipVelocities(Real capVelo)
 			{
 				for (int i = 0; i < this->size(); i++) if (velocities[i].norm() >= capVelo) velocities[i] = velocities[i].normalized() * capVelo;
 			}
 
-			FluidSystem(vector<Vector3R> &positions, vector<Vector3R> &velocities, vector<Real> &dencities, Real restDensity, Real fluidVolume, Real eta):ParticleSystem(positions, restDensity)
+			FluidSystem(vector<Vector3R> &positions, vector<Vector3R> &velocities, vector<Real> &densities, Real restDensity, Real fluidVolume, Real eta):ParticleSystem(positions, restDensity)
 			{
 				this->mass = (this->restDensity * fluidVolume) / this->positions.size();
 				this->diameter = cbrt(this->mass / this->restDensity);
 				this->smooth_length = eta * this->diameter;
 				this->compact_support = 2.0 * this->smooth_length;
 
-				this->dencities.assign(dencities.begin(), dencities.end());
+				this->densities.assign(densities.begin(), densities.end());
 				this->velocities.assign(velocities.begin(), velocities.end());
 
 				this->external_forces.assign(this->positions.size(), Vector3R(0.0, 0.0, 0.0));

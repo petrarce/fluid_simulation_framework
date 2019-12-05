@@ -100,7 +100,7 @@ int main(int argc, char** argv)
 
 		load_scalars(filename, densities);
 
-		vector<size_t> deadParticles;
+		vector<size_t> fugitives;
 
 		for (size_t particleID = 0; particleID < positions.size(); particleID ++) {
 
@@ -114,12 +114,12 @@ int main(int argc, char** argv)
 			inside &= (positions[particleID](1) <= upperCorner(1));
 			inside &= (positions[particleID](2) <= upperCorner(2));
 
-			if (!inside) deadParticles.push_back(particleID);
+			if (!inside) fugitives.push_back(particleID);
 		}
-		std::reverse(deadParticles.begin(), deadParticles.end());
+		std::reverse(fugitives.begin(), fugitives.end());
 
-		for (auto particleID : deadParticles) positions.erase(positions.begin() + particleID);
-		for (auto particleID : deadParticles) densities.erase(densities.begin() + particleID);
+		for (auto particleID : fugitives) positions.erase(positions.begin() + particleID);
+		for (auto particleID : fugitives) densities.erase(densities.begin() + particleID);
 
 		auto fluid = new Fluid(params, positions, densities, initValue, lowerCorner, upperCorner, cubeResol);
 		mcb.setObject(fluid);
