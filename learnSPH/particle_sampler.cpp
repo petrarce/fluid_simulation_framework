@@ -7,7 +7,7 @@ using namespace std;
 using namespace learnSPH;
 using namespace learnSPH::kernel;
 
-FluidSystem* learnSPH::sample_fluid_cube(const Vector3R& lowerCorner, const Vector3R& upperCorner, const Real restDensity, const Real samplingDistance, const Real eta)
+FluidSystem* learnSPH::sample_fluid_cube(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta)
 {
 	
 	assert(restDensity > 0.0);
@@ -92,6 +92,7 @@ static Vector3R get_shift(const Vector3R& vec_s, const Vector3R& vec_t, Real mar
 	return  margin * margin * sqrt(2.0 / (vec_s.dot(vec_t) + margin * margin)) * (vec_s + vec_t).normalized();
 }
 
+
 static void expand_triangle(const Vector3R& vertex_a, const Vector3R& vertex_b, const Vector3R& vertex_c, const Real margin, Vector3R& vertex_a_prime, Vector3R& vertex_b_prime, Vector3R& vertex_c_prime)
 {
 	const Vector3R vec_AB = vertex_b - vertex_a;
@@ -113,12 +114,10 @@ static void expand_triangle(const Vector3R& vertex_a, const Vector3R& vertex_b, 
 	vertex_a_prime = vertex_a + get_shift(expansion_CA, expansion_AB, margin);
 	vertex_b_prime = vertex_b + get_shift(expansion_AB, expansion_BC, margin);
 	vertex_c_prime = vertex_c + get_shift(expansion_BC, expansion_CA, margin);
-
-	return;
 }
 
 
-void learnSPH::sample_border_face(const Vector3R& vertex_a, const Vector3R& vertex_b, const Vector3R& vertex_c, const Real samplingDistance, vector<Vector3R>& borderParticles, bool hexagonal)
+void learnSPH::sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_b, const Vector3R &vertex_c, Real samplingDistance, vector<Vector3R> &borderParticles, bool hexagonal)
 {
 	vector<Vector3R> faceParticles;
 
@@ -150,9 +149,9 @@ void learnSPH::sample_border_face(const Vector3R& vertex_a, const Vector3R& vert
 
 	assert(1 - fabs(vec_CA.normalized().dot(vec_CB.normalized())) > threshold);
 
-	Vector3R vec_major;  // the vector that defines the major axis for particle sampling, vec_major.norm() equals length of the major edge
-	Vector3R vec_normal;  // the vector along the axis perpendicular to the major axis, vec_normal.norm() equals length of the altitude of the major edge
-	Vector3R vec_subordinate;  // the vector along the subordinate edge, vec_subordinate.norm() equals length of the subordinate edge
+	Vector3R vec_major;
+	Vector3R vec_normal;
+	Vector3R vec_subordinate;
 	Vector3R reference;
 
 	if (vec_AB.dot(vec_AC) + threshold < 0)	{
@@ -176,7 +175,6 @@ void learnSPH::sample_border_face(const Vector3R& vertex_a, const Vector3R& vert
 
 	vec_normal = vec_normal.dot(vec_subordinate) * vec_normal;
 
-	// sample particles
 	if (hexagonal) {
 
 		Real samp_dist_major = samplingDistance * sqrt(3.0) / 2.0;
@@ -229,7 +227,6 @@ void learnSPH::sample_border_face(const Vector3R& vertex_a, const Vector3R& vert
 		}
 	} 
 
-	// shift center
 	Vector3R centroid = (vertex_a + vertex_b + vertex_c) / 3.0;
 
 	Vector3R mass_center = Vector3R(0.0, 0.0, 0.0);
@@ -245,12 +242,11 @@ void learnSPH::sample_border_face(const Vector3R& vertex_a, const Vector3R& vert
 	borderParticles.insert(borderParticles.end(), faceParticles.begin(), faceParticles.end());
 }
 
-void learnSPH::sample_box_face(const Vector3R& lowerCorner, 
-									const Vector3R& upperCorner, 
-									const Real samplingDistance, 
-									vector<Vector3R>& borderParticles, 
-									bool hexagonal)
+
+BorderSystem* learnSPH::sample_border_box(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta, bool hexagonal)
 {
+	vector<Vector3R> borderParticles;
+
 	Vector3R vertexA = Vector3R(lowerCorner(0), lowerCorner(1), lowerCorner(2));
 	Vector3R vertexB = Vector3R(lowerCorner(0), upperCorner(1), lowerCorner(2));
 	Vector3R vertexD = Vector3R(upperCorner(0), lowerCorner(1), lowerCorner(2));
@@ -260,114 +256,81 @@ void learnSPH::sample_box_face(const Vector3R& lowerCorner,
 	Vector3R vertexH = Vector3R(upperCorner(0), lowerCorner(1), upperCorner(2));
 	Vector3R vertexG = Vector3R(upperCorner(0), upperCorner(1), upperCorner(2));
 
-	sample_border_face(vertexA, vertexB, vertexC, samplingDistance, borderParticles, hexagonal);
-	sample_border_face(vertexA, vertexD, vertexC, samplingDistance, borderParticles, hexagonal);
-	sample_border_face(vertexD, vertexH, vertexG, samplingDistance, borderParticles, hexagonal);
-	sample_border_face(vertexD, vertexC, vertexG, samplingDistance, borderParticles, hexagonal);
-	sample_border_face(vertexB, vertexC, vertexG, samplingDistance, borderParticles, hexagonal);
-	sample_border_face(vertexB, vertexF, vertexG, samplingDistance, borderParticles, hexagonal);
-	sample_border_face(vertexA, vertexD, vertexH, samplingDistance, borderParticles, hexagonal);
-	sample_border_face(vertexA, vertexE, vertexH, samplingDistance, borderParticles, hexagonal);
-	sample_border_face(vertexE, vertexF, vertexG, samplingDistance, borderParticles, hexagonal);
-	sample_border_face(vertexE, vertexH, vertexG, samplingDistance, borderParticles, hexagonal);
-	sample_border_face(vertexA, vertexE, vertexF, samplingDistance, borderParticles, hexagonal);
-	sample_border_face(vertexA, vertexB, vertexF, samplingDistance, borderParticles, hexagonal);
-
-}
-
-
-BorderSystem* learnSPH::sample_border_box(const Vector3R& lower_corner, const Vector3R& upper_corner, const Real restDensity, const Real samplingDistance, const Real eta, const bool hexagonal)
-{
-	vector<Vector3R> borderParticles;
-
-	sample_box_face(lower_corner, 
-						upper_corner, samplingDistance, borderParticles, hexagonal);
-	return new BorderSystem(borderParticles, restDensity, samplingDistance, eta);
-}
-
-void learnSPH::sample_border_cone_face(		const Real lowerCircleRadius, 
-										const Vector3R& lowerCircleCenter,
-										const Real upperCircleRadius,
-										const Vector3R& upperCircleCenter,
-										Real samplingDistance,
-										vector<Vector3R>& inpBorderParticles)
-{
-	assert(lowerCircleRadius > 0);
-	assert(upperCircleRadius > 0);
-	assert(samplingDistance > 0);
-	assert((lowerCircleCenter - upperCircleCenter).norm() > threshold);
-	//define axes for cone circles
-	Vector3R normal = upperCircleCenter - lowerCircleCenter;
-
-	Vector3R firstAxe = normal.cross(Vector3R(0,0,1));
-	if(firstAxe.norm() < threshold){
-		firstAxe = normal.cross(Vector3R(0,1,0));
-	}
-	assert(firstAxe.norm() > threshold);
-	Vector3R secndAxe = normal.cross(firstAxe);
-	firstAxe = firstAxe.normalized();
-	secndAxe = secndAxe.normalized();
-
-	vector<Vector3R> borderParticles;
-
-	size_t circleCnt = sqrt(normal.squaredNorm() + pow2(upperCircleRadius - lowerCircleRadius)) / samplingDistance;
-	Real normalSD = normal.norm() / circleCnt;
-	borderParticles.reserve(int((	2 * PI / 
-									(normalSD / (max(upperCircleRadius, lowerCircleRadius) * 2))
-								) * 
-								circleCnt));
-	for(int i = 0; i < circleCnt; i++){
-		Real curCircleRadius = lowerCircleRadius + 
-							( upperCircleRadius - lowerCircleRadius) * 
-								(i*normalSD) / normal.norm();
-		Vector3R curCircleCenter = lowerCircleCenter + normal.normalized() * i * normalSD;
-		Real samplingAngleRad = 2 * samplingDistance / (curCircleRadius * 2);
-		size_t ptsCount = 2 * PI / samplingAngleRad + 1;
-		for(int j = 0; j < ptsCount; j++){
-			Real x = curCircleRadius * std::sin(samplingAngleRad * j);
-			Real y = curCircleRadius * std::cos(samplingAngleRad * j);
-			Vector3R pt = curCircleCenter + x * firstAxe + y * secndAxe;
-			borderParticles.push_back(pt);
-		}
-	}
-	inpBorderParticles.insert(inpBorderParticles.end(), borderParticles.begin(), borderParticles.end());
-}
-
-
-BorderSystem* learnSPH::sample_border_cone(const Real lowerCircleRadius, 
-										const Vector3R& lowerCircleCenter,
-										const Real upperCircleRadius,
-										const Vector3R& upperCircleCenter,
-										Real restDensity,
-										Real samplingDistance,
-										Real eta)
-{
-	assert(eta > 0);
-	assert(restDensity > 0);
-	vector<Vector3R> borderParticles;
-
-	sample_border_cone_face(lowerCircleRadius, lowerCircleCenter, 	upperCircleRadius, 
-							upperCircleCenter, samplingDistance,	borderParticles);
+	sample_triangle(vertexA, vertexB, vertexC, samplingDistance, borderParticles, hexagonal);
+	sample_triangle(vertexA, vertexD, vertexC, samplingDistance, borderParticles, hexagonal);
+	sample_triangle(vertexD, vertexH, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_triangle(vertexD, vertexC, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_triangle(vertexB, vertexC, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_triangle(vertexB, vertexF, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_triangle(vertexA, vertexD, vertexH, samplingDistance, borderParticles, hexagonal);
+	sample_triangle(vertexA, vertexE, vertexH, samplingDistance, borderParticles, hexagonal);
+	sample_triangle(vertexE, vertexF, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_triangle(vertexE, vertexH, vertexG, samplingDistance, borderParticles, hexagonal);
+	sample_triangle(vertexA, vertexE, vertexF, samplingDistance, borderParticles, hexagonal);
+	sample_triangle(vertexA, vertexB, vertexF, samplingDistance, borderParticles, hexagonal);
 
 	return new BorderSystem(borderParticles, restDensity, samplingDistance, eta);
-
 }
 
-BorderSystem* learnSPH::sample_border_cone_and_box(	const Real lowerCircleRadius, 
-										const Vector3R& lowerCircleCenter,
-										const Real upperCircleRadius,
-										const Vector3R& upperCircleCenter,
-										const Vector3R& lowerCorner, 
-										const Vector3R& upperCorner,
-										Real restDensity,
-										Real samplingDistance,
-										Real eta,
-										bool hexagonal)
+
+void learnSPH::sample_ring(vector<Vector3R> &borderParticles, const Vector3R &center, Real radius, const Vector3R &unit_x, const Vector3R &unit_y, Real samplingDistance)
+{
+	size_t n_samples = ceil(2 * PI * radius / samplingDistance);
+
+	auto unit_rad = 2 * PI / n_samples;
+
+	for(int j = 0; j < n_samples; j++){
+
+		Real x = radius * std::sin(unit_rad * j);
+
+		Real y = radius * std::cos(unit_rad * j);
+
+		Vector3R pt = center + x * unit_x + y * unit_y;
+
+		borderParticles.push_back(pt);
+	}
+}
+
+
+BorderSystem* learnSPH::sample_border_cone(Real lowerRadius, const Vector3R &lowerCenter, Real upperRadius, const Vector3R &upperCenter, Real restDensity, Real samplingDistance, Real eta)
 {
 	vector<Vector3R> borderParticles;
-	sample_box_face(lowerCorner, upperCorner, samplingDistance, borderParticles, hexagonal);
-	sample_border_cone_face(lowerCircleRadius, lowerCircleCenter, upperCircleRadius, 
-						upperCircleCenter, samplingDistance, borderParticles);
+
+	Vector3R normal = upperCenter - lowerCenter;
+
+	Vector3R axis_alpha = normal.cross(Vector3R(0.0, 0.0, 1.0));
+
+	if(axis_alpha.norm() < threshold) axis_alpha = normal.cross(Vector3R(0.0, 1.0, 0.0));
+
+	assert(axis_alpha.norm() > threshold);
+
+	Vector3R axis_beta = normal.cross(axis_alpha);
+
+	axis_alpha = axis_alpha.normalized();
+	axis_beta = axis_beta.normalized();
+
+	size_t circleCnt = sqrt(normal.squaredNorm() + pow2(upperRadius - lowerRadius)) / samplingDistance + 1;
+
+	auto unit_normal = normal / (circleCnt - 1);
+
+	for (int i = 0; i < circleCnt; i++) {
+
+		auto radius = lowerRadius + (upperRadius - lowerRadius) * i / (circleCnt - 1);
+
+		Vector3R center = lowerCenter + i * unit_normal;
+
+		sample_ring(borderParticles, center, radius, axis_alpha, axis_beta, samplingDistance);
+	}
+
+	circleCnt = ceil(3 * lowerRadius / samplingDistance / 2);
+
+	for (int i = 1; i < circleCnt; i++) {
+
+		auto radius = lowerRadius * i / circleCnt;
+
+		sample_ring(borderParticles, lowerCenter, radius, axis_alpha, axis_beta, samplingDistance);
+	}
+	borderParticles.push_back(lowerCenter);
 
 	return new BorderSystem(borderParticles, restDensity, samplingDistance, eta);
 }

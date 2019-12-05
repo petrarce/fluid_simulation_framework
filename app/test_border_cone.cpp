@@ -40,36 +40,16 @@ int main(int argc, char** argv)
 									1000,
 									samplingDistance,
 									eta);
-	
-	BorderSystem* borderCubeParticles =
-			sample_border_box(
-									lowerConeCenter,
-									upperConeCenter,
-									1000,
-									samplingDistance,
-									eta,
-									true);
 
-
-	std::string filename = "../res/border_cone.vtk";
+	std::string filename = "res/border_cone.vtk";
 	vector<Vector3R> dummyVector(borderConeParticles->size());
 	learnSPH::saveParticlesToVTK(filename, 
 									borderConeParticles->getPositions(), 
 									borderConeParticles->getVolumes(), 
 									dummyVector);
- 
- 	filename = "../res/border_cube.vtk";
-	dummyVector.resize(borderCubeParticles->size());
-	learnSPH::saveParticlesToVTK(filename, 
-									borderCubeParticles->getPositions(), 
-									borderCubeParticles->getVolumes(), 
-									dummyVector);
-
 	delete borderConeParticles;
-	delete borderCubeParticles;
 
 	std::cout << "completed!" << std::endl;
-	std::cout << "The scene files have been saved in the folder `<build_folder>/res`. You can visualize them with Paraview." << std::endl;
 
 	return 0;
 }
