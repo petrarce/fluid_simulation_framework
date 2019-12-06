@@ -110,6 +110,11 @@ namespace learnSPH
 				this->positions.assign(newPositions.begin(), newPositions.end());
 			}
 
+			void setGravity(Real gravity)
+			{
+				external_forces.assign(this->size(), this->mass * Vector3R(0.0, gravity, 0.0));
+			}
+
 			Real getDiameter() const
 			{
 				return this->diameter;
@@ -120,12 +125,12 @@ namespace learnSPH
 				return this->mass;
 			}
 
-			Real getSmoothingLength()
+			Real getSmoothingLength() const
 			{
 				return this->smooth_length;
 			}
 
-			Real getCompactSupport()
+			Real getCompactSupport() const
 			{
 				return this->compact_support;
 			}
@@ -140,7 +145,7 @@ namespace learnSPH
 				return velocities;
 			};
 
-			const vector<vector<vector<unsigned int> > >& getNeighbors() const
+			vector<vector<vector<unsigned int> > >& getNeighbors()
 			{
 				return neighbors;
 			}
@@ -201,6 +206,15 @@ namespace learnSPH
 				for (int i = 0; i < this->size(); i++) if (velocities[i].norm() >= capVelo) velocities[i] = velocities[i].normalized() * capVelo;
 			}
 
+			Real getCourantBound()
+			{
+				Real vMaxNorm = 0.0;
+
+				for (int i = 0; i < this->size(); i++) vMaxNorm = max(velocities[i].norm(), vMaxNorm);
+
+				return 0.5 * this->diameter / vMaxNorm;
+			}
+
 			FluidSystem(vector<Vector3R> &positions, vector<Vector3R> &velocities, vector<Real> &densities, Real restDensity, Real fluidVolume, Real eta):ParticleSystem(positions, restDensity)
 			{
 				this->mass = (this->restDensity * fluidVolume) / this->positions.size();
@@ -211,7 +225,6 @@ namespace learnSPH
 				this->densities.assign(densities.begin(), densities.end());
 				this->velocities.assign(velocities.begin(), velocities.end());
 
-				this->external_forces.assign(this->positions.size(), Vector3R(0.0, 0.0, 0.0));
 				this->neighbors.resize(this->size());
 			};
 	};

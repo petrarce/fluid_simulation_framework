@@ -61,6 +61,7 @@ int main(int argc, char** argv)
 	Real stiffness = stod(argv[15]);
 	Real viscosity = stod(argv[16]);
 	Real friction = stod(argv[17]);
+
 	bool do_velo_smooth = stoi(argv[18]);
 
 	Real render_step = stod(argv[19]);
@@ -81,18 +82,11 @@ int main(int argc, char** argv)
 
 	ns.add_point_set((Real*)borderParticles->getPositions().data(), borderParticles->size(), false);
 
-	const Vector3R gravity(0.0, -9.7, 0.0);
-
-	vector<Vector3R> &particleForces = fluidParticles->getExternalForces();
-
-	for(unsigned int i = 0; i < particleForces.size(); i++) particleForces[i] = fluidParticles->getMass() * gravity;
-
-	cout << "Diameter: " << fluidParticles->getDiameter() << endl;
-	cout << "Duration: " << sim_duration << endl;
-	cout << "Default time step: "<< render_step << endl;
+	fluidParticles->setGravity(-9.7);
 
 	int n_frames = sim_duration / render_step;
-	cout << "Number of frames: "<< n_frames << endl;
+
+	cout << "the simulation lasts [" << sim_duration << "] seconds consisting of [" << n_frames << "] frames. a frame is rendered every [" << render_step << "] seconds" << endl;
 
 	string filename = "res/assignment3/border.vtk";
 
@@ -100,10 +94,7 @@ int main(int argc, char** argv)
 
 	learnSPH::saveParticlesToVTK(filename, borderParticles->getPositions(), borderParticles->getVolumes(), dummyVector);
 
-	Real sim_time = 0.0;
-	size_t frame = 0;
-
-	while (sim_time < sim_duration) {
+	for (int frame = 0; frame < n_frames; frame ++) {
 
 		Real cur_sim_time = 0.0;
 
@@ -115,19 +106,11 @@ int main(int argc, char** argv)
 
 			learnSPH::calculate_dencities(fluidParticles, borderParticles, fluidParticles->getSmoothingLength());
 
-			vector<Vector3R> accelerations(fluidParticles->size(), gravity);
+			vector<Vector3R> accelerations(fluidParticles->size());
 
 			learnSPH::calculate_acceleration(accelerations, fluidParticles, borderParticles, viscosity, friction, stiffness, fluidParticles->getSmoothingLength());
 
-			Real vMaxNorm = 0.0;
-
-			vector<Vector3R> &fluidVelocities = fluidParticles->getVelocities();
-
-			for (int i = 0; i < fluidParticles->size(); i++) vMaxNorm = max(fluidVelocities[i].norm(), vMaxNorm);
-
-			Real courant_bound = 0.5 * fluidParticles->getDiameter() / vMaxNorm;
-
-			Real update_step = min(render_step - cur_sim_time, courant_bound);
+			Real update_step = min(render_step - cur_sim_time, fluidParticles->getCourantBound());
 
 			if (!do_velo_smooth)
 				learnSPH::symplectic_euler(accelerations, fluidParticles, update_step);
@@ -139,7 +122,6 @@ int main(int argc, char** argv)
 			fluidParticles->clipVelocities(50.0);
 
 			cur_sim_time += update_step;
-			sim_time += update_step;
 
 			physical_steps ++;
 		}
@@ -167,7 +149,6 @@ int main(int argc, char** argv)
 		filename = "res/assignment3/" + sim_name + "_densities_" + std::to_string(frame) + ".cereal";
 
 		save_scalars(filename, fluidParticles->getDensities());
-		frame++;
 	}
 	delete fluidParticles;
 	std::cout << "Simulation finished" << std::endl;
