@@ -7,7 +7,6 @@ void learnSPH::calculate_dencities(FluidSystem *fluidParticles, BorderSystem *bo
 {
 	auto &neighbors = fluidParticles->getNeighbors();
 
-	assert(smooth_length > 0.0);
 	assert(neighbors.size() == fluidParticles->size());
 	assert(neighbors.size() == 0 || neighbors[0].size() == 2);
 
@@ -58,57 +57,56 @@ void learnSPH::calculate_acceleration(vector<Vector3R> &accelerations, FluidSyst
 
 	for(unsigned int i = 0; i < fluidParticles->size(); i++) {
 
-		Vector3R acce_pressure_ff(0.0, 0.0, 0.0);
-		Vector3R acce_viscosity_ff(0.0, 0.0, 0.0);
-		Vector3R acce_pressure_fs(0.0, 0.0, 0.0);
-
-		Real acce_viscosity_fs_factor = 0.0;
+		Vector3R acc_press_ff(0.0, 0.0, 0.0);
+		Vector3R acc_visco_ff(0.0, 0.0, 0.0);
+		Vector3R acc_press_fs(0.0, 0.0, 0.0);
 
 		const Real rho_i = densities[i];
+
+		const Real pressure_i = max(stiffness * (rho_i - fluidParticles->getRestDensity()), 0.0);
 
 		for(unsigned int j : neighbors[i][0]) {
 
 			const Real rho_j = densities[j];
 
+			const Real pressure_j = max(stiffness * (rho_j - fluidParticles->getRestDensity()), 0.0);
+
 			const Vector3R grad_W_ij = kernelGradFunction(positions[i], positions[j], smooth_length);
 
-			assert(fabs(rho_i) + threshold > threshold);
-			assert(fabs(rho_j) + threshold > threshold);
-
-			acce_pressure_ff += (max(stiffness * (rho_i - fluidParticles->getRestDensity()), 0.0) / (pow(rho_i, 2.0) + threshold) +
-								max(stiffness * (rho_j - fluidParticles->getRestDensity()), 0.0) / (pow(rho_j, 2.0) + threshold)) * grad_W_ij;
+			acc_press_ff += (pressure_i / (pow2(rho_i) + threshold) + pressure_j / (pow2(rho_j) + threshold)) * grad_W_ij;
 
 			const Vector3R diff_ij = positions[i] - positions[j];
 			const Vector3R diff_velo_ij = velocities[i] - velocities[j];
 
-			acce_viscosity_ff += diff_ij.dot(grad_W_ij) / (rho_j * (diff_ij.dot(diff_ij) + 0.01 * smooth_length * smooth_length)) * diff_velo_ij;
+			acc_visco_ff += diff_ij.dot(grad_W_ij) / (rho_j * (diff_ij.dot(diff_ij) + 0.01 * smooth_length * smooth_length)) * diff_velo_ij;
 		}
-		acce_pressure_ff = fluidParticles->getMass() * acce_pressure_ff;
-		acce_viscosity_ff = 2.0 * viscosity * fluidParticles->getMass() * acce_viscosity_ff;
+		acc_press_ff = fluidParticles->getMass() * acc_press_ff;
+
+		acc_visco_ff = 2.0 * viscosity * fluidParticles->getMass() * acc_visco_ff;
+
+		Real sum_visco_fs = 0.0;
 
 		for(unsigned int k : neighbors[i][1]) {
 
 			const Vector3R grad_W_ik = kernelGradFunction(positions[i], borderPositions[k], smooth_length);
 
-			acce_pressure_fs += borderVolumes[k] * grad_W_ik;
+			acc_press_fs += borderVolumes[k] * grad_W_ik;
 
 			const Vector3R diff_ik = positions[i] - borderPositions[k];
 
 			assert(fabs(diff_ik.dot(diff_ik) + 0.01 * smooth_length * smooth_length) > threshold);
 
-			acce_viscosity_fs_factor += borderVolumes[k] * diff_ik.dot(grad_W_ik) / (diff_ik.dot(diff_ik) + 0.01 * smooth_length * smooth_length);
+			sum_visco_fs += borderVolumes[k] * diff_ik.dot(grad_W_ik) / (diff_ik.dot(diff_ik) + 0.01 * smooth_length * smooth_length);
 		}
-		assert(pow2(rho_i) + threshold >= threshold);
+		acc_press_fs *= fluidParticles->getRestDensity() * pressure_i / (pow2(rho_i) + threshold);
 
-		acce_pressure_fs *= fluidParticles->getRestDensity() * max(stiffness * (rho_i - fluidParticles->getRestDensity()), 0.0) / (pow2(rho_i) + threshold);
-
-		Vector3R acce_viscosity_fs = 2.0 * friction * acce_viscosity_fs_factor * velocities[i];
+		Vector3R acc_visco_fs = 2.0 * friction * sum_visco_fs * velocities[i];
 
 		assert(fluidParticles->getMass() > threshold);
 
-		Vector3R acce_external = 1.0 / fluidParticles->getMass() * externalForces[i];
+		Vector3R acc_exter = 1.0 / fluidParticles->getMass() * externalForces[i];
 
-		accelerations[i] = - acce_pressure_ff - acce_pressure_fs + acce_viscosity_ff + acce_viscosity_fs + acce_external;
+		accelerations[i] = - acc_press_ff - acc_press_fs + acc_visco_ff + acc_visco_fs + acc_exter;
     }
 }
 
