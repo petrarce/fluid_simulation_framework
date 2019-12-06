@@ -46,7 +46,7 @@ void save_scalars(const std::string &path, std::vector<Real> &data)
 
 int main(int argc, char** argv)
 {
-	assert(argc == 22);
+	assert(argc == 21);
 
 	std::cout << "Simulation running" << std::endl;
 
@@ -58,15 +58,14 @@ int main(int argc, char** argv)
 
 	Real sampling_distance = stod(argv[13]);
 	Real eta = stod(argv[14]);
+
 	Real stiffness = stod(argv[15]);
 	Real viscosity = stod(argv[16]);
 	Real friction = stod(argv[17]);
 
-	bool do_velo_smooth = stoi(argv[18]);
-
-	Real render_step = stod(argv[19]);
-	Real sim_duration = stod(argv[20]);
-	string sim_name = argv[21];
+	Real render_step = stod(argv[18]);
+	Real sim_duration = stod(argv[19]);
+	string sim_name = argv[20];
 
 	FluidSystem* fluidParticles = sample_fluid_cube(lowerCorner, upperCorner, 1000.0, sampling_distance, eta);
 
@@ -104,22 +103,19 @@ int main(int argc, char** argv)
 
 			fluidParticles->findNeighbors(ns);
 
-			learnSPH::calculate_dencities(fluidParticles, borderParticles, fluidParticles->getSmoothingLength());
+			learnSPH::calculate_dencities(fluidParticles, borderParticles);
 
 			vector<Vector3R> accelerations(fluidParticles->size(), Vector3R(0.0, 0.0, 0.0));
 
-			learnSPH::add_press_component(accelerations, fluidParticles, borderParticles, stiffness, fluidParticles->getSmoothingLength());
+			learnSPH::add_press_component(accelerations, fluidParticles, borderParticles, stiffness);
 
-			learnSPH::add_visco_component(accelerations, fluidParticles, borderParticles, viscosity, friction, fluidParticles->getSmoothingLength());
+			learnSPH::add_visco_component(accelerations, fluidParticles, borderParticles, viscosity, friction);
 
 			learnSPH::add_exter_component(accelerations, fluidParticles);
 
 			Real update_step = min(render_step - cur_sim_time, fluidParticles->getCourantBound());
 
-			if (!do_velo_smooth)
-				learnSPH::symplectic_euler(accelerations, fluidParticles, update_step);
-			else
-				learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, 0.5, update_step, fluidParticles->getSmoothingLength());
+			learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, 0.5, update_step);
 
 			fluidParticles->killFugitives(lowerBoxCorner, upperBoxCorner, ns);
 

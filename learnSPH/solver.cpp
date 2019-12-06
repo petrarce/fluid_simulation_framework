@@ -3,8 +3,10 @@
 
 using namespace learnSPH::kernel;
 
-void learnSPH::calculate_dencities(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real smooth_length)
+void learnSPH::calculate_dencities(FluidSystem *fluidParticles, BorderSystem *borderParticles)
 {
+	auto smooth_length = fluidParticles->getSmoothingLength();
+
 	auto &neighbors = fluidParticles->getNeighbors();
 
 	assert(neighbors.size() == fluidParticles->size());
@@ -41,8 +43,10 @@ void learnSPH::calculate_dencities(FluidSystem *fluidParticles, BorderSystem *bo
 }
 
 
-void learnSPH::add_press_component(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, BorderSystem *borderParticles, Real stiffness, Real smooth_length)
+void learnSPH::add_press_component(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, BorderSystem *borderParticles, Real stiffness)
 {
+	auto smooth_length = fluidParticles->getSmoothingLength();
+
 	auto &neighbors = fluidParticles->getNeighbors();
 	auto &densities = fluidParticles->getDensities();
 	auto &positions = fluidParticles->getPositions();
@@ -83,8 +87,10 @@ void learnSPH::add_press_component(vector<Vector3R> &accelerations, FluidSystem 
 }
 
 
-void learnSPH::add_visco_component(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, BorderSystem *borderParticles, Real viscosity, Real friction, Real smooth_length)
+void learnSPH::add_visco_component(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, BorderSystem *borderParticles, Real viscosity, Real friction)
 {
+	auto smooth_length = fluidParticles->getSmoothingLength();
+
 	auto &neighbors = fluidParticles->getNeighbors();
 
 	auto &densities = fluidParticles->getDensities();
@@ -134,6 +140,7 @@ void learnSPH::add_visco_component(vector<Vector3R> &accelerations, FluidSystem 
     }
 }
 
+
 void learnSPH::add_exter_component(vector<Vector3R> &accelerations, FluidSystem *fluidParticles)
 {
 	auto &externalForces = fluidParticles->getExternalForces();
@@ -143,7 +150,8 @@ void learnSPH::add_exter_component(vector<Vector3R> &accelerations, FluidSystem 
 	for(unsigned int i = 0; i < fluidParticles->size(); i++) accelerations[i] += 1.0 / fluidParticles->getMass() * externalForces[i];
 }
 
-void learnSPH::symplectic_euler(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, Real time_frame)
+
+void learnSPH::symplectic_euler(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, Real delta_t)
 {
 	auto &velocities = fluidParticles->getVelocities();
 	auto &positions = fluidParticles->getPositions();
@@ -151,13 +159,16 @@ void learnSPH::symplectic_euler(vector<Vector3R> &accelerations, FluidSystem *fl
 	#pragma omp parallel for schedule(guided, 100)
 
 	for (unsigned int i = 0; i < positions.size(); i++) {
-		velocities[i] += time_frame * accelerations[i];
-		positions[i] += time_frame * velocities[i];
+		velocities[i] += delta_t * accelerations[i];
+		positions[i] += delta_t * velocities[i];
 	}
 }
 
-void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, Real epsilon, Real time_frame, Real smooth_length)
+
+void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, Real epsilon, Real delta_t)
 {
+	auto smooth_length = fluidParticles->getSmoothingLength();
+
 	auto &neighbors = fluidParticles->getNeighbors();
 
 	auto &positions = fluidParticles->getPositions();
@@ -166,7 +177,7 @@ void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSys
 
 	#pragma omp parallel for schedule(guided, 100)
 
-	for (unsigned int i = 0; i < fluidParticles->size(); i++) velocities[i] += time_frame * accelerations[i];
+	for (unsigned int i = 0; i < fluidParticles->size(); i++) velocities[i] += delta_t * accelerations[i];
 
 	vector<Vector3R> newFluidPositions(fluidParticles->size());
 
@@ -186,7 +197,13 @@ void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSys
 
 		assert(auxiliary_velocity.norm() < 1e5);
 
-		newFluidPositions[i] = positions[i] + time_frame * auxiliary_velocity;
+		newFluidPositions[i] = positions[i] + delta_t * auxiliary_velocity;
 	}
 	fluidParticles->setPositions(newFluidPositions);
+}
+
+
+void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real delta_t, size_t n_iterations, vector<Vector3R> &prev_pos)
+{
+	return;
 }

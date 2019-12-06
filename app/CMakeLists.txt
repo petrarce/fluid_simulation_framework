@@ -3,11 +3,17 @@ set(CMAKE_CXX_STANDARD 17)
 
 include_directories("${CMAKE_SOURCE_DIR}/CompactNSearch/include" "${CMAKE_SOURCE_DIR}/cereal/include")
 
-set(SOURCE_FILES_test_sim test_sim.cpp)
+set(SOURCE_FILES_test_sim_EXP test_sim_EXP.cpp)
 
-add_executable(test_sim ${SOURCE_FILES_test_sim})
-add_dependencies(test_sim learnSPH CompactNSearch)
-target_link_libraries(test_sim learnSPH CompactNSearch)
+add_executable(test_sim_EXP ${SOURCE_FILES_test_sim_EXP})
+add_dependencies(test_sim_EXP learnSPH CompactNSearch)
+target_link_libraries(test_sim_EXP learnSPH CompactNSearch)
+
+set(SOURCE_FILES_test_sim_PBF test_sim_PBF.cpp)
+
+add_executable(test_sim_PBF ${SOURCE_FILES_test_sim_PBF})
+add_dependencies(test_sim_PBF learnSPH CompactNSearch)
+target_link_libraries(test_sim_PBF learnSPH CompactNSearch)
 
 set(SOURCE_FILES_test_marching_cubes test_marching_cubes.cpp)
 
