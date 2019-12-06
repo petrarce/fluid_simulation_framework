@@ -9,7 +9,11 @@ namespace learnSPH{
 
 	void calculate_dencities(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real smooth_length);
 
-	void calculate_acceleration(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, BorderSystem *borderParticles, Real viscosity, Real friction, Real stiffness, Real smooth_length);
+	void add_press_component(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, BorderSystem *borderParticles, Real stiffness, Real smooth_length);
+
+	void add_visco_component(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, BorderSystem *borderParticles, Real viscosity, Real friction, Real smooth_length);
+
+	void add_exter_component(vector<Vector3R> &accelerations, FluidSystem *fluidParticles);
 
 	void symplectic_euler(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, Real time_frame);
 

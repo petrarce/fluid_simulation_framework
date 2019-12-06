@@ -106,9 +106,13 @@ int main(int argc, char** argv)
 
 			learnSPH::calculate_dencities(fluidParticles, borderParticles, fluidParticles->getSmoothingLength());
 
-			vector<Vector3R> accelerations(fluidParticles->size());
+			vector<Vector3R> accelerations(fluidParticles->size(), Vector3R(0.0, 0.0, 0.0));
 
-			learnSPH::calculate_acceleration(accelerations, fluidParticles, borderParticles, viscosity, friction, stiffness, fluidParticles->getSmoothingLength());
+			learnSPH::add_press_component(accelerations, fluidParticles, borderParticles, stiffness, fluidParticles->getSmoothingLength());
+
+			learnSPH::add_visco_component(accelerations, fluidParticles, borderParticles, viscosity, friction, fluidParticles->getSmoothingLength());
+
+			learnSPH::add_exter_component(accelerations, fluidParticles);
 
 			Real update_step = min(render_step - cur_sim_time, fluidParticles->getCourantBound());
 
