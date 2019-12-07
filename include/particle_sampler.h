@@ -49,4 +49,6 @@ namespace learnSPH{
 	 *		samplingDistance	- distance between the centers of each two adjacent particles
 	 */
 	FluidSystem* sample_fluid_cube(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta);
+	
+	void sample_sphere(vector<Vector3R>& borderParticles, const Real radius, const Vector3R center, const Real samplingDistance);
 };

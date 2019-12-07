@@ -47,6 +47,19 @@ int main(int argc, char** argv)
 									borderConeParticles->getPositions(), 
 									borderConeParticles->getVolumes(), 
 									dummyVector);
+
+	vector<Vector3R> borderParticles;
+	borderParticles.clear();
+	learnSPH::sample_sphere(borderParticles, (lowerConeCenter - upperConeCenter).norm(), lowerConeCenter + upperConeCenter / 2, samplingDistance);
+	BorderSystem sphere(borderParticles, 1000, samplingDistance, eta);
+	filename = "res/border_sphere.vtk";
+	vector<Real> dummyVectorReal(borderParticles.size());
+	learnSPH::saveParticlesToVTK(filename, 
+									sphere.getPositions(), 
+									sphere.getVolumes(), 
+									borderParticles);
+
+
 	delete borderConeParticles;
 
 	std::cout << "completed!" << std::endl;
