@@ -119,7 +119,7 @@ int main(int argc, char** argv)
 
 			fluidParticles->findNeighbors(ns);
 
-			learnSPH::correct_position(fluidParticles, borderParticles, update_step, n_iterations, positions);
+			learnSPH::correct_position(fluidParticles, borderParticles, update_step, n_iterations, ns);
 
 			fluidParticles->killFugitives(lowerBoxCorner, upperBoxCorner, ns);
 

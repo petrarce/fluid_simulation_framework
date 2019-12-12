@@ -203,19 +203,15 @@ void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSys
 }
 
 
-void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real delta_t, size_t n_iterations, vector<Vector3R> &prev_pos)
-{
-	return;
-}
 
-void learnSPH::correct_position_dev(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real delta_t,
+void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real delta_t,
                                     size_t n_iterations, NeighborhoodSearch &ns) {
     Real epsilon = 1e-4;
     // make copy of neighbors of each particles <vector<int>> fixedNeighbors
-    vector<vector<vector<unsigned int> > > fixedNeighbors(fluidParticles->getNeighbors());
+//    vector<vector<vector<unsigned int> > > fixedNeighbors(fluidParticles->getNeighbors());
     vector<vector<vector<unsigned int> > >& neighbors = fluidParticles->getNeighbors();
     // vector<Vector3R> neighborFixedParticlePositions
-    vector<Vector3R> neighborFixedParticlePositions(fluidParticles->getPositions());
+//    vector<Vector3R> neighborFixedParticlePositions(fluidParticles->getPositions());
     auto &positions = fluidParticles->getPositions();
     auto &borderPositions = borderParticles->getPositions();
     auto &velocities = fluidParticles->getVelocities();
@@ -225,14 +221,15 @@ void learnSPH::correct_position_dev(FluidSystem *fluidParticles, BorderSystem *b
     auto &volumes = borderParticles->getVolumes();
 
     size_t current_iterations = 0;
-    while(current_iterations < n_iterations){ // TODO: terminatal condition
+    while(current_iterations < n_iterations){ // terminatal condition
         fluidParticles->findNeighbors(ns);
         // All following steps include the neighbor-fixed and neighbor-flexible versions
-        //TODO: density estimation
+        //density estimation
         learnSPH::calculate_dencities(fluidParticles, borderParticles);
         auto &densities = fluidParticles->getDensities();
-        //TODO: compute S_i
+        //compute S_i
         vector<Real> S_i(fluidParticles->size());
+        #pragma omp parallel for schedule(guided, 100)
         for(unsigned int i=0;i < fluidParticles->size(); i++){
             Vector3R term1{0,0,0};
             Real term2 = 0.0;
@@ -248,15 +245,16 @@ void learnSPH::correct_position_dev(FluidSystem *fluidParticles, BorderSystem *b
             }
             S_i[i] = sqrt(term1.dot(term1))/fluidParticles->getMass() + term2;
         }
-        //TODO: compute lambda_i
+        //compute lambda_i
         vector<Real> lambda_i(fluidParticles->size());
-
+        #pragma omp parallel for schedule(guided, 100)
         for(unsigned int i=0; i<fluidParticles->size();i++){
             Real C_i = densities[i]/fluidParticles->getRestDensity() -1;
-            lambda_i[i] = (-C_i/(S_i[i]+epsilon)) > 0 ? (-C_i/(S_i[i]+epsilon)) : 0;
+            lambda_i[i] = C_i > 0 ? (-C_i/(S_i[i]+epsilon)) : 0;
         }
-        //TODO: compute Delta_xi
+        //compute Delta_xi
         vector<Vector3R> Delta_xi(fluidParticles->size());
+        #pragma omp parallel for schedule(guided, 100)
         for(unsigned int i=0; i< fluidParticles->size(); i++){
             Vector3R term1{0,0,0};
             Vector3R term2{0,0,0};
@@ -270,13 +268,16 @@ void learnSPH::correct_position_dev(FluidSystem *fluidParticles, BorderSystem *b
             term2 = lambda_i[i]/fluidParticles->getMass() * term2;
             Delta_xi[i] = term1 + term2;
         }
-        //TODO: update Xi
+        //update Xi
+        #pragma omp parallel for schedule(guided, 100)
         for(unsigned int i=0; i< fluidParticles->size(); i++){
             positions[i] += Delta_xi[i];
         }
         current_iterations ++;
     }
+    #pragma omp parallel for schedule(guided, 100)
     for(unsigned int i=0; i< fluidParticles->size(); i++){
         velocities[i] = (positions[i] - originalParticlePositions[i])/delta_t;
     }
+    return;
 }
