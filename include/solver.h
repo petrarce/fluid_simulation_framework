@@ -19,5 +19,5 @@ namespace learnSPH{
 
 	void smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, Real epsilon, Real delta_t);
 
-	void correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real delta_t, size_t n_iterations, NeighborhoodSearch &ns);
+	void correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real delta_t, size_t n_iterations, vector<Vector3R> &prev_pos);
 };

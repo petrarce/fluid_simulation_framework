@@ -204,80 +204,95 @@ void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSys
 
 
 
-void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real delta_t,
-                                    size_t n_iterations, NeighborhoodSearch &ns) {
-    Real epsilon = 1e-4;
-    // make copy of neighbors of each particles <vector<int>> fixedNeighbors
-//    vector<vector<vector<unsigned int> > > fixedNeighbors(fluidParticles->getNeighbors());
-    vector<vector<vector<unsigned int> > >& neighbors = fluidParticles->getNeighbors();
-    // vector<Vector3R> neighborFixedParticlePositions
-//    vector<Vector3R> neighborFixedParticlePositions(fluidParticles->getPositions());
-    auto &positions = fluidParticles->getPositions();
-    auto &borderPositions = borderParticles->getPositions();
-    auto &velocities = fluidParticles->getVelocities();
-    // Vector3R originalParticlePositions
-    vector<Vector3R> originalParticlePositions(fluidParticles->getPositions());
+void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real delta_t, size_t n_iterations, vector<Vector3R> &prev_pos)
+{
+    auto smooth_length = fluidParticles->getSmoothingLength();
 
-    auto &volumes = borderParticles->getVolumes();
+    auto &neighbors = fluidParticles->getNeighbors();
+    auto &positions = fluidParticles->getPositions();
+    auto &velocities = fluidParticles->getVelocities();
+
+    auto &borderPositions = borderParticles->getPositions();
+    auto &borderVolumes = borderParticles->getVolumes();
 
     size_t current_iterations = 0;
-    while(current_iterations < n_iterations){ // terminatal condition
-        fluidParticles->findNeighbors(ns);
-        // All following steps include the neighbor-fixed and neighbor-flexible versions
-        //density estimation
+
+    while(current_iterations < n_iterations) {
+
         learnSPH::calculate_dencities(fluidParticles, borderParticles);
+
         auto &densities = fluidParticles->getDensities();
-        //compute S_i
-        vector<Real> S_i(fluidParticles->size());
+
+        vector<Real> denominator(fluidParticles->size());
+
         #pragma omp parallel for schedule(guided, 100)
-        for(unsigned int i=0;i < fluidParticles->size(); i++){
-            Vector3R term1{0,0,0};
-            Real term2 = 0.0;
-            for(unsigned int j : neighbors[i][0]){
-                term1 += learnSPH::kernel::kernelGradFunction(positions[i], positions[j], fluidParticles->getSmoothingLength());
-                Vector3R term2i = learnSPH::kernel::kernelGradFunction(positions[i], positions[j], fluidParticles->getSmoothingLength());
-                term2 += sqrt(term2i.dot(term2i));
+
+        for(unsigned int i = 0; i < fluidParticles->size(); i++) {
+
+            auto term1 = Vector3R(0.0, 0.0, 0.0);
+            auto term2 = Vector3R(0.0, 0.0, 0.0);
+
+            Real term3 = 0.0;
+
+            for(unsigned int j : neighbors[i][0]) {
+
+            	auto grad_W_ij = kernelGradFunction(positions[i], positions[j], smooth_length);
+
+            	auto term = grad_W_ij * fluidParticles->getMass() / fluidParticles->getRestDensity();
+
+                term1 += term;
+
+                term3 += term.dot(term);
             }
-            term1 = fluidParticles->getMass()/fluidParticles->getRestDensity()*term1;
-            term2 = term2/fluidParticles->getRestDensity();
-            for(unsigned int k : neighbors[i][1]){
-                term1 += volumes[k]*learnSPH::kernel::kernelGradFunction(positions[i], borderPositions[k], fluidParticles->getSmoothingLength());
+
+            for(unsigned int k : neighbors[i][1]) {
+
+            	auto grad_W_ik = kernelGradFunction(positions[i], borderPositions[k], smooth_length);
+
+                term2 += borderVolumes[k] * grad_W_ik;
             }
-            S_i[i] = sqrt(term1.dot(term1))/fluidParticles->getMass() + term2;
+            denominator[i] = ((term1 + term2).dot(term1 + term2) + term3) / fluidParticles->getMass();
         }
-        //compute lambda_i
-        vector<Real> lambda_i(fluidParticles->size());
+
+        vector<Real> lambda(fluidParticles->size());
+
         #pragma omp parallel for schedule(guided, 100)
-        for(unsigned int i=0; i<fluidParticles->size();i++){
-            Real C_i = densities[i]/fluidParticles->getRestDensity() -1;
-            lambda_i[i] = C_i > 0 ? (-C_i/(S_i[i]+epsilon)) : 0;
+
+        for(unsigned int i = 0; i < fluidParticles->size(); i++) {
+
+            Real C_i = densities[i] / fluidParticles->getRestDensity() - 1.0;
+
+            lambda[i] = -std::max(C_i, 0.0) / (denominator[i] + 1e-4);
         }
-        //compute Delta_xi
-        vector<Vector3R> Delta_xi(fluidParticles->size());
+
+        vector<Vector3R> deltaX(fluidParticles->size());
+
         #pragma omp parallel for schedule(guided, 100)
-        for(unsigned int i=0; i< fluidParticles->size(); i++){
-            Vector3R term1{0,0,0};
-            Vector3R term2{0,0,0};
-            for(unsigned int j: neighbors[i][0]){
-                term1 += (lambda_i[i] + lambda_i[j]) * learnSPH::kernel::kernelGradFunction(positions[i], positions[j], fluidParticles->getSmoothingLength());
-            }
-            term1 = term1/fluidParticles->getRestDensity();
-            for(unsigned int k: neighbors[i][1]){
-                term2 += volumes[k] * learnSPH::kernel::kernelGradFunction(positions[i], borderPositions[k], fluidParticles->getSmoothingLength());
-            }
-            term2 = lambda_i[i]/fluidParticles->getMass() * term2;
-            Delta_xi[i] = term1 + term2;
+
+        for(unsigned int i = 0; i < fluidParticles->size(); i++){
+
+            auto term1 = Vector3R(0.0, 0.0, 0.0);
+            auto term2 = Vector3R(0.0, 0.0, 0.0);
+
+            for(unsigned int j : neighbors[i][0]) term1 += (lambda[i] + lambda[j]) * kernelGradFunction(positions[i], positions[j], smooth_length);
+
+            term1 /= fluidParticles->getRestDensity();
+
+            for(unsigned int k : neighbors[i][1]) term2 += borderVolumes[k] * kernelGradFunction(positions[i], borderPositions[k], smooth_length);
+
+            term2 = lambda[i] / fluidParticles->getMass() * term2;
+
+            deltaX[i] = term1 + term2;
         }
-        //update Xi
+
         #pragma omp parallel for schedule(guided, 100)
-        for(unsigned int i=0; i< fluidParticles->size(); i++){
-            positions[i] += Delta_xi[i];
-        }
+
+        for(unsigned int i = 0; i < fluidParticles->size(); i++) positions[i] += deltaX[i];
+
         current_iterations ++;
     }
+
     #pragma omp parallel for schedule(guided, 100)
-    for(unsigned int i=0; i< fluidParticles->size(); i++){
-        velocities[i] = (positions[i] - originalParticlePositions[i])/delta_t;
-    }
-    return;
+
+    for(unsigned int i = 0; i < fluidParticles->size(); i++) velocities[i] = (positions[i] - prev_pos[i]) / delta_t;
 }
