@@ -204,7 +204,7 @@ void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSys
 
 
 
-void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, Real delta_t, size_t n_iterations, vector<Vector3R> &prev_pos)
+void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, vector<Vector3R> &prev_pos, Real delta_t, Real multiplier, size_t n_iterations)
 {
     auto smooth_length = fluidParticles->getSmoothingLength();
 
@@ -262,7 +262,7 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
             Real C_i = densities[i] / fluidParticles->getRestDensity() - 1.0;
 
-            lambda[i] = -std::max(C_i, 0.0) / (denominator[i] + 1e-4);
+            lambda[i] = -std::max(C_i, 0.0) * multiplier / (denominator[i] + 1e-4);
         }
 
         vector<Vector3R> deltaX(fluidParticles->size());
