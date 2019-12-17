@@ -217,13 +217,16 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
     size_t current_iterations = 0;
 
+    vector<Real> denominator(fluidParticles->size());
+    vector<Real> lambda(fluidParticles->size());
+    vector<Vector3R> deltaX(fluidParticles->size());
+
     while(current_iterations < n_iterations) {
 
         learnSPH::calculate_dencities(fluidParticles, borderParticles);
 
         auto &densities = fluidParticles->getDensities();
 
-        vector<Real> denominator(fluidParticles->size());
 
         #pragma omp parallel for schedule(guided, 100)
 
@@ -238,12 +241,14 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
             	auto grad_W_ij = kernelGradFunction(positions[i], positions[j], smooth_length);
 
-            	auto term = grad_W_ij * fluidParticles->getMass() / fluidParticles->getRestDensity();
+            	auto term = grad_W_ij;
 
                 term1 += term;
 
                 term3 += term.dot(term);
             }
+            term1 *= fluidParticles->getMass() / fluidParticles->getRestDensity();
+            term3 *= pow2(fluidParticles->getMass() / fluidParticles->getRestDensity());
 
             for(unsigned int k : neighbors[i][1]) {
 
@@ -252,20 +257,12 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
                 term2 += borderVolumes[k] * grad_W_ik;
             }
             denominator[i] = ((term1 + term2).dot(term1 + term2) + term3) / fluidParticles->getMass();
-        }
-
-        vector<Real> lambda(fluidParticles->size());
-
-        #pragma omp parallel for schedule(guided, 100)
-
-        for(unsigned int i = 0; i < fluidParticles->size(); i++) {
 
             Real C_i = densities[i] / fluidParticles->getRestDensity() - 1.0;
 
             lambda[i] = -std::max(C_i, 0.0) * multiplier / (denominator[i] + 1e-4);
         }
 
-        vector<Vector3R> deltaX(fluidParticles->size());
 
         #pragma omp parallel for schedule(guided, 100)
 
