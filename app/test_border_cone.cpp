@@ -30,35 +30,20 @@ int main(int argc, char** argv)
 	Real samplingDistance = stod(argv[9]);
 	Real eta = stod(argv[10]);
 
-
-	BorderSystem* borderConeParticles =
-			sample_border_cone(
-									lowerConeRad,
-									lowerConeCenter,
-									upperConeRad,
-									upperConeCenter,
-									1000,
-									samplingDistance,
-									eta);
+	BorderSystem* borderConeParticles = sample_border_cone(lowerConeRad, lowerConeCenter, upperConeRad, upperConeCenter, 1000, samplingDistance, eta);
 
 	std::string filename = "res/border_cone.vtk";
 	vector<Vector3R> dummyVector(borderConeParticles->size());
-	learnSPH::saveParticlesToVTK(filename, 
-									borderConeParticles->getPositions(), 
-									borderConeParticles->getVolumes(), 
-									dummyVector);
+	learnSPH::saveParticlesToVTK(filename, borderConeParticles->getPositions(), borderConeParticles->getVolumes(), dummyVector);
 
 	vector<Vector3R> borderParticles;
 	borderParticles.clear();
 	learnSPH::sample_sphere(borderParticles, (lowerConeCenter - upperConeCenter).norm(), lowerConeCenter + upperConeCenter / 2, samplingDistance);
+
 	BorderSystem sphere(borderParticles, 1000, samplingDistance, eta);
 	filename = "res/border_sphere.vtk";
 	vector<Real> dummyVectorReal(borderParticles.size());
-	learnSPH::saveParticlesToVTK(filename, 
-									sphere.getPositions(), 
-									sphere.getVolumes(), 
-									borderParticles);
-
+	learnSPH::saveParticlesToVTK(filename, sphere.getPositions(), sphere.getVolumes(), borderParticles);
 
 	delete borderConeParticles;
 

@@ -336,29 +336,39 @@ BorderSystem* learnSPH::sample_border_cone(Real lowerRadius, const Vector3R &low
 	return new BorderSystem(borderParticles, restDensity, samplingDistance, eta);
 }
 
-void learnSPH::sample_sphere(vector<Vector3R>& borderParticles, const Real radius, const Vector3R center,const Real samplingDistance)
+void learnSPH::sample_sphere(vector<Vector3R>& borderParticles, const Real radius, const Vector3R center, const Real samplingDistance)
 {
-	Vector3R initialDirection = Vector3R(0,0,1);
-	Vector3R normalToInitial = Vector3R(0,1,0);
-	Real alignedFirstSamplingAngle = 2 * PI / int(2 * PI / (samplingDistance/radius));
-	Real curFirstSamplingAngle = 0;
-	bool brk = false;
-	while(curFirstSamplingAngle < PI){
+	auto initialDirection = Vector3R(0.0, 0.0, 1.0);
+	auto normalToInitial = Vector3R(0.0, 1.0, 0.0);
+
+	Real alignedFirstSamplingAngle = 2 * PI / int(2 * PI / (samplingDistance / radius));
+
+	Real curFirstSamplingAngle = 0.0;
+
+	while(curFirstSamplingAngle < PI) {
+
 		Real curCircleRadius = radius * sin(curFirstSamplingAngle);
+
 		Real alignedSecondSamplingAngle = 2 * PI / int(2 * PI / (samplingDistance / (curCircleRadius + threshold)));
+
 		Real curSecondAmplingAngle = 0;
+
 		Matrix3d zDirRotate;
+
 		zDirRotate = AngleAxisd(curFirstSamplingAngle, normalToInitial);
 
-		while(curSecondAmplingAngle < 2 * PI){
+		while(curSecondAmplingAngle < 2 * PI) {
+
 			Matrix3d xyDirRotate;
+
 			xyDirRotate = AngleAxisd(curSecondAmplingAngle, initialDirection);
+
 			Vector3R pt = center + radius * xyDirRotate * zDirRotate * initialDirection;
+
 			borderParticles.push_back(pt);
+
 			curSecondAmplingAngle += alignedSecondSamplingAngle;
 		}
-		
 		curFirstSamplingAngle += alignedFirstSamplingAngle;
 	}
 }
-
