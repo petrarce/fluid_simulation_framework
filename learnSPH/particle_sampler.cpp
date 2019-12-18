@@ -169,11 +169,11 @@ void learnSPH::sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_
 {
 	vector<Vector3R> faceParticles;
 
-	Vector3R corner_a;
-	Vector3R corner_b;
-	Vector3R corner_c;
+	Vector3R corner_a = vertex_a;
+	Vector3R corner_b = vertex_b;
+	Vector3R corner_c = vertex_c;
 
-	expand_triangle(
+/*	expand_triangle(
 		vertex_a,
 		vertex_b,
 		vertex_c,
@@ -181,7 +181,7 @@ void learnSPH::sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_
 		corner_a,
 		corner_b,
 		corner_c);
-
+*/
 	Vector3R vec_AB = corner_b - corner_a;
 	Vector3R vec_AC = corner_c - corner_a;
 
@@ -222,6 +222,29 @@ void learnSPH::sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_
 	vec_normal = vec_major.cross(vec_subordinate).cross(vec_major).normalized();
 
 	vec_normal = vec_normal.dot(vec_subordinate) * vec_normal;
+
+	//put particles on triangle vertices
+	faceParticles.push_back(corner_a);
+	faceParticles.push_back(corner_b);
+	faceParticles.push_back(corner_c);
+	//put particles on triangle sides
+	Vector3R nextParticle = corner_a + vec_AB.normalized() * samplingDistance;
+	while((corner_a - nextParticle).norm() < (corner_a - corner_b).norm()){
+		faceParticles.push_back(nextParticle);
+		nextParticle += vec_AB.normalized() * samplingDistance;
+	}
+	nextParticle = corner_a + vec_AC.normalized() * samplingDistance;
+	while((corner_a - nextParticle).norm() < (corner_a - corner_c).norm()){
+		faceParticles.push_back(nextParticle);
+		nextParticle += vec_AC.normalized() * samplingDistance;
+	}
+	nextParticle = corner_c + vec_CB.normalized() * samplingDistance;
+	while((corner_c - nextParticle).norm() < (corner_c - corner_b).norm()){
+		faceParticles.push_back(nextParticle);
+		nextParticle += vec_CB.normalized() * samplingDistance;
+	}
+	//put particle into a center
+	faceParticles.push_back((corner_a + corner_b + corner_c)/3);
 
 	if (hexagonal) {
 
@@ -275,7 +298,7 @@ void learnSPH::sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_
 		}
 	} 
 
-	Vector3R centroid = (vertex_a + vertex_b + vertex_c) / 3.0;
+/*	Vector3R centroid = (vertex_a + vertex_b + vertex_c) / 3.0;
 
 	Vector3R mass_center = Vector3R(0.0, 0.0, 0.0);
 
@@ -286,7 +309,7 @@ void learnSPH::sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_
 	Vector3R vec_offset = centroid - mass_center;
 
 	for (Vector3R &pt : faceParticles) { pt += vec_offset; }
-
+*/
 	borderParticles.insert(borderParticles.end(), faceParticles.begin(), faceParticles.end());
 }
 
@@ -317,7 +340,7 @@ void learnSPH::sample_border_model_surface(vector<Vector3R>& borderParticles, co
 						genBorderParticles,
 						true);
 		counter++;
-		fprintf(stderr, "\33[2K\rgenerated [%d/%d] faces", counter,faces.size());
+		fprintf(stderr, "\33[2K\rgenerated [%lu/%lu] faces. ", counter,faces.size());
 	}
 	delete listOfVerticesAndFaces;
 	borderParticles.swap(genBorderParticles);
@@ -329,7 +352,7 @@ BorderSystem* learnSPH::sample_border_model(const Matrix4d& transitionMatr, cons
 	vector<Vector3R> borderParticles;
 	sample_border_model_surface(borderParticles, transitionMatr, patToModel, samplingDistance);
 	auto ret =  new BorderSystem(borderParticles, restDensity, samplingDistance, eta);
-	fprintf(stderr, "model mesh generation finished\n", patToModel.c_str());
+	fprintf(stderr, "Finished\n");
 	return ret;
 
 }
