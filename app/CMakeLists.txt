@@ -32,3 +32,9 @@ set(SOURCE_FILES_test_border_cone test_border_cone.cpp)
 add_executable(test_border_cone ${SOURCE_FILES_test_border_cone})
 add_dependencies(test_border_cone learnSPH CompactNSearch)
 target_link_libraries(test_border_cone learnSPH CompactNSearch)
+
+set(SOURCE_FILES_test_wavefront_parser test_wavefront_parser.cpp)
+
+add_executable(test_wavefront_parser ${SOURCE_FILES_test_wavefront_parser})
+add_dependencies(test_wavefront_parser learnSPH CompactNSearch)
+target_link_libraries(test_wavefront_parser learnSPH CompactNSearch)

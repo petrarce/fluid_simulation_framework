@@ -3,7 +3,29 @@
 
 using namespace std;
 
+
 namespace learnSPH{
+	typedef struct FaceVertexList_t{
+		vector<Vector3R> vecrtexes;
+		vector<Vector3i> faceIndexes;
+	} FaceVertexList;
+
+	/*
+		Parses and puts data from wavefront obj file to FaceVertexList data structure
+		path_to_wavefront - path to wavefront obj file model
+	*/
+	FaceVertexList* parse_wavefront(string path_to_wavefront);
+	/*
+	 *	samples points according to triangle mesh, provided by wavefront.obj model
+	 *	Args:
+	 * 		borderParticles - vector, which finally be deployed with sampled particles
+	 *		transitionMatr  - transformation matrix, according to which model points will be modified
+	 *		patToModel		- path to model file 
+	 *		samplingDistance- maximal sampling distance between the points	
+	*/
+   	void sample_border_model_surface(vector<Vector3R>& borderParticles, const Matrix4d transitionMatr, const string& patToModel, Real samplingDistance);
+	BorderSystem* sample_border_model(const Matrix4d& transitionMatr, const string& patToModel, Real restDensity, Real samplingDistance, Real eta);
+
 	/*
 	 *	samples border particles on a triangular face
 	 *	Args:

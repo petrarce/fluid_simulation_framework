@@ -3,10 +3,57 @@
 #include <kernel.h>
 #include <types.hpp>
 #include <Eigen/Geometry>
+#include <fstream>
+#include <sstream>
 
 using namespace std;
 using namespace learnSPH;
 using namespace learnSPH::kernel;
+
+FaceVertexList* learnSPH::parse_wavefront(string path_to_wavefront)
+{
+	ifstream inf(path_to_wavefront);
+	if(!inf.is_open()){
+		return nullptr;
+	}
+
+	stringstream ss;
+	ss << inf.rdbuf();
+	inf.close();
+
+	string line;
+	Vector3R newVertex;
+	Vector3i newIndex;
+	FaceVertexList* listOfVerticesAndVertIndexes = new FaceVertexList();;
+	while(getline(ss, line, '\n')){
+		stringstream liness(line);
+		string word;
+		liness >> word;
+		if(word[0] == '#' ||
+			!(word == "f" || word == "v")){
+			continue;
+		}
+		string vertexOrIndex = word;
+		uint8_t counter = 0;
+		while(liness >> word){
+			assert(counter < 3);
+			if(vertexOrIndex == "v"){
+				newVertex[counter] = (stod(word));
+			} else {
+				newIndex[counter] = (stoi(word) - 1);
+			}
+			counter++;
+		}
+
+		if(vertexOrIndex == "v"){
+			listOfVerticesAndVertIndexes->vecrtexes.push_back(newVertex);
+		} else {
+			listOfVerticesAndVertIndexes->faceIndexes.push_back(newIndex);
+		}
+	}
+	return listOfVerticesAndVertIndexes;
+}
+
 
 FluidSystem* learnSPH::sample_fluid_cube(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta)
 {
@@ -242,6 +289,51 @@ void learnSPH::sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_
 
 	borderParticles.insert(borderParticles.end(), faceParticles.begin(), faceParticles.end());
 }
+
+void learnSPH::sample_border_model_surface(vector<Vector3R>& borderParticles, const Matrix4d transitionMatr, const string& patToModel, Real samplingDistance)
+{
+	vector<Vector3R> genBorderParticles;
+
+	FaceVertexList* listOfVerticesAndFaces = parse_wavefront(patToModel);
+	if(listOfVerticesAndFaces == nullptr){
+		return;
+	}
+
+	const auto& vertices = listOfVerticesAndFaces->vecrtexes;
+	const auto& faces    = listOfVerticesAndFaces->faceIndexes;
+	size_t counter = 0;
+	for(const Vector3i& face : faces){
+		assert(face[0] < vertices.size() &&
+			face[1] < vertices.size() &&
+			face[2] < vertices.size());
+		Vector4d vertex1 = transitionMatr*Vector4d(vertices[face[0]][0], vertices[face[0]][1], vertices[face[0]][2], 1);
+		Vector4d vertex2 = transitionMatr*Vector4d(vertices[face[1]][0], vertices[face[1]][1], vertices[face[1]][2], 1);
+		Vector4d vertex3 = transitionMatr*Vector4d(vertices[face[2]][0], vertices[face[2]][1], vertices[face[2]][2], 1);
+
+		sample_triangle(Vector3R(vertex1[0], vertex1[1], vertex1[2]), 
+						Vector3R(vertex2[0], vertex2[1], vertex2[2]),
+						Vector3R(vertex3[0], vertex3[1], vertex3[2]),
+						samplingDistance,
+						genBorderParticles,
+						true);
+		counter++;
+		fprintf(stderr, "\33[2K\rgenerated [%d/%d] faces", counter,faces.size());
+	}
+	delete listOfVerticesAndFaces;
+	borderParticles.swap(genBorderParticles);
+}
+
+BorderSystem* learnSPH::sample_border_model(const Matrix4d& transitionMatr, const string& patToModel, Real restDensity, Real samplingDistance, Real eta)
+{
+	fprintf(stderr, "building model from %s\n", patToModel.c_str());
+	vector<Vector3R> borderParticles;
+	sample_border_model_surface(borderParticles, transitionMatr, patToModel, samplingDistance);
+	auto ret =  new BorderSystem(borderParticles, restDensity, samplingDistance, eta);
+	fprintf(stderr, "model mesh generation finished\n", patToModel.c_str());
+	return ret;
+
+}
+
 
 
 BorderSystem* learnSPH::sample_border_box(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta, bool hexagonal)
