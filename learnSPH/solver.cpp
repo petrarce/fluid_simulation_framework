@@ -203,7 +203,6 @@ void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSys
 }
 
 
-
 void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, vector<Vector3R> &prev_pos, Real delta_t, Real multiplier, size_t n_iterations)
 {
     auto smooth_length = fluidParticles->getSmoothingLength();
@@ -227,7 +226,6 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
         auto &densities = fluidParticles->getDensities();
 
-
         #pragma omp parallel for schedule(guided, 100)
 
         for(unsigned int i = 0; i < fluidParticles->size(); i++) {
@@ -239,9 +237,9 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
             for(unsigned int j : neighbors[i][0]) {
 
-            	auto grad_W_ij = kernelGradFunction(positions[i], positions[j], smooth_length);
+                auto grad_W_ij = kernelGradFunction(positions[i], positions[j], smooth_length);
 
-            	auto term = grad_W_ij;
+                auto term = grad_W_ij;
 
                 term1 += term;
 
@@ -252,7 +250,7 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
             for(unsigned int k : neighbors[i][1]) {
 
-            	auto grad_W_ik = kernelGradFunction(positions[i], borderPositions[k], smooth_length);
+                auto grad_W_ik = kernelGradFunction(positions[i], borderPositions[k], smooth_length);
 
                 term2 += borderVolumes[k] * grad_W_ik;
             }
@@ -262,7 +260,6 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
             lambda[i] = -std::max(C_i, 0.0) * multiplier / (denominator[i] + 1e-4);
         }
-
 
         #pragma omp parallel for schedule(guided, 100)
 
