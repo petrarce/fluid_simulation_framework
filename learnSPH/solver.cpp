@@ -229,36 +229,39 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
         #pragma omp parallel for schedule(guided, 100)
 
         for(unsigned int i = 0; i < fluidParticles->size(); i++) {
+            Real C_i = max(densities[i] / fluidParticles->getRestDensity() - 1.0, 0.0);
+        	if(C_i > threshold){
 
-            auto term1 = Vector3R(0.0, 0.0, 0.0);
-            auto term2 = Vector3R(0.0, 0.0, 0.0);
+	            auto term1 = Vector3R(0.0, 0.0, 0.0);
+	            auto term2 = Vector3R(0.0, 0.0, 0.0);
 
-            Real term3 = 0.0;
+	            Real term3 = 0.0;
 
-            for(unsigned int j : neighbors[i][0]) {
+	            for(unsigned int j : neighbors[i][0]) {
 
-                auto grad_W_ij = kernelGradFunction(positions[i], positions[j], smooth_length);
+	                auto grad_W_ij = kernelGradFunction(positions[i], positions[j], smooth_length);
 
-                auto term = grad_W_ij;
+	                auto term = grad_W_ij;
 
-                term1 += term;
+	                term1 += term;
 
-                term3 += term.dot(term);
-            }
-            term1 *= fluidParticles->getMass() / fluidParticles->getRestDensity();
-            term3 *= pow2(fluidParticles->getMass() / fluidParticles->getRestDensity());
+	                term3 += term.dot(term);
+	            }
+	            term1 *= fluidParticles->getMass() / fluidParticles->getRestDensity();
+	            term3 *= pow2(fluidParticles->getMass() / fluidParticles->getRestDensity());
 
-            for(unsigned int k : neighbors[i][1]) {
+	            for(unsigned int k : neighbors[i][1]) {
 
-                auto grad_W_ik = kernelGradFunction(positions[i], borderPositions[k], smooth_length);
+	                auto grad_W_ik = kernelGradFunction(positions[i], borderPositions[k], smooth_length);
 
-                term2 += borderVolumes[k] * grad_W_ik;
-            }
-            denominator[i] = ((term1 + term2).dot(term1 + term2) + term3) / fluidParticles->getMass();
+	                term2 += borderVolumes[k] * grad_W_ik;
+	            }
+	            denominator[i] = ((term1 + term2).dot(term1 + term2) + term3) / fluidParticles->getMass();
 
-            Real C_i = densities[i] / fluidParticles->getRestDensity() - 1.0;
-
-            lambda[i] = -std::max(C_i, 0.0) * multiplier / (denominator[i] + 1e-4);
+	            lambda[i] = -C_i  / (denominator[i] + 1e-4);
+	        } else {
+	        	lambda[i] = 0;
+	        }
         }
 
         #pragma omp parallel for schedule(guided, 100)
