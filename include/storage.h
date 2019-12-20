@@ -5,6 +5,7 @@
 #include <CompactNSearch>
 #include <kernel.h>
 #include <set>
+#include <list>
 
 using namespace std;
 using namespace Eigen;
@@ -139,6 +140,17 @@ namespace learnSPH
 	class FluidSystem:public ParticleSystem
 	{
 		private:
+			typedef struct Emiter_t{
+				Vector3R pos;
+				list<size_t> chunkOffsets;
+				size_t chunkSize;
+				size_t maxChunks;
+				size_t chunksCnt;
+				Real prevEmmitionTime;
+				Real emmitionDelay;
+				Real emiterArea;
+			} Emiter;
+
 			Real mass;
 			Real diameter;
 			Real smooth_length;
@@ -150,7 +162,107 @@ namespace learnSPH
 
 			vector<vector<vector<unsigned int> > > neighbors;
 
+			vector<Emiter> emiters;
+
+			void sample_emiter_fluid_particles(vector<Vector3R>& emitedParticlePositions, 
+															const Vector3R& velocityVector, 
+															const Real samplingDistance, 
+															const Vector3R& emiterPosition)
+			{
+				assert(samplingDistance > 0);
+				assert(velocityVector.norm() > threshold);
+				const size_t partCnt = emitedParticlePositions.size();
+				const auto& epos = emiterPosition;
+				const auto& norm = velocityVector.normalized();
+				//perorm Gram-Schmidt process
+				Vector3R tg1 = Vector3R(0,0,1);
+				if(1 - fabs(tg1.dot(norm)) < threshold){
+					tg1 = Vector3R(0,1,0);
+				}
+				Vector3R tg2 = tg1.cross(norm).normalized();
+				tg1 = tg2.cross(norm).normalized();
+				Vector3R initPos =  epos - 0.5 * (tg1 + tg2) * sqrt(partCnt) * samplingDistance;
+				for(int i = 0; i < partCnt; i++){
+					unsigned int j = i / sqrt(partCnt);
+					unsigned int k = i % int(sqrt(partCnt));
+					emitedParticlePositions[i] = initPos + (tg1 * j + tg2 * k) * samplingDistance;
+				}
+			}
+
 		public:
+
+			using EmiterId = size_t;
+			size_t emiters_size()
+			{
+				return emiters.size();
+			}
+			EmiterId add_emmiter(size_t maxNumOfParticles, 
+									Vector3R emmiterPosition, 
+									Real emiterArea, 
+									Real emmitionSpeed)
+			{
+				assert(emiterArea > 0);
+				assert(emmitionSpeed > 0);
+				Emiter em;
+				em.pos = emmiterPosition;
+				em.chunkSize = emiterArea / pow2(this->diameter);
+				em.maxChunks = maxNumOfParticles / em.chunkSize;
+				em.prevEmmitionTime = 0;
+				em.emmitionDelay = 1.5 * this->diameter / emmitionSpeed;
+				em.emiterArea = emiterArea;
+				em.chunksCnt = 0;
+				emiters.push_back(em);
+				return emiters.size() - 1;
+			};
+			//!WARNING - incompatiable with killFugutuves
+			//TODO - add handling of start pointers relocations in case of kill killFugitives() 
+			//	removes particles from the array
+			void emit(EmiterId emiterId,
+						Vector3R velocityVector,
+						Vector3R extForces,
+						Real wallockTime, 
+						NeighborhoodSearch& ns)
+			{
+				assert(emiterId < emiters.size());
+				Emiter& em = emiters[emiterId];
+				if(wallockTime - em.prevEmmitionTime < em.emmitionDelay){
+					return;
+				}
+				em.prevEmmitionTime = wallockTime;
+
+				vector<Vector3R> emitedParticlePositions(em.chunkSize);
+				vector<Vector3R> emitedParticleVelocities(em.chunkSize, 
+								1.5 * this->diameter / em.emmitionDelay * velocityVector.normalized());
+				vector<Real> emitedParticleDensities(em.chunkSize);
+				vector<Vector3R> emitedParticleExtForces(em.chunkSize, this->mass * extForces);
+				assert(emitedParticlePositions.size() == em.chunkSize);
+				sample_emiter_fluid_particles(emitedParticlePositions, 
+												velocityVector, 
+												this->diameter, 
+												em.pos);
+				assert(em.chunkSize == emitedParticlePositions.size());
+				assert(em.chunksCnt <= em.maxChunks);
+				if(em.chunksCnt == em.maxChunks){
+					em.chunkOffsets.push_back(em.chunkOffsets.front());
+					em.chunkOffsets.pop_front();
+				} else if(em.chunksCnt < em.maxChunks){
+					em.chunksCnt++;
+					em.chunkOffsets.push_back(this->positions.size());
+					this->positions.resize(this->positions.size() + em.chunkSize);
+					this->velocities.resize(this->velocities.size() + em.chunkSize);
+					this->densities.resize(this->densities.size() + em.chunkSize);
+					this->external_forces.resize(this->external_forces.size() + em.chunkSize);
+					this->neighbors.resize(this->neighbors.size() + em.chunkSize);
+					ns.resize_point_set(0, (Real*)this->positions.data(), this->positions.size());
+				}
+				#pragma omp parallel for
+				for (int i = 0; i < em.chunkSize; ++i)
+				{
+					this->positions[em.chunkOffsets.back() + i] = emitedParticlePositions[i];
+					this->velocities[em.chunkOffsets.back() + i] = emitedParticleVelocities[i];
+					this->external_forces[em.chunkOffsets.back() + i] = emitedParticleExtForces[i];
+				}
+			};
 			void setPositions(vector<Vector3R> &newPositions)
 			{
 				assert(this->positions.size() == newPositions.size());
@@ -209,7 +321,7 @@ namespace learnSPH
 				for(int i = 0; i < this->size(); i++) ns.find_neighbors(0, i, neighbors[i]);
 			};
 
-			void killFugitives(Vector3R &lowerCorner, Vector3R &upperCorner, NeighborhoodSearch &ns)
+			void killFugitives(const Vector3R &lowerCorner,const Vector3R &upperCorner, NeighborhoodSearch &ns)
 			{
 				vector<size_t> fugitives;
 
