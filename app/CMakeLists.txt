@@ -38,3 +38,9 @@ set(SOURCE_FILES_test_wavefront_parser test_wavefront_parser.cpp)
 add_executable(test_wavefront_parser ${SOURCE_FILES_test_wavefront_parser})
 add_dependencies(test_wavefront_parser learnSPH CompactNSearch)
 target_link_libraries(test_wavefront_parser learnSPH CompactNSearch)
+
+set(SOURCE_FILES_test_sim test_sim.cpp)
+
+add_executable(test_sim ${SOURCE_FILES_test_sim})
+add_dependencies(test_sim learnSPH CompactNSearch)
+target_link_libraries(test_sim learnSPH CompactNSearch boost_program_options)

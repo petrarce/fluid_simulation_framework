@@ -43,6 +43,8 @@ namespace learnSPH
 				this->positions.swap(positions);
 			};
 
+			ParticleSystem(Real restDensity):restDensity(restDensity){};
+
 			virtual ~ParticleSystem(){};
 	};
 
@@ -84,7 +86,6 @@ namespace learnSPH
 				}
 				avgNghbCnt /= this->size();
 				Real factor = avgNghbCnt / maxNghbCnt;
-				fprintf(stderr, "factor = %f", factor);
 				set<unsigned int> deleted;
 				//for each pont
 				for(int i = 0; i < this->size(); i++){
@@ -374,6 +375,13 @@ namespace learnSPH
 				return 0.5 * this->diameter / vMaxNorm;
 			}
 
+			void add_fluid_particles(const vector<Vector3R>& pos, const vector<Vector3R>& vel){
+				assert(pos.size() == vel.size());
+				this->positions.insert(this->positions.end(), pos.begin(), pos.end());
+				this->velocities.insert(this->velocities.end(), vel.begin(), vel.end());
+				this->densities.insert(this->densities.end(), pos.size(), 0);
+				this->neighbors.resize(this->neighbors.size() + pos.size());
+			}
 			FluidSystem(vector<Vector3R> &positions, vector<Vector3R> &velocities, vector<Real> &densities, Real restDensity, Real fluidVolume, Real eta):ParticleSystem(positions, restDensity)
 			{
 				this->mass = (this->restDensity * fluidVolume) / this->positions.size();
@@ -386,5 +394,15 @@ namespace learnSPH
 
 				this->neighbors.resize(this->size());
 			};
+			FluidSystem(Real restDensityVal, Real diameterVal, Real etaVal):ParticleSystem(restDensityVal),
+				diameter(diameterVal),
+				mass(pow3(diameterVal) * restDensityVal),
+				smooth_length(diameterVal * etaVal),
+				compact_support(2*diameterVal * etaVal)
+			{
+			};
+		private:
+			//removed constructor - shouldnt be used
+			FluidSystem();
 	};
 };

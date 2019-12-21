@@ -70,6 +70,16 @@ namespace learnSPH{
 	 *		restDensity			- rest density for the fluid (assumed as constant among all particles)
 	 *		samplingDistance	- distance between the centers of each two adjacent particles
 	 */
+	
+	void sample_fluid_cube(vector<Vector3R>& positions, const Vector3R &lowerCorner, const Vector3R &upperCorner, Real samplingDistance);
+	/*
+	 *	creates FluidSystem with sampled fluid particles inside a cube in xis-aligned fashion.
+	 *	Args:
+	 *		upperCorner			- upper corner of the cube
+	 *		lowerCorner			- lower corner of the cube
+	 *		restDensity			- rest density for the fluid (assumed as constant among all particles)
+	 *		samplingDistance	- distance between the centers of each two adjacent particles
+	 */
 	FluidSystem* sample_fluid_cube(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta);
 	
 	void sample_sphere(vector<Vector3R>& borderParticles, const Real radius, const Vector3R center, const Real samplingDistance);

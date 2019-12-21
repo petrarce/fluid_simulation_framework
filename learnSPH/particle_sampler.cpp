@@ -54,11 +54,8 @@ FaceVertexList* learnSPH::parse_wavefront(string path_to_wavefront)
 	return listOfVerticesAndVertIndexes;
 }
 
-
-FluidSystem* learnSPH::sample_fluid_cube(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta)
+void learnSPH::sample_fluid_cube(vector<Vector3R>& positions, const Vector3R &lowerCorner, const Vector3R &upperCorner, Real samplingDistance)
 {
-	
-	assert(restDensity > 0.0);
 	assert(samplingDistance > 0.0);
 	assert((upperCorner - lowerCorner).dot(upperCorner - lowerCorner) > 0);
 
@@ -75,12 +72,8 @@ FluidSystem* learnSPH::sample_fluid_cube(const Vector3R &lowerCorner, const Vect
 	size_t totalNumOfPrticles = num_of_part_x_direction * num_of_part_y_direction * num_of_part_z_direction;
 
 	vector<Vector3R> particlePositions;
-	vector<Vector3R> particleVelocities;
-	vector<Real> particleDensities;
 
 	particlePositions.resize(totalNumOfPrticles);
-	particleDensities.resize(totalNumOfPrticles);
-	particleVelocities.resize(totalNumOfPrticles);
 
 	Real posX = lowerCorner[0];
 
@@ -107,6 +100,20 @@ FluidSystem* learnSPH::sample_fluid_cube(const Vector3R &lowerCorner, const Vect
 			posY += delY;
 		}
 	}
+	positions.swap(particlePositions);
+}
+
+FluidSystem* learnSPH::sample_fluid_cube(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta)
+{
+	vector<Vector3R> particlePositions;
+	sample_fluid_cube(particlePositions, lowerCorner, upperCorner, samplingDistance);
+	vector<Vector3R> particleVelocities;
+	vector<Real> particleDensities;
+
+	particleDensities.resize(particlePositions.size());
+	particleVelocities.resize(particlePositions.size());
+	
+	Vector3R distVector = upperCorner - lowerCorner;
 	Real width = fabs(distVector[0]) + samplingDistance;
 	Real height = fabs(distVector[1]) + samplingDistance;
 	Real length = fabs(distVector[2]) + samplingDistance;

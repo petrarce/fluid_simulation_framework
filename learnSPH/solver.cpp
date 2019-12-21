@@ -203,7 +203,7 @@ void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSys
 }
 
 
-void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, vector<Vector3R> &prev_pos, Real delta_t, Real multiplier, size_t n_iterations)
+void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, vector<Vector3R> &prev_pos, Real delta_t, size_t n_iterations)
 {
     auto smooth_length = fluidParticles->getSmoothingLength();
 
@@ -229,6 +229,7 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
         #pragma omp parallel for schedule(guided, 100)
 
         for(unsigned int i = 0; i < fluidParticles->size(); i++) {
+           assert(fluidParticles->getRestDensity() > threshold);
             Real C_i = max(densities[i] / fluidParticles->getRestDensity() - 1.0, 0.0);
         	if(C_i > threshold){
 
@@ -247,6 +248,7 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
 	                term3 += term.dot(term);
 	            }
+	            assert(fluidParticles->getRestDensity() > threshold);
 	            term1 *= fluidParticles->getMass() / fluidParticles->getRestDensity();
 	            term3 *= pow2(fluidParticles->getMass() / fluidParticles->getRestDensity());
 
@@ -256,6 +258,7 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
 	                term2 += borderVolumes[k] * grad_W_ik;
 	            }
+	            assert(fluidParticles->getMass() > threshold);
 	            denominator[i] = ((term1 + term2).dot(term1 + term2) + term3) / fluidParticles->getMass();
 
 	            lambda[i] = -C_i  / (denominator[i] + 1e-4);
@@ -272,11 +275,12 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
             auto term2 = Vector3R(0.0, 0.0, 0.0);
 
             for(unsigned int j : neighbors[i][0]) term1 += (lambda[i] + lambda[j]) * kernelGradFunction(positions[i], positions[j], smooth_length);
-
+            assert(fluidParticles->getRestDensity() > threshold);
             term1 /= fluidParticles->getRestDensity();
 
             for(unsigned int k : neighbors[i][1]) term2 += borderVolumes[k] * kernelGradFunction(positions[i], borderPositions[k], smooth_length);
 
+            assert(fluidParticles->getMass() > threshold);
             term2 = lambda[i] / fluidParticles->getMass() * term2;
 
             deltaX[i] = term1 + term2;
