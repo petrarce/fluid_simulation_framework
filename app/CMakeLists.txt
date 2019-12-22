@@ -43,4 +43,4 @@ set(SOURCE_FILES_test_sim test_sim.cpp)
 
 add_executable(test_sim ${SOURCE_FILES_test_sim})
 add_dependencies(test_sim learnSPH CompactNSearch)
-target_link_libraries(test_sim learnSPH CompactNSearch boost_program_options)
+target_link_libraries(test_sim learnSPH CompactNSearch boost_program_options boost_system boost_thread)

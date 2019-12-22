@@ -44,7 +44,7 @@ namespace learnSPH
 			};
 
 			ParticleSystem(Real restDensity):restDensity(restDensity){};
-
+			ParticleSystem();
 			virtual ~ParticleSystem(){};
 	};
 
@@ -401,8 +401,5 @@ namespace learnSPH
 				compact_support(2*diameterVal * etaVal)
 			{
 			};
-		private:
-			//removed constructor - shouldnt be used
-			FluidSystem();
 	};
 };

@@ -21,6 +21,9 @@
 #include <boost/program_options.hpp>
 #include <boost/tokenizer.hpp>
 
+#include <boost/thread/thread.hpp>
+#include <blocking_queue.h>
+
 using namespace CompactNSearch;
 using namespace learnSPH;
 using namespace boost::program_options;
@@ -148,6 +151,74 @@ static void parse_fluid_displacement(const string& str, FluidDisplacement& fd)
 	}
 }
 
+static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch& ns, BorderSystem& border)
+{
+	Real cur_sim_time = 0.0;
+	int physical_steps = 0;
+	fluid.findNeighbors(ns);
+	while (cur_sim_time < cmdValues.render_ts) {
+		learnSPH::calculate_dencities((&fluid), (&border));
+		
+		vector<Vector3R> accelerations(fluid.size(), Vector3R(0.0, 0.0, 0.0));
+		learnSPH::add_visco_component(accelerations, (&fluid), (&border), cmdValues.viscosity, cmdValues.friction);
+		learnSPH::add_exter_component(accelerations, (&fluid));
+		
+		Real update_step = max(cmdValues.lower_bound_ts, min(fluid.getCourantBound(), cmdValues.render_ts));
+		auto positions = fluid.getPositions();
+		learnSPH::smooth_symplectic_euler(accelerations, (&fluid), 0.5, update_step);
+		
+		fluid.findNeighbors(ns);
+		learnSPH::correct_position((&fluid), (&border), positions, update_step, cmdValues.pbfIterations);
+		
+		//fluid.killFugitives(lowerBoxCorner, upperBoxCorner, ns);
+		fluid.clipVelocities(50.0);
+		
+		cur_sim_time += update_step;
+		physical_steps ++;
+	}
+	return physical_steps;
+}
+
+//queue in which simulation states resided
+BlockingQueue<FluidSystem*> simulationStateQueue(5);
+boost::mutex print_lock;
+
+void gen_frames_thread(FluidSystem& fluid, NeighborhoodSearch& ns,BorderSystem& border, size_t n_frames)
+{
+	for (int frame = 1; frame <= n_frames; frame ++) {
+		int physical_steps = generate_simulation_frame_PBF(fluid, ns, border);
+		fprintf(stderr, "[%lu] physical updates were carried out for rendering frame [%lu]/[%lu]\n",
+				physical_steps, frame, n_frames);
+		FluidSystem* curFluidState = new FluidSystem(fluid);
+		assert(curFluidState != 0);
+
+		simulationStateQueue.push(curFluidState);
+#ifdef DEBUG
+		boost::mutex::scoped_lock(print_lock);
+		fprintf(stderr, "pushed new simulation state\n");
+#endif
+	}
+	while(!simulationStateQueue.empty()){};
+	simulationStateQueue.close();
+
+}
+
+void save_sim_state_thread(){
+	size_t frame_num = 1;
+	while(!simulationStateQueue.closed()){
+		FluidSystem* fluid;
+		if(!simulationStateQueue.pop(fluid)){
+			break;
+		}
+		save_current_state(cmdValues.outp_dir_path, cmdValues.sim_name, frame_num, *fluid);
+#ifdef DEBUG
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
+		boost::mutex::scoped_lock(print_lock);
+		fprintf(stderr, "saved simulation state\n");
+#endif
+		delete fluid;
+	}
+}
 int main(int ac, char** av)
 {
 	options_description po_def("Fluid simulator cmd arguments description");
@@ -220,39 +291,15 @@ int main(int ac, char** av)
 	
 	string filename = cmdValues.outp_dir_path + cmdValues.sim_name + "_border.vtk";
 	saveParticlesToVTK(filename, border.getPositions(), border.getVolumes(), vector<Vector3R>(border.size()));
-
-
 	//start simulation
 	cout << endl;
-	for (int frame = 1; frame <= n_frames; frame ++) {
-		Real cur_sim_time = 0.0;
-		int physical_steps = 0;
-		fluid.findNeighbors(ns);
-		while (cur_sim_time < cmdValues.render_ts) {
-			learnSPH::calculate_dencities((&fluid), (&border));
-			
-			vector<Vector3R> accelerations(fluid.size(), Vector3R(0.0, 0.0, 0.0));
-			learnSPH::add_visco_component(accelerations, (&fluid), (&border), cmdValues.viscosity, cmdValues.friction);
-			learnSPH::add_exter_component(accelerations, (&fluid));
-			
-			Real update_step = max(cmdValues.lower_bound_ts, min(fluid.getCourantBound(), cmdValues.render_ts));
-			auto positions = fluid.getPositions();
-			learnSPH::smooth_symplectic_euler(accelerations, (&fluid), 0.5, update_step);
-			
-			fluid.findNeighbors(ns);
-			learnSPH::correct_position((&fluid), (&border), positions, update_step, cmdValues.pbfIterations);
-			
-			//fluid.killFugitives(lowerBoxCorner, upperBoxCorner, ns);
-			fluid.clipVelocities(50.0);
-			
-			cur_sim_time += update_step;
-			physical_steps ++;
-		}
+	boost::thread simGen(gen_frames_thread, fluid, ns, border, n_frames);
+	boost::thread simSaveState(save_sim_state_thread);
 
-		fprintf(stderr, "[%d] physical updates were carried out for rendering frame [%d]/[%d]\n",
-				physical_steps, frame, n_frames);
-		save_current_state(cmdValues.outp_dir_path, cmdValues.sim_name, frame, fluid);
-	}
+	simGen.join();
+	simSaveState.join();
+	cout << "simulation finished"<<endl;
+
 	cout << endl;
 	return 0;
 }
