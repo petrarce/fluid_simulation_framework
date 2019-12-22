@@ -44,7 +44,7 @@ namespace learnSPH
 			};
 
 			ParticleSystem(Real restDensity):restDensity(restDensity){};
-			ParticleSystem();
+
 			virtual ~ParticleSystem(){};
 	};
 

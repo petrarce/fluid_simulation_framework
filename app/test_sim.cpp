@@ -294,7 +294,7 @@ int main(int ac, char** av)
 	saveParticlesToVTK(filename, border.getPositions(), border.getVolumes(), vector<Vector3R>(border.size()));
 	//start simulation
 	cout << endl;
-	boost::thread simGen(gen_frames_thread, fluid, ns, border, n_frames);
+	boost::thread simGen(gen_frames_thread, boost::ref(fluid), boost::ref(ns), boost::ref(border), n_frames);
 	boost::thread simSaveState(save_sim_state_thread);
 
 	simGen.join();
