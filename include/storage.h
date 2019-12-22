@@ -232,10 +232,7 @@ namespace learnSPH
 				em.prevEmmitionTime = wallockTime;
 
 				vector<Vector3R> emitedParticlePositions(em.chunkSize);
-				vector<Vector3R> emitedParticleVelocities(em.chunkSize, 
-								1.5 * this->diameter / em.emmitionDelay * velocityVector.normalized());
-				vector<Real> emitedParticleDensities(em.chunkSize);
-				vector<Vector3R> emitedParticleExtForces(em.chunkSize, this->mass * extForces);
+				Vector3R velocity = 1.5 * this->diameter / em.emmitionDelay * velocityVector.normalized();
 				assert(emitedParticlePositions.size() == em.chunkSize);
 				sample_emiter_fluid_particles(emitedParticlePositions, 
 												velocityVector, 
@@ -249,19 +246,21 @@ namespace learnSPH
 				} else if(em.chunksCnt < em.maxChunks){
 					em.chunksCnt++;
 					em.chunkOffsets.push_back(this->positions.size());
-					this->positions.resize(this->positions.size() + em.chunkSize);
-					this->velocities.resize(this->velocities.size() + em.chunkSize);
-					this->densities.resize(this->densities.size() + em.chunkSize);
-					this->external_forces.resize(this->external_forces.size() + em.chunkSize);
+					this->positions.insert(this->positions.begin(), 
+											emitedParticlePositions.begin(), 
+											emitedParticlePositions.end());
+					this->velocities.insert(this->velocities.begin(), em.chunkSize, velocity);
+					this->densities.insert(this->densities.begin(), em.chunkSize, 0);
+					this->external_forces.insert(this->external_forces.begin(), em.chunkSize, extForces);
 					this->neighbors.resize(this->neighbors.size() + em.chunkSize);
 					ns.resize_point_set(0, (Real*)this->positions.data(), this->positions.size());
 				}
-				#pragma omp parallel for
+				#pragma omp parallel for schedule(static)
 				for (int i = 0; i < em.chunkSize; ++i)
 				{
 					this->positions[em.chunkOffsets.back() + i] = emitedParticlePositions[i];
-					this->velocities[em.chunkOffsets.back() + i] = emitedParticleVelocities[i];
-					this->external_forces[em.chunkOffsets.back() + i] = emitedParticleExtForces[i];
+					this->velocities[em.chunkOffsets.back() + i] = velocity;
+					this->external_forces[em.chunkOffsets.back() + i] = extForces;
 				}
 			};
 			void setPositions(vector<Vector3R> &newPositions)
@@ -326,6 +325,7 @@ namespace learnSPH
 			{
 				vector<size_t> fugitives;
 
+				#pragma omp parallel for schedule(static) shared(fugitives)
 				for (size_t i = 0; i < this->size(); i ++) {
 
 					bool inside = true;
@@ -338,14 +338,32 @@ namespace learnSPH
 					inside &= (positions[i](1) <= upperCorner(1));
 					inside &= (positions[i](2) <= upperCorner(2));
 
-					if (!inside) fugitives.push_back(i);
+					if (!inside) {
+						#pragma omp critical
+						fugitives.push_back(i);
+					}
 				}
 				if (fugitives.empty()) return;
 
 				std::reverse(fugitives.begin(), fugitives.end());
 
 				for (auto i : fugitives) {
-
+					bool emiter_particle = false;
+					for(Emiter& e : emiters){
+						for(size_t chunkOffset : e.chunkOffsets){
+							if(i >=chunkOffset && i < chunkOffset + e.chunkSize){
+								emiter_particle = true;
+								positions[i] = e.pos;
+								velocities[i] = Vector3R(0,0,0);
+								densities[i] = 0;
+							}
+						}
+					}
+					if(emiter_particle){
+						continue;
+					}
+					/*no need to reload offsets for emmiter particles a.s.a. all emiter 
+						particles are resided at the end of the data arrays*/
 					positions[i] = positions.back();
 					densities[i] = densities.back();
 					velocities[i] = velocities.back();
@@ -366,7 +384,12 @@ namespace learnSPH
 				if(capVelo < 0){
 					return;
 				}
-				for (int i = 0; i < this->size(); i++) if (velocities[i].norm() >= capVelo) velocities[i] = velocities[i].normalized() * capVelo;
+				#pragma omp parallel for schedule(static)
+				for (int i = 0; i < this->size(); i++){
+					if (velocities[i].norm() >= capVelo) {
+						velocities[i] = velocities[i].normalized() * capVelo;
+					}
+				}
 			}
 
 			Real getCourantBound()

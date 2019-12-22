@@ -67,38 +67,12 @@ struct {
 	Real sampling_distance;
 	Real eta;
 	Real max_velocity;
+	bool dbg;
+	Vector3R clip_lower_bound;
+	Vector3R clip_upper_bound;
 } cmdValues;
 
-static void validate_cmd_options(const variables_map& vm)
-{
-	if(!(vm.count("render-ts") &&
-			vm.count("border-model-path") &&
-			vm.count("fluid-displacement") &&
-			vm.count("sim-duration") &&
-			vm.count("sim-type") &&
-			vm.count("sample-dist"))){
-		cout << "next options are mandatory: --render-ts --border-model-path --sim-duration --sim-type --sample-dist --fluid-displacement" << endl;
-		throw invalid_argument("some options are missed");
-	}
-}
 
-static void assign_cmd_options(const variables_map& vm){
-	cmdValues.render_ts = vm["render-ts"].as<Real>();
-	cmdValues.lower_bound_ts = (vm.count("lower-bound-ts"))?vm["lower-bound-ts"].as<Real>():cmdValues.render_ts;
-	cmdValues.viscosity = vm["viscosity"].as<Real>();
-	cmdValues.fluid_rest_density = vm["rest-density"].as<Real>();
-	cmdValues.border_rest_density = vm["border-rest-density"].as<Real>();
-	cmdValues.friction = vm["friction"].as<Real>();
-	cmdValues.pbfIterations = vm["iterations"].as<size_t>();
-	cmdValues.border_model_path = vm["border-model-path"].as<string>();
-	cmdValues.sim_duration = vm["sim-duration"].as<Real>();
-	cmdValues.preasureCoefficient = vm["pressure-coeff"].as<Real>();
-	cmdValues.sampling_distance = vm["sample-dist"].as<Real>();
-	cmdValues.sim_name = vm["sim-name"].as<string>();
-	cmdValues.eta = vm["eta"].as<Real>();
-	cmdValues.outp_dir_path = vm["output-directory"].as<string>();
-	cmdValues.max_velocity = vm["max-velocity"].as<Real>();
-}
 
 typedef struct {
 	Vector3R lower_corner;
@@ -133,7 +107,7 @@ static void parse_fluid_displacement(const string& str, FluidDisplacement& fd)
   	boost::char_separator<char> sep{" (),[]"};
 	tokenizer tok{str, sep};
 	char counter = 0;
-	invalid_argument exeption("incorrect format of fluid displacement");
+	invalid_argument exeption("incorrect format: " + str);
 	try{
 		for(string v : tok){
 			if(counter < 3){
@@ -151,6 +125,43 @@ static void parse_fluid_displacement(const string& str, FluidDisplacement& fd)
 	} catch(const invalid_argument& e){
 		throw exeption;
 	}
+}
+
+static void validate_cmd_options(const variables_map& vm)
+{
+	if(!(vm.count("render-ts") &&
+			vm.count("border-model-path") &&
+			vm.count("fluid-displacement") &&
+			vm.count("sim-duration") &&
+			vm.count("sim-type") &&
+			vm.count("sample-dist") &&
+			vm.count("clip-area"))){
+		cout << "next options are mandatory: --render-ts --border-model-path --sim-duration --sim-type --sample-dist --fluid-displacement --clip-area" << endl;
+		throw invalid_argument("some options are missed");
+	}
+}
+
+static void assign_cmd_options(const variables_map& vm){
+	cmdValues.render_ts = vm["render-ts"].as<Real>();
+	cmdValues.lower_bound_ts = (vm.count("lower-bound-ts"))?vm["lower-bound-ts"].as<Real>():cmdValues.render_ts;
+	cmdValues.viscosity = vm["viscosity"].as<Real>();
+	cmdValues.fluid_rest_density = vm["rest-density"].as<Real>();
+	cmdValues.border_rest_density = vm["border-rest-density"].as<Real>();
+	cmdValues.friction = vm["friction"].as<Real>();
+	cmdValues.pbfIterations = vm["iterations"].as<size_t>();
+	cmdValues.border_model_path = vm["border-model-path"].as<string>();
+	cmdValues.sim_duration = vm["sim-duration"].as<Real>();
+	cmdValues.preasureCoefficient = vm["pressure-coeff"].as<Real>();
+	cmdValues.sampling_distance = vm["sample-dist"].as<Real>();
+	cmdValues.sim_name = vm["sim-name"].as<string>();
+	cmdValues.eta = vm["eta"].as<Real>();
+	cmdValues.outp_dir_path = vm["output-directory"].as<string>();
+	cmdValues.max_velocity = vm["max-velocity"].as<Real>();
+	cmdValues.dbg = (vm.count("dbg"))?true:false;
+	FluidDisplacement fd;
+	parse_fluid_displacement(vm["clip-area"].as<string>(), fd);
+	cmdValues.clip_lower_bound = fd.lower_corner;
+	cmdValues.clip_upper_bound = fd.upper_corner;
 }
 
 static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch& ns, BorderSystem& border)
@@ -172,11 +183,15 @@ static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch&
 		fluid.findNeighbors(ns);
 		learnSPH::correct_position((&fluid), (&border), positions, update_step, cmdValues.pbfIterations);
 		
-		//fluid.killFugitives(lowerBoxCorner, upperBoxCorner, ns);
+		fluid.killFugitives(cmdValues.clip_lower_bound, cmdValues.clip_upper_bound, ns);
 		fluid.clipVelocities(cmdValues.max_velocity);
 		
 		cur_sim_time += update_step;
 		physical_steps ++;
+		if(cmdValues.dbg){
+			break;
+		}
+
 	}
 	return physical_steps;
 }
@@ -185,11 +200,11 @@ static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch&
 BlockingQueue<FluidSystem*> simulationStateQueue(5);
 boost::mutex print_lock;
 
-void gen_frames_thread(FluidSystem& fluid, NeighborhoodSearch& ns,BorderSystem& border, size_t n_frames)
+void gen_frames_thread(FluidSystem& fluid, NeighborhoodSearch& ns,BorderSystem& border, int n_frames)
 {
 	for (int frame = 1; frame <= n_frames; frame ++) {
 		int physical_steps = generate_simulation_frame_PBF(fluid, ns, border);
-		fprintf(stderr, "[%lu] physical updates were carried out for rendering frame [%lu]/[%lu]\n",
+		fprintf(stderr, "[%d] physical updates were carried out for rendering frame [%d]/[%d]\n",
 				physical_steps, frame, n_frames);
 		FluidSystem* curFluidState = new FluidSystem(fluid);
 		assert(curFluidState != 0);
@@ -249,7 +264,9 @@ int main(int ac, char** av)
 		("sim-name,n", value<string>()->default_value("new_simulation"), "simulation name."
 														"\n\tAll vtk and cereal files will use simulation name prefix")
 		("output-directory,o", value<string>()->default_value("./"), "specify output directory, where all cereal and vtk files will be saved\n")
-		("max-velocity", value<Real>()->default_value(50.0f), "specify maximum velocity, which will be given to each particle (negative value means no velocity boundary)");
+		("clip-area,k", value<string>(), "specify area, outside of which fluid particles will be removed from the simulation")
+		("max-velocity", value<Real>()->default_value(50.0f), "specify maximum velocity, which will be given to each particle (negative value means no velocity boundary)")
+		("dbg", "debug option. If enabled then each physical update will be saved into vtk file");
 
 	//parse and assign command line options
 	variables_map vm;
