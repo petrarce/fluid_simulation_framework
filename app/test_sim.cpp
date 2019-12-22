@@ -63,13 +63,38 @@ struct {
 	string sim_name;
 	string outp_dir_path;
 	Real sim_duration;
-	Real preasureCoefficient;
+	Real prStiffness;
 	Real sampling_distance;
 	Real eta;
 	Real max_velocity;
 	bool dbg;
 	Vector3R clip_lower_bound;
 	Vector3R clip_upper_bound;
+	string sim_type;
+
+	void print()
+	{
+		fprintf(stdout, "Simulation parameters:\n");
+		fprintf(stdout, "\trender_ts=%f\n", render_ts);
+		fprintf(stdout, "\tlower_bound_ts=%f\n", lower_bound_ts);
+		fprintf(stdout, "\tviscosity=%f\n", viscosity);
+		fprintf(stdout, "\tfluid_rest_density=%f\n", fluid_rest_density);
+		fprintf(stdout, "\tborder_rest_density=%f\n", border_rest_density);
+		fprintf(stdout, "\tfriction=%f\n", friction);
+		fprintf(stdout, "\tpbfIterations=%lu\n", pbfIterations);
+		fprintf(stdout, "\tborder_model_path=%s\n", border_model_path.c_str());
+		fprintf(stdout, "\tsim_name=%s\n", sim_name.c_str());
+		fprintf(stdout, "\toutp_dir_path=%s\n", outp_dir_path.c_str());
+		fprintf(stdout, "\tsim_duration=%f\n", sim_duration);
+		fprintf(stdout, "\tprStiffness=%f\n", prStiffness);
+		fprintf(stdout, "\tsampling_distance=%f\n", sampling_distance);
+		fprintf(stdout, "\teta=%f\n", eta);
+		fprintf(stdout, "\tmax_velocity=%f\n", max_velocity);
+		fprintf(stdout, "\tdbg=%s\n", dbg?"true":"false");
+		fprintf(stdout, "\tclip_lower_bound=[%f,%f,%f]\n", clip_lower_bound[0], clip_lower_bound[1], clip_lower_bound[2]);
+		fprintf(stdout, "\tclip_upper_bound=[%f,%f,%f]\n", clip_upper_bound[0], clip_upper_bound[1], clip_upper_bound[2]);
+		fprintf(stdout, "\tsim_type=%s\n", sim_type.c_str());
+	}
 } cmdValues;
 
 
@@ -151,7 +176,7 @@ static void assign_cmd_options(const variables_map& vm){
 	cmdValues.pbfIterations = vm["iterations"].as<size_t>();
 	cmdValues.border_model_path = vm["border-model-path"].as<string>();
 	cmdValues.sim_duration = vm["sim-duration"].as<Real>();
-	cmdValues.preasureCoefficient = vm["pressure-coeff"].as<Real>();
+	cmdValues.prStiffness = vm["preassure-stiffness"].as<Real>();
 	cmdValues.sampling_distance = vm["sample-dist"].as<Real>();
 	cmdValues.sim_name = vm["sim-name"].as<string>();
 	cmdValues.eta = vm["eta"].as<Real>();
@@ -162,6 +187,7 @@ static void assign_cmd_options(const variables_map& vm){
 	parse_fluid_displacement(vm["clip-area"].as<string>(), fd);
 	cmdValues.clip_lower_bound = fd.lower_corner;
 	cmdValues.clip_upper_bound = fd.upper_corner;
+	cmdValues.sim_type = vm["sim-type"].as<string>();
 }
 
 static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch& ns, BorderSystem& border)
@@ -196,6 +222,36 @@ static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch&
 	return physical_steps;
 }
 
+static int generate_simulation_frame_EXT(FluidSystem& fluid, NeighborhoodSearch& ns, BorderSystem& border)
+{
+	Real cur_sim_time = 0.0;
+	int physical_steps = 0;
+	while (cur_sim_time < cmdValues.render_ts) {
+		fluid.findNeighbors(ns);
+		learnSPH::calculate_dencities((&fluid), (&border));
+		
+		vector<Vector3R> accelerations(fluid.size(), Vector3R(0.0, 0.0, 0.0));
+		learnSPH::add_visco_component(accelerations, (&fluid), (&border), cmdValues.viscosity, cmdValues.friction);
+		learnSPH::add_exter_component(accelerations, (&fluid));
+		learnSPH::add_press_component(accelerations, (&fluid), (&border), cmdValues.prStiffness);
+		
+		Real update_step = max(cmdValues.lower_bound_ts, min(fluid.getCourantBound(), cmdValues.render_ts));
+		auto positions = fluid.getPositions();
+		learnSPH::smooth_symplectic_euler(accelerations, (&fluid), 0.5, update_step);
+		
+		fluid.killFugitives(cmdValues.clip_lower_bound, cmdValues.clip_upper_bound, ns);
+		fluid.clipVelocities(cmdValues.max_velocity);
+		
+		cur_sim_time += update_step;
+		physical_steps ++;
+		if(cmdValues.dbg){
+			break;
+		}
+	}
+	return physical_steps;
+}
+
+
 //queue in which simulation states resided
 BlockingQueue<FluidSystem*> simulationStateQueue(5);
 boost::mutex print_lock;
@@ -203,7 +259,14 @@ boost::mutex print_lock;
 void gen_frames_thread(FluidSystem& fluid, NeighborhoodSearch& ns,BorderSystem& border, int n_frames)
 {
 	for (int frame = 1; frame <= n_frames; frame ++) {
-		int physical_steps = generate_simulation_frame_PBF(fluid, ns, border);
+		int physical_steps;
+		if(cmdValues.sim_type == "PBF"){
+			physical_steps = generate_simulation_frame_PBF(fluid, ns, border);
+		} else if(cmdValues.sim_type == "EXT"){
+			physical_steps = generate_simulation_frame_EXT(fluid, ns, border);
+		} else {
+			throw invalid_argument("unknown simulation type: " + cmdValues.sim_type + ". Use --help to check supported");
+		}
 		fprintf(stderr, "[%d] physical updates were carried out for rendering frame [%d]/[%d]\n",
 				physical_steps, frame, n_frames);
 		FluidSystem* curFluidState = new FluidSystem(fluid);
@@ -259,7 +322,7 @@ int main(int ac, char** av)
 											"\"[\%f,\%f,\%f],[\%f,\%f,\%f]\"\n")
 		("sim-type,t", value<string>(), "simulation method type. Next variants are possible: PBF, WCF\n")
 		("sample-dist,a", value<Real>(), "particle sampling distance\n")
-		("pressure-coeff,p", value<Real>()->default_value(400), "pressure coefficient for WCSPH\n")
+		("preassure-stiffness,p", value<Real>()->default_value(80), "pressure coefficient for WCSPH\n")
 		("eta", value<Real>()->default_value(1.2), "eta value - multiplier for compact support and smoothing length\n")
 		("sim-name,n", value<string>()->default_value("new_simulation"), "simulation name."
 														"\n\tAll vtk and cereal files will use simulation name prefix")
@@ -277,6 +340,7 @@ int main(int ac, char** av)
 	}
 	validate_cmd_options(vm);
 	assign_cmd_options(vm);
+	cmdValues.print();
 
 	//generate fluid particles
 	FluidSystem fluid(cmdValues.fluid_rest_density, cmdValues.sampling_distance, cmdValues.eta);
