@@ -363,6 +363,9 @@ namespace learnSPH
 
 			void clipVelocities(Real capVelo)
 			{
+				if(capVelo < 0){
+					return;
+				}
 				for (int i = 0; i < this->size(); i++) if (velocities[i].norm() >= capVelo) velocities[i] = velocities[i].normalized() * capVelo;
 			}
 

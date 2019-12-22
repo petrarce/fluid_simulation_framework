@@ -66,6 +66,7 @@ struct {
 	Real preasureCoefficient;
 	Real sampling_distance;
 	Real eta;
+	Real max_velocity;
 } cmdValues;
 
 static void validate_cmd_options(const variables_map& vm)
@@ -96,6 +97,7 @@ static void assign_cmd_options(const variables_map& vm){
 	cmdValues.sim_name = vm["sim-name"].as<string>();
 	cmdValues.eta = vm["eta"].as<Real>();
 	cmdValues.outp_dir_path = vm["output-directory"].as<string>();
+	cmdValues.max_velocity = vm["max-velocity"].as<Real>();
 }
 
 typedef struct {
@@ -171,7 +173,7 @@ static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch&
 		learnSPH::correct_position((&fluid), (&border), positions, update_step, cmdValues.pbfIterations);
 		
 		//fluid.killFugitives(lowerBoxCorner, upperBoxCorner, ns);
-		fluid.clipVelocities(50.0);
+		fluid.clipVelocities(cmdValues.max_velocity);
 		
 		cur_sim_time += update_step;
 		physical_steps ++;
@@ -246,7 +248,8 @@ int main(int ac, char** av)
 		("eta", value<Real>()->default_value(1.2), "eta value - multiplier for compact support and smoothing length\n")
 		("sim-name,n", value<string>()->default_value("new_simulation"), "simulation name."
 														"\n\tAll vtk and cereal files will use simulation name prefix")
-		("output-directory,o", value<string>()->default_value("./"), "specify output directory, where all cereal and vtk files will be saved\n");
+		("output-directory,o", value<string>()->default_value("./"), "specify output directory, where all cereal and vtk files will be saved\n")
+		("max-velocity", value<Real>()->default_value(50.0f), "specify maximum velocity, which will be given to each particle (negative value means no velocity boundary)");
 
 	//parse and assign command line options
 	variables_map vm;
