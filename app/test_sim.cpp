@@ -216,6 +216,7 @@ void save_sim_state_thread(){
 		boost::mutex::scoped_lock(print_lock);
 		fprintf(stderr, "saved simulation state\n");
 #endif
+		frame_num++;
 		delete fluid;
 	}
 }
