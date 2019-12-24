@@ -148,7 +148,7 @@ namespace learnSPH
 				size_t maxChunks;
 				size_t chunksCnt;
 				Real prevEmmitionTime;
-				Real emmitionDelay;
+				Vector3R emitVelocity;
 				Real emiterArea;
 			} Emiter;
 
@@ -197,19 +197,19 @@ namespace learnSPH
 			{
 				return emiters.size();
 			}
-			EmiterId add_emmiter(size_t maxNumOfParticles, 
+			EmiterId add_emitter(size_t maxNumOfParticles, 
 									Vector3R emmiterPosition, 
 									Real emiterArea, 
-									Real emmitionSpeed)
+									Vector3R emmitionVelocity)
 			{
 				assert(emiterArea > 0);
-				assert(emmitionSpeed > 0);
+				assert(emmitionVelocity.norm() > threshold);
 				Emiter em;
 				em.pos = emmiterPosition;
 				em.chunkSize = emiterArea / pow2(this->diameter);
 				em.maxChunks = maxNumOfParticles / em.chunkSize;
 				em.prevEmmitionTime = 0;
-				em.emmitionDelay = 1.5 * this->diameter / emmitionSpeed;
+				em.emitVelocity = emmitionVelocity;
 				em.emiterArea = emiterArea;
 				em.chunksCnt = 0;
 				emiters.push_back(em);
@@ -218,21 +218,23 @@ namespace learnSPH
 			//!WARNING - incompatiable with killFugutuves
 			//TODO - add handling of start pointers relocations in case of kill killFugitives() 
 			//	removes particles from the array
-			void emit(EmiterId emiterId,
-						Vector3R velocityVector,
-						Vector3R extForces,
-						Real wallockTime, 
-						NeighborhoodSearch& ns)
+			
+
+			void emit( const EmiterId emiterId,
+						const Vector3R& extForces,
+						const Real wallockTime, 
+						NeighborhoodSearch& ns,
+						const Vector3R& velocityVector)
 			{
 				assert(emiterId < emiters.size());
 				Emiter& em = emiters[emiterId];
-				if(wallockTime - em.prevEmmitionTime < em.emmitionDelay){
+				if(wallockTime - em.prevEmmitionTime < 1.5 * this->diameter / em.emitVelocity.norm()){
 					return;
 				}
 				em.prevEmmitionTime = wallockTime;
 
 				vector<Vector3R> emitedParticlePositions(em.chunkSize);
-				Vector3R velocity = 1.5 * this->diameter / em.emmitionDelay * velocityVector.normalized();
+				Vector3R velocity = velocityVector.normalized() * em.emitVelocity.norm();
 				assert(emitedParticlePositions.size() == em.chunkSize);
 				sample_emiter_fluid_particles(emitedParticlePositions, 
 												velocityVector, 
@@ -245,15 +247,16 @@ namespace learnSPH
 					em.chunkOffsets.pop_front();
 				} else if(em.chunksCnt < em.maxChunks){
 					em.chunksCnt++;
-					em.chunkOffsets.push_back(this->positions.size());
+					em.chunkOffsets.push_front(this->positions.size());
 					this->positions.insert(this->positions.begin(), 
 											emitedParticlePositions.begin(), 
 											emitedParticlePositions.end());
 					this->velocities.insert(this->velocities.begin(), em.chunkSize, velocity);
 					this->densities.insert(this->densities.begin(), em.chunkSize, 0);
-					this->external_forces.insert(this->external_forces.begin(), em.chunkSize, extForces);
+					this->external_forces.insert(this->external_forces.begin(), em.chunkSize, this->mass * extForces);
 					this->neighbors.resize(this->neighbors.size() + em.chunkSize);
 					ns.resize_point_set(0, (Real*)this->positions.data(), this->positions.size());
+					return;
 				}
 				#pragma omp parallel for schedule(static)
 				for (int i = 0; i < em.chunkSize; ++i)
@@ -263,6 +266,15 @@ namespace learnSPH
 					this->external_forces[em.chunkOffsets.back() + i] = extForces;
 				}
 			};
+
+			void emit(const EmiterId emiterId,
+						const Vector3R& extForces,
+						const Real wallockTime, 
+						NeighborhoodSearch& ns){
+				Emiter& em = emiters[emiterId];
+				emit(emiterId, extForces, wallockTime, ns, emiters[emiterId].emitVelocity);
+			}
+
 			void setPositions(vector<Vector3R> &newPositions)
 			{
 				assert(this->positions.size() == newPositions.size());

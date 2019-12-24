@@ -107,7 +107,8 @@ typedef struct {
 typedef struct {
 	Vector3R em_pos;
 	Vector3R em_veloc;
-	Vector3R em_area;
+	Real em_area;
+	int max_particles;
 } EmiterDisplacement;
 
 static void save_current_state(const string& dir_path, const string& sim_name, size_t frame, FluidSystem& fluid){
@@ -126,6 +127,35 @@ static void save_current_state(const string& dir_path, const string& sim_name, s
 		save_scalars(filename, fluid.getDensities());
 }
 
+static void parse_emiter_displacement(const string& str, EmiterDisplacement& ed)
+{
+  	typedef boost::tokenizer<boost::char_separator<char>> tokenizer;
+  	boost::char_separator<char> sep{" (),[]"};
+	tokenizer tok{str, sep};
+	char counter = 0;
+	invalid_argument exeption("incorrect format: " + str);
+	try{
+		for(string v : tok){
+			if(counter < 3){
+				ed.em_pos[counter] = stod(v);
+			} else if(counter == 3){
+				ed.em_area = stod(v);
+			}else if(counter < 7){
+				ed.em_veloc[counter-4] = stod(v);
+			} else if(counter == 7){
+				ed.max_particles = stoi(v);
+			} else {
+				throw invalid_argument(""); 
+			}
+			counter++;
+		}
+		if(counter < 8){
+			throw invalid_argument("");
+		}
+	} catch(const invalid_argument& e){
+		throw exeption;
+	}
+}
 static void parse_fluid_displacement(const string& str, FluidDisplacement& fd)
 {
   	typedef boost::tokenizer<boost::char_separator<char>> tokenizer;
@@ -156,12 +186,11 @@ static void validate_cmd_options(const variables_map& vm)
 {
 	if(!(vm.count("render-ts") &&
 			vm.count("border-model-path") &&
-			vm.count("fluid-displacement") &&
 			vm.count("sim-duration") &&
 			vm.count("sim-type") &&
 			vm.count("sample-dist") &&
 			vm.count("clip-area"))){
-		cout << "next options are mandatory: --render-ts --border-model-path --sim-duration --sim-type --sample-dist --fluid-displacement --clip-area" << endl;
+		cout << "next options are mandatory: --render-ts --border-model-path --sim-duration --sim-type --sample-dist --clip-area" << endl;
 		throw invalid_argument("some options are missed");
 	}
 }
@@ -190,12 +219,18 @@ static void assign_cmd_options(const variables_map& vm){
 	cmdValues.sim_type = vm["sim-type"].as<string>();
 }
 
+float wallclock_time = 0;
+
 static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch& ns, BorderSystem& border)
 {
 	Real cur_sim_time = 0.0;
 	int physical_steps = 0;
+	for(int i = 0; i < fluid.emiters_size(); i++){
+		fluid.emit(i, Vector3R(0, -9.7, 0), wallclock_time, ns);
+	}		
 	fluid.findNeighbors(ns);
 	while (cur_sim_time < cmdValues.render_ts) {
+
 		learnSPH::calculate_dencities((&fluid), (&border));
 		
 		vector<Vector3R> accelerations(fluid.size(), Vector3R(0.0, 0.0, 0.0));
@@ -214,6 +249,7 @@ static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch&
 		
 		cur_sim_time += update_step;
 		physical_steps ++;
+		wallclock_time += update_step;
 		if(cmdValues.dbg){
 			break;
 		}
@@ -226,6 +262,9 @@ static int generate_simulation_frame_EXT(FluidSystem& fluid, NeighborhoodSearch&
 {
 	Real cur_sim_time = 0.0;
 	int physical_steps = 0;
+	for(int i = 0; i < fluid.emiters_size(); i++){
+		fluid.emit(i, Vector3R(0, -9.7, 0), wallclock_time, ns);
+	}		
 	while (cur_sim_time < cmdValues.render_ts) {
 		fluid.findNeighbors(ns);
 		learnSPH::calculate_dencities((&fluid), (&border));
@@ -239,11 +278,12 @@ static int generate_simulation_frame_EXT(FluidSystem& fluid, NeighborhoodSearch&
 		auto positions = fluid.getPositions();
 		learnSPH::smooth_symplectic_euler(accelerations, (&fluid), 0.5, update_step);
 		
-		fluid.killFugitives(cmdValues.clip_lower_bound, cmdValues.clip_upper_bound, ns);
+		//fluid.killFugitives(cmdValues.clip_lower_bound, cmdValues.clip_upper_bound, ns);
 		fluid.clipVelocities(cmdValues.max_velocity);
 		
 		cur_sim_time += update_step;
 		physical_steps ++;
+		wallclock_time += update_step;
 		if(cmdValues.dbg){
 			break;
 		}
@@ -309,7 +349,7 @@ int main(int ac, char** av)
 		("lower-bound-ts,l", value<Real>(), "lower bound at which simulation time can decreased\n")
 		("emitter-displacement,e", value<vector<string>>(), "string, which specifies where emitter should be placed inside the simulation\n"
 										"\tto specify emitter position, emit area and emit velocity use next format: "
-										"\"[\%f,\%f,\%f],\%f,[\%f,\%f,\%f]\"\n")
+										"\"[\%f,\%f,\%f],\%f,[\%f,\%f,\%f],\%d\"\n")
 		("viscosity,v", value<Real>()->default_value(1e-2), "fluid viscosity value\n")
 		("rest-density,d", value<Real>()->default_value(1e+3), "fluid rest density\n")
 		("border-rest-density,b", value<Real>()->default_value(3e+3), "border rest density\n")
@@ -344,16 +384,25 @@ int main(int ac, char** av)
 
 	//generate fluid particles
 	FluidSystem fluid(cmdValues.fluid_rest_density, cmdValues.sampling_distance, cmdValues.eta);
-	for(const string& fluid_disp : vm["fluid-displacement"].as<vector<string>>()){
-		FluidDisplacement fd;
-		parse_fluid_displacement(fluid_disp, fd);
-		vector<Vector3R> positions;
-		sample_fluid_cube(positions, fd.lower_corner, fd.upper_corner, cmdValues.sampling_distance);
-		vector<Vector3R> velocity(positions.size(), Vector3R(0,0,0));
-		fluid.add_fluid_particles(positions, velocity);
+	if(vm.count("fluid-displacement")){
+		for(const string& fluid_disp : vm["fluid-displacement"].as<vector<string>>()){
+			FluidDisplacement fd;
+			parse_fluid_displacement(fluid_disp, fd);
+			vector<Vector3R> positions;
+			sample_fluid_cube(positions, fd.lower_corner, fd.upper_corner, cmdValues.sampling_distance);
+			vector<Vector3R> velocity(positions.size(), Vector3R(0,0,0));
+			fluid.add_fluid_particles(positions, velocity);
+		}
 	}
 	fluid.setGravity(-9.7);
-
+	//add emmiters
+	if(vm.count("emitter-displacement")) {
+		for(const string& emit_disp : vm["emitter-displacement"].as<vector<string>>()){
+			EmiterDisplacement ed;
+			parse_emiter_displacement(emit_disp, ed);
+			fluid.add_emitter(ed.max_particles, ed.em_pos, ed.em_area, ed.em_veloc);
+		}
+	}
 	//generate border particles from border obj file
 	vector<Vector3R> positions;
 	sample_border_model_surface(positions, Matrix4d::Identity(), cmdValues.border_model_path, cmdValues.sampling_distance);
