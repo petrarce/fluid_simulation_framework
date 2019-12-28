@@ -96,6 +96,8 @@ struct {
 		fprintf(stdout, "\tclip_lower_bound=[%f,%f,%f]\n", clip_lower_bound[0], clip_lower_bound[1], clip_lower_bound[2]);
 		fprintf(stdout, "\tclip_upper_bound=[%f,%f,%f]\n", clip_upper_bound[0], clip_upper_bound[1], clip_upper_bound[2]);
 		fprintf(stdout, "\tsim_type=%s\n", sim_type.c_str());
+		fprintf(stdout, "\tsamplingSheme=%s\n", samplingSheme?"hexagonal":"nonhexaonal");
+		fprintf(stdout, "\tintegration scheme=%s\n", smoothSimplectirEuler?"smooth simplectic euler":"simplectic euler");
 	}
 } cmdValues;
 

@@ -70,49 +70,26 @@ namespace learnSPH
 
 				ns.update_point_sets();
 
-				vector<vector<vector<unsigned int>> > neighbours;
-				neighbours.resize(this->size());
-
-				//foreach point find neighbors
-				for(int i = 0; i < this->size(); i++){
-					ns.find_neighbors(0, i, neighbours[i]);
-				};
-				assert(neighbours.size() == 0 || neighbours[0].size() == 1);
-				Real avgNghbCnt = 0;
-				size_t maxNghbCnt = 0;
-				for(int i = 0; i < this->size(); i++){
-					avgNghbCnt += neighbours[i][0].size();
-					maxNghbCnt = max(maxNghbCnt, neighbours[i][0].size());
-				}
-				avgNghbCnt /= this->size();
-				Real factor = avgNghbCnt / maxNghbCnt;
 				set<unsigned int> deleted;
-				//for each pont
-				for(int i = 0; i < this->size(); i++){
-					//if point is in deleted list - skip
+				//foreach point find neighbors
+				fprintf(stderr, "\n");
+				for(size_t i = 0; i < this->size(); i++){
 					if(deleted.find(i) != deleted.end()){
 						continue;
 					}
-					//find all neighboring points, that are within a threshold
-					for(int j : neighbours[i][0]){
+					vector<vector<unsigned int>> neighbours;
+					ns.find_neighbors(0, i, neighbours);
+					//find all neighboring points, that are within a threshold from current
+					for(int j : neighbours[0]){
 						//put all such points into deleted list
 						if((this->positions[i] - this->positions[j]).norm() < 0.5 * compactSupport){
 							deleted.insert(j);
 						}
 					}
-				}
-				//for each point do
-				for(int i = 0; i < this->size(); i++){
-					//for all neighbors of point do
-					if(deleted.find(i) != deleted.end()){
-						continue;
-					}
-								
+
+					//compute volume for of boundary particle
 					Real sum = 0.0;
-					for(int j : neighbours[i][0]){
-						if(deleted.find(j) != deleted.end()){
-							continue;
-						}
+					for(int j : neighbours[0]){
 						sum += kernelFunction(this->positions[i], 
 												this->positions[j], 
 												0.5 * compactSupport);
@@ -122,8 +99,12 @@ namespace learnSPH
 						continue;
 					}
 					this->volumes[i] = 1.0 / sum;
+					if(i%100000){
+						fprintf(stderr, "\33[2K\rprocessing [%lu/%lu] border particles.", i, this->size());
+					}
 
-				}
+				};
+
 				//remove all points, that are in deleted list
 				printf("removing %lu out of %lu border particles. ", deleted.size(), this->size());
 				for(auto i = deleted.rbegin(); i != deleted.rend(); i++){
