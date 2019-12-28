@@ -408,7 +408,10 @@ namespace learnSPH
 			{
 				Real vMaxNorm = 0.0;
 
-				for (int i = 0; i < this->size(); i++) vMaxNorm = max(velocities[i].norm(), vMaxNorm);
+				#pragma omp parallel for reduction(max:vMaxNorm)
+				for (int i = 0; i < this->size(); i++){
+					vMaxNorm = max(velocities[i].norm(), vMaxNorm);
+				}
 
 				return 0.5 * this->diameter / vMaxNorm;
 			}
