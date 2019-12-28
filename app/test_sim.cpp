@@ -71,6 +71,7 @@ struct {
 	Vector3R clip_lower_bound;
 	Vector3R clip_upper_bound;
 	string sim_type;
+	bool samplingSheme;
 
 	void print()
 	{
@@ -222,6 +223,7 @@ static void assign_cmd_options(const variables_map& vm){
 	cmdValues.clip_lower_bound = fd.lower_corner;
 	cmdValues.clip_upper_bound = fd.upper_corner;
 	cmdValues.sim_type = vm["sim-type"].as<string>();
+	cmdValues.samplingSheme = (vm["sampling-type"].as<string>() == "hex")?true:false;
 }
 
 float wallclock_time = 0;
@@ -372,9 +374,10 @@ int main(int ac, char** av)
 		("sim-name,n", value<string>()->default_value("new_simulation"), "simulation name."
 														"\n\tAll vtk and cereal files will use simulation name prefix")
 		("output-directory,o", value<string>()->default_value("./"), "specify output directory, where all cereal and vtk files will be saved\n")
-		("clip-area,k", value<string>(), "specify area, outside of which fluid particles will be removed from the simulation")
-		("max-velocity", value<Real>()->default_value(50.0f), "specify maximum velocity, which will be given to each particle (negative value means no velocity boundary)")
-		("dbg", "debug option. If enabled then each physical update will be saved into vtk file");
+		("clip-area,k", value<string>(), "specify area, outside of which fluid particles will be removed from the simulation\b")
+		("max-velocity", value<Real>()->default_value(50.0f), "specify maximum velocity, which will be given to each particle (negative value means no velocity boundary)\n")
+		("dbg", "debug option. If enabled then each physical update will be saved into vtk file\n")
+		("sampling-type", value<string>()->default_value("hex"), "choose sampling type: hex for hexagonal, sqr - for standard square grid\n");
 
 	//parse and assign command line options
 	variables_map vm;
@@ -410,10 +413,17 @@ int main(int ac, char** av)
 	}
 	//generate border particles from border obj file
 	vector<Vector3R> positions;
-	sample_border_model_surface(positions, Matrix4d::Identity(), cmdValues.border_model_path, cmdValues.sampling_distance);
-	BorderSystem border(positions, cmdValues.border_rest_density, cmdValues.sampling_distance, cmdValues.eta);
+	sample_border_model_surface(positions, 
+								Matrix4d::Identity(), 
+								cmdValues.border_model_path, 
+								cmdValues.sampling_distance, 
+								cmdValues.samplingSheme);
+	BorderSystem border(positions, 
+						cmdValues.border_rest_density, 
+						cmdValues.sampling_distance, 
+						cmdValues.eta);
 
-	cout << "Number of fluid particles: " << fluid.size() << endl;
+	cout << "Number of fluid particles (except emited once): " << fluid.size() << endl;
 	cout << "Number of border particles: " << border.size() << endl;
 	
 	//create neighborhood search container
@@ -437,7 +447,7 @@ int main(int ac, char** av)
 
 	simGen.join();
 	simSaveState.join();
-	cout << "simulation finished"<<endl;
+	cout << "simulation finished. Total number of fluid particles: " << fluid.size() << endl;
 
 	cout << endl;
 	return 0;

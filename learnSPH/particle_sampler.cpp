@@ -320,7 +320,7 @@ void learnSPH::sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_
 	borderParticles.insert(borderParticles.end(), faceParticles.begin(), faceParticles.end());
 }
 
-void learnSPH::sample_border_model_surface(vector<Vector3R>& borderParticles, const Matrix4d transitionMatr, const string& patToModel, Real samplingDistance)
+void learnSPH::sample_border_model_surface(vector<Vector3R>& borderParticles, const Matrix4d transitionMatr, const string& patToModel, Real samplingDistance, bool samplingSheme)
 {
 	vector<Vector3R> genBorderParticles;
 
@@ -345,7 +345,7 @@ void learnSPH::sample_border_model_surface(vector<Vector3R>& borderParticles, co
 						Vector3R(vertex3[0], vertex3[1], vertex3[2]),
 						samplingDistance,
 						genBorderParticles,
-						true);
+						samplingSheme);
 		counter++;
 		fprintf(stderr, "\33[2K\rgenerated [%lu/%lu] faces. ", counter,faces.size());
 	}

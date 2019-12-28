@@ -23,7 +23,7 @@ namespace learnSPH{
 	 *		patToModel		- path to model file 
 	 *		samplingDistance- maximal sampling distance between the points	
 	*/
-   	void sample_border_model_surface(vector<Vector3R>& borderParticles, const Matrix4d transitionMatr, const string& patToModel, Real samplingDistance);
+   	void sample_border_model_surface(vector<Vector3R>& borderParticles, const Matrix4d transitionMatr, const string& patToModel, Real samplingDistance, bool samplingType = true);
 	BorderSystem* sample_border_model(const Matrix4d& transitionMatr, const string& patToModel, Real restDensity, Real samplingDistance, Real eta);
 
 	/*
