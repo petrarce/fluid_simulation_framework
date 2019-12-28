@@ -164,6 +164,7 @@ namespace learnSPH
 			vector<vector<vector<unsigned int> > > neighbors;
 
 			vector<Emiter> emiters;
+			size_t emitPartSize;
 
 			void sample_emiter_fluid_particles(vector<Vector3R>& emitedParticlePositions, 
 															const Vector3R& velocityVector, 
@@ -247,13 +248,20 @@ namespace learnSPH
 					em.chunkOffsets.pop_front();
 				} else if(em.chunksCnt < em.maxChunks){
 					em.chunksCnt++;
-					em.chunkOffsets.push_front(this->positions.size());
-					this->positions.insert(this->positions.begin(), 
+					em.chunkOffsets.push_back(emitPartSize);
+					emitPartSize += em.chunkSize;
+					this->positions.insert(this->positions.begin()+em.chunkOffsets.back(), 
 											emitedParticlePositions.begin(), 
 											emitedParticlePositions.end());
-					this->velocities.insert(this->velocities.begin(), em.chunkSize, velocity);
-					this->densities.insert(this->densities.begin(), em.chunkSize, 0);
-					this->external_forces.insert(this->external_forces.begin(), em.chunkSize, this->mass * extForces);
+					this->velocities.insert(this->velocities.begin() + em.chunkOffsets.back(), 
+												em.chunkSize, 
+												velocity);
+					this->densities.insert(this->densities.begin() + em.chunkOffsets.back(), 
+											em.chunkSize, 
+											0);
+					this->external_forces.insert(this->external_forces.begin() + em.chunkOffsets.back(), 
+													em.chunkSize, 
+													this->mass * extForces);
 					this->neighbors.resize(this->neighbors.size() + em.chunkSize);
 					ns.resize_point_set(0, (Real*)this->positions.data(), this->positions.size());
 					return;
@@ -361,17 +369,10 @@ namespace learnSPH
 
 				for (auto i : fugitives) {
 					bool emiter_particle = false;
-					for(Emiter& e : emiters){
-						for(size_t chunkOffset : e.chunkOffsets){
-							if(i >=chunkOffset && i < chunkOffset + e.chunkSize){
-								emiter_particle = true;
-								positions[i] = e.pos;
-								velocities[i] = Vector3R(0,0,0);
-								densities[i] = 0;
-							}
-						}
-					}
-					if(emiter_particle){
+					if(i < emitPartSize){
+						positions[i] = lowerCorner;
+						velocities[i] = (lowerCorner + upperCorner)/2;
+						densities[i] = 0;
 						continue;
 					}
 					/*no need to reload offsets for emmiter particles a.s.a. all emiter 
@@ -423,7 +424,9 @@ namespace learnSPH
 				this->densities.insert(this->densities.end(), pos.size(), 0);
 				this->neighbors.resize(this->neighbors.size() + pos.size());
 			}
-			FluidSystem(vector<Vector3R> &positions, vector<Vector3R> &velocities, vector<Real> &densities, Real restDensity, Real fluidVolume, Real eta):ParticleSystem(positions, restDensity)
+			FluidSystem(vector<Vector3R> &positions, vector<Vector3R> &velocities, vector<Real> &densities, Real restDensity, Real fluidVolume, Real eta):
+				ParticleSystem(positions, restDensity),
+				emitPartSize(0)
 			{
 				this->mass = (this->restDensity * fluidVolume) / this->positions.size();
 				this->diameter = cbrt(this->mass / this->restDensity);
@@ -439,7 +442,8 @@ namespace learnSPH
 				diameter(diameterVal),
 				mass(pow3(diameterVal) * restDensityVal),
 				smooth_length(diameterVal * etaVal),
-				compact_support(2*diameterVal * etaVal)
+				compact_support(2*diameterVal * etaVal),
+				emitPartSize(0)
 			{
 			};
 	};

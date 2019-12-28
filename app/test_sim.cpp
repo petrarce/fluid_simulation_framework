@@ -283,7 +283,7 @@ static int generate_simulation_frame_EXT(FluidSystem& fluid, NeighborhoodSearch&
 		auto positions = fluid.getPositions();
 		learnSPH::smooth_symplectic_euler(accelerations, (&fluid), 0.5, update_step);
 		
-		//fluid.killFugitives(cmdValues.clip_lower_bound, cmdValues.clip_upper_bound, ns);
+		fluid.killFugitives(cmdValues.clip_lower_bound, cmdValues.clip_upper_bound, ns);
 		fluid.clipVelocities(cmdValues.max_velocity);
 		
 		cur_sim_time += update_step;
