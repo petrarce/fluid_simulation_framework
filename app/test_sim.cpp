@@ -184,14 +184,19 @@ static void parse_fluid_displacement(const string& str, FluidDisplacement& fd)
 
 static void validate_cmd_options(const variables_map& vm)
 {
-	if(!(vm.count("render-ts") &&
-			vm.count("border-model-path") &&
-			vm.count("sim-duration") &&
-			vm.count("sim-type") &&
-			vm.count("sample-dist") &&
-			vm.count("clip-area"))){
-		cout << "next options are mandatory: --render-ts --border-model-path --sim-duration --sim-type --sample-dist --clip-area" << endl;
-		throw invalid_argument("some options are missed");
+	vector<string> requiredOptions = {
+		"render-ts",
+		"border-model-path",
+		"sim-duration",
+		"sim-type",
+		"sample-dist",
+		"clip-area"
+	};
+	for(string opt : requiredOptions){
+		if(!vm.count(opt)){
+			throw invalid_argument("--" + opt + " option is missing."+
+									"\nPlease specify value for this option explicitly");
+		}
 	}
 }
 
