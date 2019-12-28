@@ -72,6 +72,7 @@ struct {
 	Vector3R clip_upper_bound;
 	string sim_type;
 	bool samplingSheme;
+	bool smoothSimplectirEuler;
 
 	void print()
 	{
@@ -224,6 +225,7 @@ static void assign_cmd_options(const variables_map& vm){
 	cmdValues.clip_upper_bound = fd.upper_corner;
 	cmdValues.sim_type = vm["sim-type"].as<string>();
 	cmdValues.samplingSheme = (vm["sampling-type"].as<string>() == "hex")?true:false;
+	cmdValues.smoothSimplectirEuler = (vm["integration-scheme"].as<string>() == "smooth")?true:false;
 }
 
 float wallclock_time = 0;
@@ -246,7 +248,11 @@ static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch&
 		
 		Real update_step = max(cmdValues.lower_bound_ts, min(fluid.getCourantBound(), cmdValues.render_ts));
 		auto positions = fluid.getPositions();
-		learnSPH::smooth_symplectic_euler(accelerations, (&fluid), 0.5, update_step);
+		if(cmdValues.smoothSimplectirEuler){
+			learnSPH::smooth_symplectic_euler(accelerations, (&fluid), 0.5, update_step);
+		} else {
+			learnSPH::symplectic_euler(accelerations, (&fluid), update_step);
+		}
 		
 		fluid.findNeighbors(ns);
 		learnSPH::correct_position((&fluid), (&border), positions, update_step, cmdValues.pbfIterations);
@@ -283,7 +289,11 @@ static int generate_simulation_frame_EXT(FluidSystem& fluid, NeighborhoodSearch&
 		
 		Real update_step = max(cmdValues.lower_bound_ts, min(fluid.getCourantBound(), cmdValues.render_ts));
 		auto positions = fluid.getPositions();
-		learnSPH::smooth_symplectic_euler(accelerations, (&fluid), 0.5, update_step);
+		if(cmdValues.smoothSimplectirEuler){
+			learnSPH::smooth_symplectic_euler(accelerations, (&fluid), 0.5, update_step);
+		} else {
+			learnSPH::symplectic_euler(accelerations, (&fluid), update_step);
+		}
 		
 		fluid.killFugitives(cmdValues.clip_lower_bound, cmdValues.clip_upper_bound, ns);
 		fluid.clipVelocities(cmdValues.max_velocity);
@@ -377,7 +387,8 @@ int main(int ac, char** av)
 		("clip-area,k", value<string>(), "specify area, outside of which fluid particles will be removed from the simulation\b")
 		("max-velocity", value<Real>()->default_value(50.0f), "specify maximum velocity, which will be given to each particle (negative value means no velocity boundary)\n")
 		("dbg", "debug option. If enabled then each physical update will be saved into vtk file\n")
-		("sampling-type", value<string>()->default_value("hex"), "choose sampling type: hex for hexagonal, sqr - for standard square grid\n");
+		("sampling-type", value<string>()->default_value("hex"), "choose sampling type: hex for hexagonal, sqr - for standard square grid\n")
+		("integration-scheme", value<string>()->default_value("smooth"), "choose simplectic euler sheme: smooth, nonsmooth");
 
 	//parse and assign command line options
 	variables_map vm;
