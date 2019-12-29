@@ -203,7 +203,12 @@ void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSys
 }
 
 
-void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, vector<Vector3R> &prev_pos, Real delta_t, size_t n_iterations)
+void learnSPH::correct_position(FluidSystem *fluidParticles, 
+								BorderSystem *borderParticles, 
+								vector<Vector3R> &prev_pos, 
+								Real delta_t, 
+								size_t n_iterations,
+								Real velocityMultiplier)
 {
     auto smooth_length = fluidParticles->getSmoothingLength();
 
@@ -294,6 +299,8 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
     }
 
     #pragma omp parallel for schedule(guided, 100)
-
-    for(unsigned int i = 0; i < fluidParticles->size(); i++) velocities[i] = (positions[i] - prev_pos[i]) / delta_t;
+    for(unsigned int i = 0; i < fluidParticles->size(); i++){
+    	velocities[i] = (1-velocityMultiplier)*velocities[i] + 
+    						velocityMultiplier*(positions[i] - prev_pos[i]) / delta_t;
+    }
 }

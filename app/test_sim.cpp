@@ -65,6 +65,7 @@ struct {
 	Real sim_duration;
 	Real prStiffness;
 	Real sampling_distance;
+	Real border_sampling_distance;
 	Real eta;
 	Real max_velocity;
 	bool dbg;
@@ -73,6 +74,7 @@ struct {
 	string sim_type;
 	bool samplingSheme;
 	bool smoothSimplectirEuler;
+	Real pbfVelocityMultiplier;
 
 	void print()
 	{
@@ -90,6 +92,7 @@ struct {
 		fprintf(stdout, "\tsim_duration=%f\n", sim_duration);
 		fprintf(stdout, "\tprStiffness=%f\n", prStiffness);
 		fprintf(stdout, "\tsampling_distance=%f\n", sampling_distance);
+		fprintf(stdout, "\border_sampling_distance=%f\n", border_sampling_distance);
 		fprintf(stdout, "\teta=%f\n", eta);
 		fprintf(stdout, "\tmax_velocity=%f\n", max_velocity);
 		fprintf(stdout, "\tdbg=%s\n", dbg?"true":"false");
@@ -214,7 +217,7 @@ static void assign_cmd_options(const variables_map& vm){
 	cmdValues.pbfIterations = vm["iterations"].as<size_t>();
 	cmdValues.border_model_path = vm["border-model-path"].as<string>();
 	cmdValues.sim_duration = vm["sim-duration"].as<Real>();
-	cmdValues.prStiffness = vm["preassure-stiffness"].as<Real>();
+	cmdValues.prStiffness = vm["pressure-stiffness"].as<Real>();
 	cmdValues.sampling_distance = vm["sample-dist"].as<Real>();
 	cmdValues.sim_name = vm["sim-name"].as<string>();
 	cmdValues.eta = vm["eta"].as<Real>();
@@ -228,6 +231,8 @@ static void assign_cmd_options(const variables_map& vm){
 	cmdValues.sim_type = vm["sim-type"].as<string>();
 	cmdValues.samplingSheme = (vm["sampling-type"].as<string>() == "hex")?true:false;
 	cmdValues.smoothSimplectirEuler = (vm["integration-scheme"].as<string>() == "smooth")?true:false;
+	cmdValues.border_sampling_distance = (vm.count("border-sample-dist"))?vm["border-sample-dist"].as<Real>():cmdValues.sampling_distance;
+	cmdValues.pbfVelocityMultiplier = vm["pbf-velocity-multiplier"].as<Real>();
 }
 
 float wallclock_time = 0;
@@ -257,7 +262,13 @@ static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch&
 		}
 		
 		fluid.findNeighbors(ns);
-		learnSPH::correct_position((&fluid), (&border), positions, update_step, cmdValues.pbfIterations);
+		learnSPH::correct_position(
+			(&fluid), 
+			(&border), 
+			positions, 
+			update_step, 
+			cmdValues.pbfIterations, 
+			cmdValues.pbfVelocityMultiplier);
 		
 		fluid.killFugitives(cmdValues.clip_lower_bound, cmdValues.clip_upper_bound, ns);
 		fluid.clipVelocities(cmdValues.max_velocity);
@@ -363,34 +374,36 @@ int main(int ac, char** av)
 {
 	options_description po_def("Fluid simulator cmd arguments description");
 	po_def.add_options()
-		("help,h", "print this message\n")
-		("render-ts,r", value<Real>(), "simulation time-step, at which simulation state will be saved to vtk/cereal\n")
-		("lower-bound-ts,l", value<Real>(), "lower bound at which simulation time can decreased\n")
-		("emitter-displacement,e", value<vector<string>>(), "string, which specifies where emitter should be placed inside the simulation\n"
+		("help", "print this message\n")
+		("render-ts", value<Real>(), "simulation time-step, at which simulation state will be saved to vtk/cereal\n")
+		("lower-bound-ts", value<Real>(), "lower bound at which simulation time can decreased\n")
+		("emitter-displacement", value<vector<string>>(), "string, which specifies where emitter should be placed inside the simulation\n"
 										"\tto specify emitter position, emit area and emit velocity use next format: "
 										"\"[\%f,\%f,\%f],\%f,[\%f,\%f,\%f],\%d\"\n")
-		("viscosity,v", value<Real>()->default_value(1e-2), "fluid viscosity value\n")
-		("rest-density,d", value<Real>()->default_value(1e+3), "fluid rest density\n")
-		("border-rest-density,b", value<Real>()->default_value(3e+3), "border rest density\n")
-		("friction,f", value<Real>()->default_value(1e-2), "fluid friction parameter\n")
-		("iterations,r", value<size_t>()->default_value(3), "number iterations for position correction\n")
-		("border-model-path,i", value<string>(), "path to obj file, where border model is resided\n")
-		("sim-duration,s", value<Real>(), "simulation duration\n")
-		("fluid-displacement,u", value<vector<string>>(), "specify lower and upper corner of fluid cube, that should be sampled for simulation\n"
+		("viscosity", value<Real>()->default_value(1e-2), "fluid viscosity value\n")
+		("rest-density", value<Real>()->default_value(1e+3), "fluid rest density\n")
+		("border-rest-density", value<Real>()->default_value(3e+3), "border rest density\n")
+		("friction", value<Real>()->default_value(1e-2), "fluid friction parameter\n")
+		("iterations", value<size_t>()->default_value(3), "number iterations for position correction\n")
+		("border-model-path", value<string>(), "path to obj file, where border model is resided\n")
+		("sim-duration", value<Real>(), "simulation duration\n")
+		("fluid-displacement", value<vector<string>>(), "specify lower and upper corner of fluid cube, that should be sampled for simulation\n"
 											"\tplease use next format to define fluid cube: "
 											"\"[\%f,\%f,\%f],[\%f,\%f,\%f]\"\n")
-		("sim-type,t", value<string>(), "simulation method type. Next variants are possible: PBF, WCF\n")
-		("sample-dist,a", value<Real>(), "particle sampling distance\n")
-		("preassure-stiffness,p", value<Real>()->default_value(80), "pressure coefficient for WCSPH\n")
+		("sim-type", value<string>(), "simulation method type. Next variants are possible: PBF, WCF\n")
+		("sample-dist", value<Real>(), "particle sampling distance\n")
+		("pressure-stiffness", value<Real>()->default_value(80), "pressure coefficient for WCSPH\n")
 		("eta", value<Real>()->default_value(1.2), "eta value - multiplier for compact support and smoothing length\n")
-		("sim-name,n", value<string>()->default_value("new_simulation"), "simulation name."
+		("sim-name", value<string>()->default_value("new_simulation"), "simulation name."
 														"\n\tAll vtk and cereal files will use simulation name prefix")
-		("output-directory,o", value<string>()->default_value("./"), "specify output directory, where all cereal and vtk files will be saved\n")
-		("clip-area,k", value<string>(), "specify area, outside of which fluid particles will be removed from the simulation\b")
+		("output-directory", value<string>()->default_value("./"), "specify output directory, where all cereal and vtk files will be saved\n")
+		("clip-area", value<string>(), "specify area, outside of which fluid particles will be removed from the simulation\n")
 		("max-velocity", value<Real>()->default_value(50.0f), "specify maximum velocity, which will be given to each particle (negative value means no velocity boundary)\n")
 		("dbg", "debug option. If enabled then each physical update will be saved into vtk file\n")
 		("sampling-type", value<string>()->default_value("hex"), "choose sampling type: hex for hexagonal, sqr - for standard square grid\n")
-		("integration-scheme", value<string>()->default_value("smooth"), "choose simplectic euler sheme: smooth, nonsmooth");
+		("integration-scheme", value<string>()->default_value("smooth"), "choose simplectic Euler sheme: smooth, non-smooth\n")
+		("border-sample-dist", value<Real>(), "specify distance of border particles\n")
+		("pbf-velocity-multiplier", value<Real>()->default_value(1.0f), "specify velocity multiplier, which will be applied to particle after correction step in PBFSPH\n");
 
 	//parse and assign command line options
 	variables_map vm;
@@ -433,7 +446,7 @@ int main(int ac, char** av)
 								cmdValues.samplingSheme);
 	BorderSystem border(positions, 
 						cmdValues.border_rest_density, 
-						cmdValues.sampling_distance, 
+						cmdValues.border_sampling_distance,
 						cmdValues.eta);
 
 	cout << "Number of fluid particles (except emited once): " << fluid.size() << endl;
