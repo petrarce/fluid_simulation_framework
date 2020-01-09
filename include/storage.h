@@ -319,7 +319,10 @@ namespace learnSPH
 			{
 				ns.update_point_sets();
 
-				for(int i = 0; i < this->size(); i++) ns.find_neighbors(0, i, neighbors[i]);
+				#pragma omp parallel for schedule(static)
+				for(int i = 0; i < this->size(); i++) {
+					ns.find_neighbors(0, i, neighbors[i]);
+				}
 			};
 
 			void killFugitives(const Vector3R &lowerCorner,const Vector3R &upperCorner, NeighborhoodSearch &ns)
