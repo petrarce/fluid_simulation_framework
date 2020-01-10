@@ -244,12 +244,12 @@ static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch&
 	for(int i = 0; i < fluid.emiters_size(); i++){
 		fluid.emit(i, Vector3R(0, -9.7, 0), wallclock_time, ns);
 	}		
+	vector<Vector3R> accelerations(fluid.size(), Vector3R(0.0, 0.0, 0.0));
 	fluid.findNeighbors(ns);
 	while (cur_sim_time < cmdValues.render_ts) {
 
 		learnSPH::calculate_dencities((&fluid), (&border));
 		
-		vector<Vector3R> accelerations(fluid.size(), Vector3R(0.0, 0.0, 0.0));
 		learnSPH::add_visco_component(accelerations, (&fluid), (&border), cmdValues.viscosity, cmdValues.friction);
 		learnSPH::add_exter_component(accelerations, (&fluid));
 		
