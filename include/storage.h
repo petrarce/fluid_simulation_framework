@@ -82,7 +82,7 @@ namespace learnSPH
 					//find all neighboring points, that are within a threshold from current
 					for(int j : neighbours[0]){
 						//put all such points into deleted list
-						if((this->positions[i] - this->positions[j]).norm() < 0.5 * compactSupport){
+						if((this->positions[i] - this->positions[j]).norm() < 0.1 * compactSupport){
 							deleted.insert(j);
 						}
 					}
