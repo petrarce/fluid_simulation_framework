@@ -75,6 +75,7 @@ struct {
 	bool samplingSheme;
 	bool smoothSimplectirEuler;
 	Real pbfVelocityMultiplier;
+	Real surface_tention;
 
 	void print()
 	{
@@ -102,6 +103,8 @@ struct {
 		fprintf(stdout, "\tsamplingSheme=%s\n", samplingSheme?"hexagonal":"nonhexaonal");
 		fprintf(stdout, "\tintegration scheme=%s\n", smoothSimplectirEuler?"smooth simplectic euler":"simplectic euler");
 		fprintf(stdout, "\tpdf velocity multiplier=%f\n", pbfVelocityMultiplier);
+		fprintf(stdout, "\tsurface_tention=%f\n", surface_tention);
+
 	}
 } cmdValues;
 
@@ -234,6 +237,7 @@ static void assign_cmd_options(const variables_map& vm){
 	cmdValues.smoothSimplectirEuler = (vm["integration-scheme"].as<string>() == "smooth")?true:false;
 	cmdValues.border_sampling_distance = (vm.count("border-sample-dist"))?vm["border-sample-dist"].as<Real>():cmdValues.sampling_distance;
 	cmdValues.pbfVelocityMultiplier = vm["pbf-velocity-multiplier"].as<Real>();
+	cmdValues.surface_tention = vm["surface-tention"].as<Real>();
 }
 
 float wallclock_time = 0;
@@ -253,7 +257,11 @@ static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch&
 		
 		learnSPH::add_visco_component(accelerations, (&fluid), (&border), cmdValues.viscosity, cmdValues.friction);
 		learnSPH::add_exter_component(accelerations, (&fluid));
-		
+		learnSPH::add_surface_tension_component(accelerations, 
+												(&fluid), 
+												(&border), 
+												cmdValues.surface_tention, 
+												cmdValues.surface_tention);
 		Real update_step = max(cmdValues.lower_bound_ts, min(fluid.getCourantBound(), cmdValues.render_ts));
 		auto positions = fluid.getPositions();
 		if(cmdValues.smoothSimplectirEuler){
@@ -300,6 +308,11 @@ static int generate_simulation_frame_EXT(FluidSystem& fluid, NeighborhoodSearch&
 		learnSPH::add_visco_component(accelerations, (&fluid), (&border), cmdValues.viscosity, cmdValues.friction);
 		learnSPH::add_exter_component(accelerations, (&fluid));
 		learnSPH::add_press_component(accelerations, (&fluid), (&border), cmdValues.prStiffness);
+		learnSPH::add_surface_tension_component(accelerations, 
+												(&fluid), 
+												(&border), 
+												cmdValues.surface_tention, 
+												cmdValues.surface_tention);
 		
 		Real update_step = max(cmdValues.lower_bound_ts, min(fluid.getCourantBound(), cmdValues.render_ts));
 		auto positions = fluid.getPositions();
@@ -404,7 +417,8 @@ int main(int ac, char** av)
 		("sampling-type", value<string>()->default_value("hex"), "choose sampling type: hex for hexagonal, sqr - for standard square grid\n")
 		("integration-scheme", value<string>()->default_value("smooth"), "choose simplectic Euler sheme: smooth, non-smooth\n")
 		("border-sample-dist", value<Real>(), "specify distance of border particles\n")
-		("pbf-velocity-multiplier", value<Real>()->default_value(1.0f), "specify velocity multiplier, which will be applied to particle after correction step in PBFSPH\n");
+		("pbf-velocity-multiplier", value<Real>()->default_value(1.0f), "specify velocity multiplier, which will be applied to particle after correction step in PBFSPH\n")
+		("surface-tention", value<Real>(), "specify lambda surface tention coefficient");
 
 	//parse and assign command line options
 	variables_map vm;

@@ -304,3 +304,54 @@ void learnSPH::correct_position(FluidSystem *fluidParticles,
     						velocityMultiplier*(positions[i] - prev_pos[i]) / delta_t;
     }
 }
+
+void learnSPH::add_surface_tension_component(vector<Vector3R>& accelerations,
+								const FluidSystem *fluidParticles,
+								const BorderSystem *borderParticles,
+								Real lambda,
+								Real betha)
+{
+	const vector<vector<vector<unsigned int>>>& neighbors = fluidParticles->getNeighbors();
+	const vector<Real>& densities = fluidParticles->getDensities();
+	const vector<Vector3R>& positions = fluidParticles->getPositions();
+	const vector<Vector3R>& borderPositions = borderParticles->getPositions();
+	const vector<Real>& borderVolume = borderParticles->getVolumes();
+	const Real c = fluidParticles->getCompactSupport();
+	const Real h = fluidParticles->getSmoothingLength();
+	const Real flMass = fluidParticles->getMass();
+	const Real brRestDensity = borderParticles->getRestDensity();
+	const Real flRestDensity = fluidParticles->getRestDensity();
+
+	//compute normals
+	vector<Vector3R> normals(fluidParticles->size(), Vector3R(0,0,0));
+	#pragma omp parallel for schedule(guided, 100)
+	for(int i = 0; i < fluidParticles->size(); i++){
+		for(unsigned int j : neighbors[i][0]){
+			normals[i] += kernelGradFunction(positions[i], positions[j], h) / 
+							densities[j];
+		}
+		normals[i] = normals[i] * c * flMass;
+	}
+	//compute forces
+	#pragma omp parallel for schedule(guided, 100)
+	for(int i = 0; i < fluidParticles->size(); i++){
+		Vector3R acc_curv = Vector3R(0,0,0);
+		Vector3R acc_coh = Vector3R(0,0,0);
+		//cohesion and curvature forces
+		for(unsigned int j : neighbors[i][0]){
+			Real Kij = 2 * flRestDensity / (densities[i] + densities[j]);
+			acc_curv += Kij * (normals[i] - normals[j]);
+			acc_coh += Kij * kernelCohetion(positions[i], positions[j], c) *
+						(positions[i] - positions[j]).normalized();
+		}
+		//adhesion force
+		Vector3R acc_adhesion = Vector3R(0,0,0);
+		for(unsigned int j : neighbors[i][1]){
+			acc_adhesion += borderVolume[j] * brRestDensity *
+							kernelAdhesion(positions[i], borderPositions[j], c) * 
+							(positions[i] - borderPositions[j]).normalized();
+		}
+		accelerations[i] -= lambda * (acc_curv + flMass * acc_coh);
+		accelerations[i] -= betha * acc_adhesion;
+	}
+}

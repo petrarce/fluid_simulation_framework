@@ -25,4 +25,10 @@ namespace learnSPH{
 							Real delta_t, 
 							size_t n_iterations, 
 							Real velocityMultiplier = 1.0f);
+	void add_surface_tension_component(vector<Vector3R>& accelerations,
+								const FluidSystem *fluidParticles,
+								const BorderSystem *borderParticles,
+								Real lambda,
+								Real betha);
+
 };

@@ -42,3 +42,27 @@ Vector3d learnSPH::kernel::kernelGradFunction(const Vector3d& x1, const Vector3d
 {
 	return 1.0 / (pow2(h) * pow2(h)) * cubicGradFunction((x1 - x2).norm() / h) * (x1 - x2).normalized();
 }
+
+double learnSPH::kernel::kernelCohetion(const Vector3d& x1, const Vector3d& x2, const double c)
+{
+	assert(c > 0);
+	double r = (x1 - x2).norm();
+	double factor = 32.f / (PI * pow(c,9));
+	if(r >= 0 && r <= c/2){
+		return factor * 2 * pow3(pow3(c - r)) - pow(c,6)/64.0f;
+	} else if(r > c/2 && r <= c){
+		return factor * pow3(pow3(c - r));
+	} else{
+		return 0;
+	}
+}
+
+double learnSPH::kernel::kernelAdhesion(const Vector3d& x1, const Vector3d& x2, double c)
+{
+	assert(c > 0);
+	double r = (x1-x2).norm();
+	if(r <= c && r > 0.5 * c){
+		return (0.007 / pow(c,3.25)) * pow(-4 * pow2(r)/c + 6 * r - 2 * c, 0.25);
+	}
+	return 0;
+}

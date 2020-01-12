@@ -18,6 +18,7 @@ namespace learnSPH
 		inline double cubicGradFunction(const double q);
 		double 		kernelFunction(const Vector3d& x1, const Vector3d& x2, const double h);
 		Vector3d 	kernelGradFunction(const Vector3d& x1, const Vector3d& x2, const double h);
-
+		double 		kernelCohetion(const Vector3d& x1, const Vector3d& x2, const double c);
+		double 		kernelAdhesion(const Vector3d& x1, const Vector3d& x2, double c);
 	};
 };
