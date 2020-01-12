@@ -26,10 +26,15 @@ namespace learnSPH
 				return this->restDensity;
 			}
 
+			const vector<Vector3R>& getPositions() const
+			{
+				return positions;
+			};
 			vector<Vector3R>& getPositions()
 			{
 				return positions;
 			};
+
 
 			size_t size() const
 			{
@@ -54,6 +59,11 @@ namespace learnSPH
 			vector<Real> volumes;
 
 		public:
+			const vector<Real>& getVolumes() const
+			{
+				return volumes;
+			};
+
 			vector<Real>& getVolumes()
 			{
 				return volumes;
@@ -295,20 +305,39 @@ namespace learnSPH
 				return this->compact_support;
 			}
 
+			const vector<Real>& getDensities() const
+			{
+				return densities;
+			};
 			vector<Real>& getDensities()
 			{
 				return densities;
 			};
 
+			const vector<Vector3R>& getVelocities() const
+			{
+				return velocities;
+			};
+			
 			vector<Vector3R>& getVelocities()
 			{
 				return velocities;
 			};
 
+			const vector<vector<vector<unsigned int> > >& getNeighbors() const
+			{
+				return neighbors;
+			}
+
 			vector<vector<vector<unsigned int> > >& getNeighbors()
 			{
 				return neighbors;
 			}
+
+			const vector<Vector3R>& getExternalForces() const
+			{
+				return external_forces;
+			};
 
 			vector<Vector3R>& getExternalForces()
 			{

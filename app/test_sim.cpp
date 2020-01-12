@@ -101,6 +101,7 @@ struct {
 		fprintf(stdout, "\tsim_type=%s\n", sim_type.c_str());
 		fprintf(stdout, "\tsamplingSheme=%s\n", samplingSheme?"hexagonal":"nonhexaonal");
 		fprintf(stdout, "\tintegration scheme=%s\n", smoothSimplectirEuler?"smooth simplectic euler":"simplectic euler");
+		fprintf(stdout, "\tpdf velocity multiplier=%f\n", pbfVelocityMultiplier);
 	}
 } cmdValues;
 
@@ -442,7 +443,7 @@ int main(int ac, char** av)
 	sample_border_model_surface(positions, 
 								Matrix4d::Identity(), 
 								cmdValues.border_model_path, 
-								cmdValues.sampling_distance, 
+								cmdValues.border_sampling_distance, 
 								cmdValues.samplingSheme);
 	BorderSystem border(positions, 
 						cmdValues.border_rest_density, 
