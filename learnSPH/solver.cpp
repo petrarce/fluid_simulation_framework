@@ -351,7 +351,8 @@ void learnSPH::add_surface_tension_component(vector<Vector3R>& accelerations,
 							kernelAdhesion(positions[i], borderPositions[j], c) * 
 							(positions[i] - borderPositions[j]).normalized();
 		}
-		accelerations[i] -= lambda * (acc_curv + flMass * acc_coh);
+		acc_coh *= flMass;
+		accelerations[i] -= lambda * (acc_curv + acc_coh);
 		accelerations[i] -= betha * acc_adhesion;
 	}
 }

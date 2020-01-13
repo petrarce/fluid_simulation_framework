@@ -49,9 +49,9 @@ double learnSPH::kernel::kernelCohetion(const Vector3d& x1, const Vector3d& x2, 
 	double r = (x1 - x2).norm();
 	double factor = 32.f / (PI * pow(c,9));
 	if(r >= 0 && r <= c/2){
-		return factor * 2 * pow3(pow3(c - r)) - pow(c,6)/64.0f;
+		return factor * 2 * pow3(c - r)*pow3(r) - pow(c,6)/64.0f;
 	} else if(r > c/2 && r <= c){
-		return factor * pow3(pow3(c - r));
+		return factor * pow3(c - r)*pow3(r);
 	} else{
 		return 0;
 	}
