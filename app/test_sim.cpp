@@ -75,7 +75,9 @@ struct {
 	bool samplingSheme;
 	bool smoothSimplectirEuler;
 	Real pbfVelocityMultiplier;
-	Real surface_tention;
+	Real cohesion;
+	Real adhesion;
+	Real gravity;
 
 	void print()
 	{
@@ -103,8 +105,9 @@ struct {
 		fprintf(stdout, "\tsamplingSheme=%s\n", samplingSheme?"hexagonal":"nonhexaonal");
 		fprintf(stdout, "\tintegration scheme=%s\n", smoothSimplectirEuler?"smooth simplectic euler":"simplectic euler");
 		fprintf(stdout, "\tpdf velocity multiplier=%f\n", pbfVelocityMultiplier);
-		fprintf(stdout, "\tsurface_tention=%f\n", surface_tention);
-
+		fprintf(stdout, "\tcohesion=%f\n", cohesion);
+		fprintf(stdout, "\tadhesion=%f\n", adhesion);
+		fprintf(stdout, "\tgravity=%f\n", gravity);
 	}
 } cmdValues;
 
@@ -237,7 +240,9 @@ static void assign_cmd_options(const variables_map& vm){
 	cmdValues.smoothSimplectirEuler = (vm["integration-scheme"].as<string>() == "smooth")?true:false;
 	cmdValues.border_sampling_distance = (vm.count("border-sample-dist"))?vm["border-sample-dist"].as<Real>():cmdValues.sampling_distance;
 	cmdValues.pbfVelocityMultiplier = vm["pbf-velocity-multiplier"].as<Real>();
-	cmdValues.surface_tention = vm["surface-tention"].as<Real>();
+	cmdValues.cohesion = vm["cohesion"].as<Real>();
+	cmdValues.adhesion = vm["adhesion"].as<Real>();
+	cmdValues.gravity = vm["gravity"].as<Real>();
 }
 
 float wallclock_time = 0;
@@ -247,7 +252,7 @@ static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch&
 	Real cur_sim_time = 0.0;
 	int physical_steps = 0;
 	for(int i = 0; i < fluid.emiters_size(); i++){
-		fluid.emit(i, Vector3R(0, -9.7, 0), wallclock_time, ns);
+		fluid.emit(i, Vector3R(0, cmdValues.gravity, 0), wallclock_time, ns);
 	}		
 	vector<Vector3R> accelerations(fluid.size(), Vector3R(0.0, 0.0, 0.0));
 	fluid.findNeighbors(ns);
@@ -260,8 +265,8 @@ static int generate_simulation_frame_PBF(FluidSystem& fluid, NeighborhoodSearch&
 		learnSPH::add_surface_tension_component(accelerations, 
 												(&fluid), 
 												(&border), 
-												cmdValues.surface_tention, 
-												cmdValues.surface_tention);
+												cmdValues.cohesion, 
+												cmdValues.adhesion);
 		Real update_step = max(cmdValues.lower_bound_ts, min(fluid.getCourantBound(), cmdValues.render_ts));
 		auto positions = fluid.getPositions();
 		if(cmdValues.smoothSimplectirEuler){
@@ -298,7 +303,7 @@ static int generate_simulation_frame_EXT(FluidSystem& fluid, NeighborhoodSearch&
 	Real cur_sim_time = 0.0;
 	int physical_steps = 0;
 	for(int i = 0; i < fluid.emiters_size(); i++){
-		fluid.emit(i, Vector3R(0, -9.7, 0), wallclock_time, ns);
+		fluid.emit(i, Vector3R(0, cmdValues.gravity, 0), wallclock_time, ns);
 	}		
 	while (cur_sim_time < cmdValues.render_ts) {
 		fluid.findNeighbors(ns);
@@ -311,8 +316,8 @@ static int generate_simulation_frame_EXT(FluidSystem& fluid, NeighborhoodSearch&
 		learnSPH::add_surface_tension_component(accelerations, 
 												(&fluid), 
 												(&border), 
-												cmdValues.surface_tention, 
-												cmdValues.surface_tention);
+												cmdValues.cohesion, 
+												cmdValues.adhesion);
 		
 		Real update_step = max(cmdValues.lower_bound_ts, min(fluid.getCourantBound(), cmdValues.render_ts));
 		auto positions = fluid.getPositions();
@@ -418,7 +423,9 @@ int main(int ac, char** av)
 		("integration-scheme", value<string>()->default_value("smooth"), "choose simplectic Euler sheme: smooth, non-smooth\n")
 		("border-sample-dist", value<Real>(), "specify distance of border particles\n")
 		("pbf-velocity-multiplier", value<Real>()->default_value(1.0f), "specify velocity multiplier, which will be applied to particle after correction step in PBFSPH\n")
-		("surface-tention", value<Real>(), "specify lambda surface tention coefficient");
+		("adhesion", value<Real>()->default_value(1.0f), "specify cohesion coefficient\n")
+		("cohesion", value<Real>()->default_value(1.0f), "specify adhesion coefficient\n")
+		("gravity", value<Real>()->default_value(-9.7), "environment gravity\n");
 
 	//parse and assign command line options
 	variables_map vm;
@@ -443,7 +450,7 @@ int main(int ac, char** av)
 			fluid.add_fluid_particles(positions, velocity);
 		}
 	}
-	fluid.setGravity(-9.7);
+	fluid.setGravity(cmdValues.gravity);
 	//add emmiters
 	if(vm.count("emitter-displacement")) {
 		for(const string& emit_disp : vm["emitter-displacement"].as<vector<string>>()){
