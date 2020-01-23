@@ -155,7 +155,6 @@ namespace learnSPH
 			vector<vector<vector<unsigned int> > > neighbors;
 
 			vector<Emiter> emiters;
-			size_t emitPartSize;
 
 			void sample_emiter_fluid_particles(vector<Vector3R>& emitedParticlePositions, 
 															const Vector3R& velocityVector, 
@@ -205,6 +204,7 @@ namespace learnSPH
 				em.emiterArea = emiterArea;
 				em.chunksCnt = 0;
 				emiters.push_back(em);
+				this->positions.reserve(this->positions.capacity() + em.chunkSize * em.maxChunks);
 				return emiters.size() - 1;
 			};
 			//!WARNING - incompatiable with killFugutuves
@@ -239,29 +239,20 @@ namespace learnSPH
 					em.chunkOffsets.pop_front();
 				} else if(em.chunksCnt < em.maxChunks){
 					em.chunksCnt++;
-					em.chunkOffsets.push_back(emitPartSize);
-					emitPartSize += em.chunkSize;
-					this->positions.insert(this->positions.begin()+em.chunkOffsets.back(), 
-											emitedParticlePositions.begin(), 
-											emitedParticlePositions.end());
-					this->velocities.insert(this->velocities.begin() + em.chunkOffsets.back(), 
-												em.chunkSize, 
-												velocity);
-					this->densities.insert(this->densities.begin() + em.chunkOffsets.back(), 
-											em.chunkSize, 
-											0);
-					this->external_forces.insert(this->external_forces.begin() + em.chunkOffsets.back(), 
-													em.chunkSize, 
-													this->mass * extForces);
+					em.chunkOffsets.push_back(this->positions.size());
+					this->positions.resize(this->positions.size() + em.chunkSize);
+					this->velocities.resize(this->velocities.size() + em.chunkSize);
+					this->densities.resize(this->densities.size() + em.chunkSize);
+					this->external_forces.resize(this->external_forces.size() + em.chunkSize);
 					this->neighbors.resize(this->neighbors.size() + em.chunkSize);
 					ns.resize_point_set(0, (Real*)this->positions.data(), this->positions.size());
-					return;
 				}
 				#pragma omp parallel for schedule(static)
 				for (int i = 0; i < em.chunkSize; ++i)
 				{
 					this->positions[em.chunkOffsets.back() + i] = emitedParticlePositions[i];
 					this->velocities[em.chunkOffsets.back() + i] = velocity;
+					this->densities[em.chunkOffsets.back() + i] = 0;
 					this->external_forces[em.chunkOffsets.back() + i] = extForces;
 				}
 			};
@@ -356,9 +347,8 @@ namespace learnSPH
 
 			void killFugitives(const Vector3R &lowerCorner,const Vector3R &upperCorner, NeighborhoodSearch &ns)
 			{
-				vector<size_t> fugitives;
 
-				#pragma omp parallel for schedule(static) shared(fugitives)
+				#pragma omp parallel for schedule(static)
 				for (size_t i = 0; i < this->size(); i ++) {
 
 					bool inside = true;
@@ -370,39 +360,13 @@ namespace learnSPH
 					inside &= (positions[i](0) <= upperCorner(0));
 					inside &= (positions[i](1) <= upperCorner(1));
 					inside &= (positions[i](2) <= upperCorner(2));
-
-					if (!inside) {
-						#pragma omp critical
-						fugitives.push_back(i);
-					}
-				}
-				if (fugitives.empty()) return;
-
-				std::reverse(fugitives.begin(), fugitives.end());
-
-				for (auto i : fugitives) {
-					bool emiter_particle = false;
-					if(i < emitPartSize){
+					if(!inside){
 						positions[i] = lowerCorner;
-						velocities[i] = (lowerCorner + upperCorner)/2;
+						velocities[i] = Vector3R(0,0,0);
 						densities[i] = 0;
-						continue;
+						external_forces[i] = Vector3R(0,0,0);
 					}
-					/*no need to reload offsets for emmiter particles a.s.a. all emiter 
-						particles are resided at the end of the data arrays*/
-					positions[i] = positions.back();
-					densities[i] = densities.back();
-					velocities[i] = velocities.back();
-					external_forces[i] = external_forces.back();
-
-					positions.pop_back();
-					densities.pop_back();
-					velocities.pop_back();
-					external_forces.pop_back();
 				}
-				ns.resize_point_set(0, (Real*)positions.data(), positions.size());
-
-				neighbors.resize(this->size());
 			}
 
 			void clipVelocities(Real capVelo)
@@ -438,8 +402,7 @@ namespace learnSPH
 				this->neighbors.resize(this->neighbors.size() + pos.size());
 			}
 			FluidSystem(vector<Vector3R> &positions, vector<Vector3R> &velocities, vector<Real> &densities, Real restDensity, Real fluidVolume, Real eta):
-				ParticleSystem(positions, restDensity),
-				emitPartSize(0)
+				ParticleSystem(positions, restDensity)
 			{
 				this->mass = (this->restDensity * fluidVolume) / this->positions.size();
 				this->diameter = cbrt(this->mass / this->restDensity);
@@ -455,8 +418,7 @@ namespace learnSPH
 				diameter(diameterVal),
 				mass(pow3(diameterVal) * restDensityVal),
 				smooth_length(diameterVal * etaVal),
-				compact_support(2*diameterVal * etaVal),
-				emitPartSize(0)
+				compact_support(2*diameterVal * etaVal)
 			{
 			};
 	};
