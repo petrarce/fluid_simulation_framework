@@ -205,6 +205,10 @@ namespace learnSPH
 				em.chunksCnt = 0;
 				emiters.push_back(em);
 				this->positions.reserve(this->positions.capacity() + em.chunkSize * em.maxChunks);
+				this->velocities.reserve(this->velocities.capacity() + em.chunkSize * em.maxChunks);
+				this->densities.reserve(this->densities.capacity() + em.chunkSize * em.maxChunks);
+				this->external_forces.reserve(this->external_forces.capacity() + em.chunkSize * em.maxChunks);
+				this->neighbors.reserve(this->neighbors.capacity() + em.chunkSize * em.maxChunks);
 				return emiters.size() - 1;
 			};
 			//!WARNING - incompatiable with killFugutuves
