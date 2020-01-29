@@ -176,7 +176,7 @@ class Fluid : public Object3D{
 
                             assert(grid_idx < gridPointPositions.size());
 
-                            auto weight = kernelFunction(gridPointPositions[grid_idx], positions[particleID], fluidParticles->getSmoothingLength());
+                            auto weight = kernelFunction(gridPointPositions[grid_idx], positions[particleID], fluidParticles->getSmoothLength());
 
                             gridPointImplicitFuncs[grid_idx] += fluidParticles->getMass() / max(densities[particleID], fluidParticles->getRestDensity()) * weight;
                         }

@@ -5,7 +5,7 @@ using namespace learnSPH::kernel;
 
 void learnSPH::calculate_dencities(FluidSystem *fluidParticles, BorderSystem *borderParticles)
 {
-	auto smooth_length = fluidParticles->getSmoothingLength();
+	auto smooth_length = fluidParticles->getSmoothLength();
 
 	auto &neighbors = fluidParticles->getNeighbors();
 
@@ -45,7 +45,7 @@ void learnSPH::calculate_dencities(FluidSystem *fluidParticles, BorderSystem *bo
 
 void learnSPH::add_press_component(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, BorderSystem *borderParticles, Real stiffness)
 {
-	auto smooth_length = fluidParticles->getSmoothingLength();
+	auto smooth_length = fluidParticles->getSmoothLength();
 
 	auto &neighbors = fluidParticles->getNeighbors();
 	auto &densities = fluidParticles->getDensities();
@@ -89,7 +89,7 @@ void learnSPH::add_press_component(vector<Vector3R> &accelerations, FluidSystem 
 
 void learnSPH::add_visco_component(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, BorderSystem *borderParticles, Real viscosity, Real friction)
 {
-	auto smooth_length = fluidParticles->getSmoothingLength();
+	auto smooth_length = fluidParticles->getSmoothLength();
 
 	auto &neighbors = fluidParticles->getNeighbors();
 
@@ -167,7 +167,7 @@ void learnSPH::symplectic_euler(vector<Vector3R> &accelerations, FluidSystem *fl
 
 void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, Real epsilon, Real delta_t)
 {
-	auto smooth_length = fluidParticles->getSmoothingLength();
+	auto smooth_length = fluidParticles->getSmoothLength();
 
 	auto &neighbors = fluidParticles->getNeighbors();
 
@@ -205,7 +205,7 @@ void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSys
 
 void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borderParticles, vector<Vector3R> &prev_pos, Real delta_t, Real multiplier, size_t n_iterations)
 {
-    auto smooth_length = fluidParticles->getSmoothingLength();
+    auto smooth_length = fluidParticles->getSmoothLength();
 
     auto &neighbors = fluidParticles->getNeighbors();
     auto &positions = fluidParticles->getPositions();
@@ -216,7 +216,6 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
     size_t current_iterations = 0;
 
-    vector<Real> denominator(fluidParticles->size());
     vector<Real> lambda(fluidParticles->size());
     vector<Vector3R> deltaX(fluidParticles->size());
 
@@ -229,6 +228,14 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
         #pragma omp parallel for schedule(guided, 100)
 
         for(unsigned int i = 0; i < fluidParticles->size(); i++) {
+
+            Real C_i = densities[i] / fluidParticles->getRestDensity() - 1.0;
+
+            if (fabs(C_i) <= threshold) {
+
+                lambda[i] = 0.0;
+                continue;
+            }
 
             auto term1 = Vector3R(0.0, 0.0, 0.0);
             auto term2 = Vector3R(0.0, 0.0, 0.0);
@@ -254,11 +261,9 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
                 term2 += borderVolumes[k] * grad_W_ik;
             }
-            denominator[i] = ((term1 + term2).dot(term1 + term2) + term3) / fluidParticles->getMass();
+            auto S_i = ((term1 + term2).dot(term1 + term2) + term3) / fluidParticles->getMass();
 
-            Real C_i = densities[i] / fluidParticles->getRestDensity() - 1.0;
-
-            lambda[i] = -std::max(C_i, 0.0) * multiplier / (denominator[i] + 1e-4);
+            lambda[i] = -std::max(C_i, 0.0) * multiplier / (S_i + 1e-4);
         }
 
         #pragma omp parallel for schedule(guided, 100)
@@ -289,4 +294,55 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
     #pragma omp parallel for schedule(guided, 100)
 
     for(unsigned int i = 0; i < fluidParticles->size(); i++) velocities[i] = (positions[i] - prev_pos[i]) / delta_t;
+}
+
+
+void learnSPH::add_surfa_component(vector<Vector3R> &accelerations, FluidSystem *fluidParticles, BorderSystem *borderParticles, Real gamma, Real beta)
+{
+	auto &neighbors = fluidParticles->getNeighbors();
+	auto &densities = fluidParticles->getDensities();
+	auto &positions = fluidParticles->getPositions();
+
+	auto &borderPositions = borderParticles->getPositions();
+	auto &borderVolumes = borderParticles->getVolumes();
+
+	auto compact_support = fluidParticles->getCompactSupport();
+
+	vector<Vector3R> normals(fluidParticles->size(), Vector3R(0.0, 0.0, 0.0));
+
+	#pragma omp parallel for schedule(guided, 100)
+
+	for(int i = 0; i < fluidParticles->size(); i++) {
+
+		for(unsigned int j : neighbors[i][0]) normals[i] += kernelGradFunction(positions[i], positions[j], fluidParticles->getSmoothLength()) / densities[j];
+
+		normals[i] *= compact_support * fluidParticles->getMass();
+	}
+
+	#pragma omp parallel for schedule(guided, 100)
+
+	for(int i = 0; i < fluidParticles->size(); i++) {
+
+		Vector3R acc_curvature(0.0, 0.0, 0.0);
+		Vector3R acc_cohesion(0.0, 0.0, 0.0);
+		Vector3R acc_adhesion(0.0 ,0.0 ,0.0);
+
+		for(unsigned int j : neighbors[i][0]) {
+
+			auto normalizer = 1.0 / (densities[i] + densities[j]);
+
+			acc_curvature += normalizer * (normals[i] - normals[j]);
+
+			acc_cohesion += normalizer * kernelCohesion(positions[i], positions[j], compact_support) * (positions[i] - positions[j]).normalized();
+		}
+		acc_cohesion *= fluidParticles->getMass();
+
+		for(unsigned int k : neighbors[i][1]){
+
+			auto weight = kernelAdhesion(positions[i], borderPositions[k], compact_support);
+
+			acc_adhesion += borderVolumes[k] * weight * (positions[i] - borderPositions[k]).normalized();
+		}
+		accelerations[i] -= gamma * (acc_curvature + acc_cohesion) * 2.0 * fluidParticles->getRestDensity() + beta * acc_adhesion;
+	}
 }

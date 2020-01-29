@@ -125,7 +125,7 @@ namespace learnSPH
 				return this->mass;
 			}
 
-			Real getSmoothingLength() const
+			Real getSmoothLength() const
 			{
 				return this->smooth_length;
 			}

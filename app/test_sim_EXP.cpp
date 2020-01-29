@@ -46,7 +46,7 @@ void save_scalars(const std::string &path, std::vector<Real> &data)
 
 int main(int argc, char** argv)
 {
-	assert(argc == 21);
+	assert(argc == 24);
 
 	std::cout << "Simulation running" << std::endl;
 
@@ -63,9 +63,14 @@ int main(int argc, char** argv)
 	Real viscosity = stod(argv[16]);
 	Real friction = stod(argv[17]);
 
-	Real render_step = stod(argv[18]);
-	Real sim_duration = stod(argv[19]);
-	string sim_name = argv[20];
+	Real gamma = stod(argv[18]);
+	Real beta = stod(argv[19]);
+
+	Real gravity = stod(argv[20]);
+
+	Real render_step = stod(argv[21]);
+	Real sim_duration = stod(argv[22]);
+	string sim_name = argv[23];
 
 	FluidSystem* fluidParticles = sample_fluid_cube(lowerCorner, upperCorner, 1000.0, sampling_distance, eta);
 
@@ -81,7 +86,7 @@ int main(int argc, char** argv)
 
 	ns.add_point_set((Real*)borderParticles->getPositions().data(), borderParticles->size(), false);
 
-	fluidParticles->setGravity(-9.7);
+	fluidParticles->setGravity(gravity);
 
 	int n_frames = sim_duration / render_step;
 
@@ -113,6 +118,8 @@ int main(int argc, char** argv)
 
 			learnSPH::add_exter_component(accelerations, fluidParticles);
 
+			learnSPH::add_surfa_component(accelerations, fluidParticles, borderParticles, gamma, beta);
+
 			Real update_step = min(render_step - cur_sim_time, fluidParticles->getCourantBound());
 
 			learnSPH::smooth_symplectic_euler(accelerations, fluidParticles, 0.5, update_step);
@@ -134,7 +141,7 @@ int main(int argc, char** argv)
 		vector<Real> params;
 
 		params.push_back(fluidParticles->getCompactSupport());
-		params.push_back(fluidParticles->getSmoothingLength());
+		params.push_back(fluidParticles->getSmoothLength());
 		params.push_back(fluidParticles->getMass());
 		params.push_back(fluidParticles->getRestDensity());
 
