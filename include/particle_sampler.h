@@ -41,6 +41,16 @@ namespace learnSPH{
 	 */
 	BorderSystem* sample_border_cone(Real lowerRadius, const Vector3R &lowerCenter, Real upperRadius, const Vector3R &upperCenter, Real restDensity, Real samplingDistance, Real eta);
 	/*
+	 *	samples border particles on the surface of a sphere
+	 *	Args:
+	 *		radius				- radius of the sphere
+	 *		center				- center of the sphere
+	 *		restDensity			- rest density for the border (assumed as constant among all particles)
+	 *		samplingDistance	- distance between the centers of each two adjacent particles
+	 *		eta					- eta for the border (assumed as constant among all particles)
+	 */
+	BorderSystem* sample_border_sphere(Real radius, const Vector3R &center, Real restDensity, Real samplingDistance, Real eta);
+	/*
 	 *	samples fluid particles inside a cube in axis-aligned fashion.
 	 *	Args:
 	 *		upperCorner			- upper corner of the cube
@@ -49,6 +59,4 @@ namespace learnSPH{
 	 *		samplingDistance	- distance between the centers of each two adjacent particles
 	 */
 	FluidSystem* sample_fluid_cube(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta);
-	
-	void sample_sphere(vector<Vector3R>& borderParticles, const Real radius, const Vector3R center, const Real samplingDistance);
 };

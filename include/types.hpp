@@ -3,11 +3,12 @@
 #include <Eigen/Dense>
 
 #ifdef PROFILE
-//define profiling makroses
+
 #include <stack>
 #include <chrono>
-/*!!!WARNING BE SURE THAT AFTER PROFILE_START MACROS PROFILE_STOP IS FINALLY REACHED IN THE CODE!!!*/
+
 static std::stack<std::pair<int, std::chrono::time_point<std::chrono::system_clock>>> profile_stack;
+
 #define PROFILE_START \
 do{ \
 	profile_stack.push(std::make_pair(__LINE__, std::chrono::system_clock::now())); \
@@ -47,8 +48,3 @@ using Real = double;
 using Vector3R = Eigen::Vector3d;
 
 constexpr Real threshold = 1e-6;
-
-static inline double getRand(const double minVal,const double maxVal){
-	assert(maxVal - minVal >= 0.0);
-	return minVal + double(rand())/RAND_MAX * (maxVal - minVal);
-}

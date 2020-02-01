@@ -325,7 +325,7 @@ void learnSPH::add_surfa_component(vector<Vector3R> &accelerations, FluidSystem 
 
 		Vector3R acc_curvature(0.0, 0.0, 0.0);
 		Vector3R acc_cohesion(0.0, 0.0, 0.0);
-		Vector3R acc_adhesion(0.0 ,0.0 ,0.0);
+		Vector3R acc_adhesion(0.0, 0.0 ,0.0);
 
 		for(unsigned int j : neighbors[i][0]) {
 

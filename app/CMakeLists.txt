@@ -15,6 +15,12 @@ add_executable(test_sim_PBF ${SOURCE_FILES_test_sim_PBF})
 add_dependencies(test_sim_PBF learnSPH CompactNSearch)
 target_link_libraries(test_sim_PBF learnSPH CompactNSearch)
 
+set(SOURCE_FILES_test_adhesion test_adhesion.cpp)
+
+add_executable(test_adhesion ${SOURCE_FILES_test_adhesion})
+add_dependencies(test_adhesion learnSPH CompactNSearch)
+target_link_libraries(test_adhesion learnSPH CompactNSearch)
+
 set(SOURCE_FILES_test_marching_cubes test_marching_cubes.cpp)
 
 add_executable(test_marching_cubes ${SOURCE_FILES_test_marching_cubes})

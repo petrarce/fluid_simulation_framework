@@ -1,4 +1,5 @@
 #include <storage.h>
+#include <random>
 #include <particle_sampler.h>
 #include <kernel.h>
 #include <types.hpp>
@@ -10,54 +11,52 @@ using namespace learnSPH::kernel;
 
 FluidSystem* learnSPH::sample_fluid_cube(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta)
 {
-	
 	assert(restDensity > 0.0);
 	assert(samplingDistance > 0.0);
 	assert((upperCorner - lowerCorner).dot(upperCorner - lowerCorner) > 0);
 
 	Vector3R distVector = upperCorner - lowerCorner;
 
-	size_t num_of_part_x_direction = fabs(distVector[0] / samplingDistance) + 1;
-	size_t num_of_part_y_direction = fabs(distVector[1] / samplingDistance) + 1;
-	size_t num_of_part_z_direction = fabs(distVector[2] / samplingDistance) + 1;
+	size_t n_div_x = fabs(distVector[0] / samplingDistance) + 1;
+	size_t n_div_y = fabs(distVector[1] / samplingDistance) + 1;
+	size_t n_div_z = fabs(distVector[2] / samplingDistance) + 1;
 
 	Real delX = samplingDistance * distVector[0] / fabs(distVector[0]);
 	Real delY = samplingDistance * distVector[1] / fabs(distVector[1]);
 	Real delZ = samplingDistance * distVector[2] / fabs(distVector[2]);
 
-	size_t totalNumOfPrticles = num_of_part_x_direction * num_of_part_y_direction * num_of_part_z_direction;
+	size_t n_particles = n_div_x * n_div_y * n_div_z;
 
 	vector<Vector3R> particlePositions;
 	vector<Vector3R> particleVelocities;
 	vector<Real> particleDensities;
 
-	particlePositions.resize(totalNumOfPrticles);
-	particleDensities.resize(totalNumOfPrticles);
-	particleVelocities.resize(totalNumOfPrticles);
+	particlePositions.resize(n_particles);
+	particleDensities.resize(n_particles);
+	particleVelocities.resize(n_particles);
 
-	Real posX = lowerCorner[0];
+	default_random_engine engine;
 
-	#pragma omp parallel for schedule(static) firstprivate(posX)
+	normal_distribution<double> gauss(0.0, 1.0);
 
-	for(int i = 0; i < num_of_part_x_direction; i++) {
+	for(int i = 0; i < n_div_x; i++) {
 
-		posX = lowerCorner[0] + i * delX;
+		Real posX = lowerCorner[0] + i * delX;
 
-		Real posY = lowerCorner[1];
+		for(int j = 0; j < n_div_y; j++) {
 
-		for(int j = 0; j < num_of_part_y_direction; j++) {
+			Real posY = lowerCorner[1] + j * delY;
 
-			Real posZ = lowerCorner[2];
+			for(int k = 0; k < n_div_z; k++) {
 
-			for(int k = 0; k < num_of_part_z_direction; k++, posZ += delZ) {
+				Real posZ = lowerCorner[2] + k * delZ;
 
-				size_t index = i * num_of_part_y_direction * num_of_part_z_direction + j * num_of_part_z_direction + k;
+				size_t index = i * n_div_y * n_div_z + j * n_div_z + k;
 
-				assert(index < totalNumOfPrticles && index >= 0);
+				assert(index < n_particles && index >= 0);
 
-				particlePositions[index] = {posX, posY, posZ};
+				particlePositions[index] = Vector3R(posX, posY, posZ) + Vector3R(gauss(engine) * delX / 2.0, gauss(engine) * delY / 2.0, gauss(engine) * delZ / 2.0);
 			}
-			posY += delY;
 		}
 	}
 	Real width = fabs(distVector[0]) + samplingDistance;
@@ -226,8 +225,7 @@ void learnSPH::sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_
 				new_point = new_point + vec_normal_unit;
 			}
 		}
-	} 
-
+	}
 	Vector3R centroid = (vertex_a + vertex_b + vertex_c) / 3.0;
 
 	Vector3R mass_center = Vector3R(0.0, 0.0, 0.0);
@@ -322,22 +320,13 @@ BorderSystem* learnSPH::sample_border_cone(Real lowerRadius, const Vector3R &low
 
 		sample_ring(borderParticles, center, radius, axis_alpha, axis_beta, samplingDistance);
 	}
-
-	circleCnt = ceil(3 * lowerRadius / samplingDistance / 2);
-
-	for (int i = 1; i < circleCnt; i++) {
-
-		auto radius = lowerRadius * i / circleCnt;
-
-		sample_ring(borderParticles, lowerCenter, radius, axis_alpha, axis_beta, samplingDistance);
-	}
-	borderParticles.push_back(lowerCenter);
-
 	return new BorderSystem(borderParticles, restDensity, samplingDistance, eta);
 }
 
-void learnSPH::sample_sphere(vector<Vector3R>& borderParticles, const Real radius, const Vector3R center, const Real samplingDistance)
+BorderSystem* learnSPH::sample_border_sphere(Real radius, const Vector3R &center, Real restDensity, Real samplingDistance, Real eta)
 {
+	vector<Vector3R> borderParticles;
+
 	auto initialDirection = Vector3R(0.0, 0.0, 1.0);
 	auto normalToInitial = Vector3R(0.0, 1.0, 0.0);
 
@@ -371,4 +360,5 @@ void learnSPH::sample_sphere(vector<Vector3R>& borderParticles, const Real radiu
 		}
 		curFirstSamplingAngle += alignedFirstSamplingAngle;
 	}
+	return new BorderSystem(borderParticles, restDensity, samplingDistance, eta);
 }
