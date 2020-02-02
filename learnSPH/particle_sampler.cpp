@@ -109,9 +109,9 @@ static inline bool is_in_triangle(const Vector3R& corner_a, const Vector3R& corn
 }
 
 
-static Vector3R get_shift(const Vector3R& vec_s, const Vector3R& vec_t, Real margin)
+static Vector3R get_shift(const Vector3R &vec_s, const Vector3R &vec_t, Real margin)
 {
-	return  margin * margin * sqrt(2.0 / (vec_s.dot(vec_t) + margin * margin)) * (vec_s + vec_t).normalized();
+	return margin * sqrt(2.0 / (vec_s.dot(vec_t) + 1.0)) * (vec_s + vec_t).normalized();
 }
 
 
@@ -125,17 +125,13 @@ static void expand_triangle(const Vector3R& vertex_a, const Vector3R& vertex_b, 
 	Vector3R norm_BC = vec_BC.cross(vec_CA).cross(vec_BC);
 	Vector3R norm_CA = vec_CA.cross(vec_AB).cross(vec_CA);
 
-	norm_AB = (norm_AB.dot(vec_BC) * norm_AB).normalized();
-	norm_BC = (norm_BC.dot(vec_CA) * norm_BC).normalized();
-	norm_CA = (norm_CA.dot(vec_AB) * norm_CA).normalized();
+	norm_AB = - norm_AB.normalized();
+	norm_BC = - norm_BC.normalized();
+	norm_CA = - norm_CA.normalized();
 
-	const Vector3R expansion_AB = - margin * norm_AB;
-	const Vector3R expansion_BC = - margin * norm_BC;
-	const Vector3R expansion_CA = - margin * norm_CA;
-
-	vertex_a_prime = vertex_a + get_shift(expansion_CA, expansion_AB, margin);
-	vertex_b_prime = vertex_b + get_shift(expansion_AB, expansion_BC, margin);
-	vertex_c_prime = vertex_c + get_shift(expansion_BC, expansion_CA, margin);
+	vertex_a_prime = vertex_a + get_shift(norm_CA, norm_AB, margin);
+	vertex_b_prime = vertex_b + get_shift(norm_AB, norm_BC, margin);
+	vertex_c_prime = vertex_c + get_shift(norm_BC, norm_CA, margin);
 }
 
 
