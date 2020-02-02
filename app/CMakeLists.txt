@@ -21,6 +21,12 @@ add_executable(test_adhesion ${SOURCE_FILES_test_adhesion})
 add_dependencies(test_adhesion learnSPH CompactNSearch)
 target_link_libraries(test_adhesion learnSPH CompactNSearch)
 
+set(SOURCE_FILES_test_double_dam test_double_dam.cpp)
+
+add_executable(test_double_dam ${SOURCE_FILES_test_double_dam})
+add_dependencies(test_double_dam learnSPH CompactNSearch)
+target_link_libraries(test_double_dam learnSPH CompactNSearch)
+
 set(SOURCE_FILES_test_marching_cubes test_marching_cubes.cpp)
 
 add_executable(test_marching_cubes ${SOURCE_FILES_test_marching_cubes})

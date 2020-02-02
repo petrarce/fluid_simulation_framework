@@ -46,36 +46,39 @@ void save_scalars(const std::string &path, std::vector<Real> &data)
 
 int main(int argc, char** argv)
 {
-	assert(argc == 25);
+	assert(argc == 31);
 
 	std::cout << "Simulation running" << std::endl;
 
-	Vector3R lowerCorner(stod(argv[1]), stod(argv[2]), stod(argv[3]));
-	Vector3R upperCorner(stod(argv[4]), stod(argv[5]), stod(argv[6]));
+	Vector3R lowerA(stod(argv[1]), stod(argv[2]), stod(argv[3]));
+	Vector3R upperA(stod(argv[4]), stod(argv[5]), stod(argv[6]));
 
-	Vector3R lowerBoxCorner(stod(argv[7]), stod(argv[8]), stod(argv[9]));
-	Vector3R upperBoxCorner(stod(argv[10]), stod(argv[11]), stod(argv[12]));
+	Vector3R lowerB(stod(argv[7]), stod(argv[8]), stod(argv[9]));
+	Vector3R upperB(stod(argv[10]), stod(argv[11]), stod(argv[12]));
 
-	Real sampling_distance = stod(argv[13]);
-	Real eta = stod(argv[14]);
+	Vector3R lowerBoxCorner(stod(argv[13]), stod(argv[14]), stod(argv[15]));
+	Vector3R upperBoxCorner(stod(argv[16]), stod(argv[17]), stod(argv[18]));
 
-	size_t n_iterations = stod(argv[15]);
+	Real sampling_distance = stod(argv[19]);
+	Real eta = stod(argv[20]);
 
-	Real multiplier = stod(argv[16]);
+	size_t n_iterations = stod(argv[21]);
 
-	Real viscosity = stod(argv[17]);
-	Real friction = stod(argv[18]);
+	Real multiplier = stod(argv[22]);
 
-	Real gamma = stod(argv[19]);
-	Real beta = stod(argv[20]);
+	Real viscosity = stod(argv[23]);
+	Real friction = stod(argv[24]);
 
-	Real gravity = stod(argv[21]);
+	Real gamma = stod(argv[25]);
+	Real beta = stod(argv[26]);
 
-	Real render_step = stod(argv[22]);
-	Real sim_duration = stod(argv[23]);
-	string sim_name = argv[24];
+	Real gravity = stod(argv[27]);
 
-	FluidSystem* fluidParticles = single_dam(lowerCorner, upperCorner, 1000.0, sampling_distance, eta);
+	Real render_step = stod(argv[28]);
+	Real sim_duration = stod(argv[29]);
+	string sim_name = argv[30];
+
+	FluidSystem* fluidParticles = double_dam(lowerA, upperA, lowerB, upperB, 1000.0, sampling_distance, eta);
 
 	cout << "Number of fluid particles: " << fluidParticles->size() << endl;
 

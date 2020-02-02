@@ -50,13 +50,26 @@ namespace learnSPH{
 	 *		eta					- eta for the border (assumed as constant among all particles)
 	 */
 	BorderSystem* sample_border_sphere(Real radius, const Vector3R &center, Real restDensity, Real samplingDistance, Real eta);
+
+	Real sample_cube(vector<Vector3R> &positions, const Vector3R &lowerCorner, const Vector3R &upperCorner, Real samplingDistance);
 	/*
 	 *	samples fluid particles inside a cube in axis-aligned fashion.
 	 *	Args:
-	 *		upperCorner			- upper corner of the cube
-	 *		lowerCorner			- lower corner of the cube
+	 *		lowerA				- lower corner of the cube A
+	 *		upperA				- upper corner of the cube A
 	 *		restDensity			- rest density for the fluid (assumed as constant among all particles)
 	 *		samplingDistance	- distance between the centers of each two adjacent particles
 	 */
-	FluidSystem* sample_fluid_cube(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta);
+	FluidSystem* single_dam(const Vector3R &lowerA, const Vector3R &upperA, Real restDensity, Real samplingDistance, Real eta);
+	/*
+	 *	samples fluid particles inside two cubes in axis-aligned fashion.
+	 *	Args:
+	 *		lowerA				- lower corner of the cube A
+	 *		upperA				- upper corner of the cube A
+	 *		lowerB				- lower corner of the cube B
+	 *		upperB				- upper corner of the cube B
+	 *		restDensity			- rest density for the fluid (assumed as constant among all particles)
+	 *		samplingDistance	- distance between the centers of each two adjacent particles
+	 */
+	FluidSystem* double_dam(const Vector3R &lowerA, const Vector3R &upperA, const Vector3R &lowerB, const Vector3R &upperB, Real restDensity, Real samplingDistance, Real eta);
 };

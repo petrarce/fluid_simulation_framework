@@ -72,7 +72,7 @@ int main(int argc, char** argv)
 	Real sim_duration = stod(argv[22]);
 	string sim_name = argv[23];
 
-	FluidSystem* fluidParticles = sample_fluid_cube(lowerCorner, upperCorner, 1000.0, sampling_distance, eta);
+	FluidSystem* fluidParticles = single_dam(lowerCorner, upperCorner, 1000.0, sampling_distance, eta);
 
 	cout << "Number of fluid particles: " << fluidParticles->size() << endl;
 

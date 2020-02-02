@@ -9,12 +9,9 @@ using namespace std;
 using namespace learnSPH;
 using namespace learnSPH::kernel;
 
-FluidSystem* learnSPH::sample_fluid_cube(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta)
-{
-	assert(restDensity > 0.0);
-	assert(samplingDistance > 0.0);
-	assert((upperCorner - lowerCorner).dot(upperCorner - lowerCorner) > 0);
 
+Real learnSPH::sample_cube(vector<Vector3R> &positions, const Vector3R &lowerCorner, const Vector3R &upperCorner, Real samplingDistance)
+{
 	Vector3R distVector = upperCorner - lowerCorner;
 
 	size_t n_div_x = fabs(distVector[0] / samplingDistance) + 1;
@@ -26,14 +23,6 @@ FluidSystem* learnSPH::sample_fluid_cube(const Vector3R &lowerCorner, const Vect
 	Real delZ = samplingDistance * distVector[2] / fabs(distVector[2]);
 
 	size_t n_particles = n_div_x * n_div_y * n_div_z;
-
-	vector<Vector3R> particlePositions;
-	vector<Vector3R> particleVelocities;
-	vector<Real> particleDensities;
-
-	particlePositions.resize(n_particles);
-	particleDensities.resize(n_particles);
-	particleVelocities.resize(n_particles);
 
 	default_random_engine engine;
 
@@ -55,17 +44,50 @@ FluidSystem* learnSPH::sample_fluid_cube(const Vector3R &lowerCorner, const Vect
 
 				assert(index < n_particles && index >= 0);
 
-				particlePositions[index] = Vector3R(posX, posY, posZ) + Vector3R(gauss(engine) * delX / 2.0, gauss(engine) * delY / 2.0, gauss(engine) * delZ / 2.0);
+				positions.push_back(Vector3R(posX, posY, posZ) + Vector3R(gauss(engine) * delX / 10.0, gauss(engine) * delY / 10.0, gauss(engine) * delZ / 10.0));
 			}
 		}
 	}
-	Real width = fabs(distVector[0]) + samplingDistance;
-	Real height = fabs(distVector[1]) + samplingDistance;
-	Real length = fabs(distVector[2]) + samplingDistance;
+	auto side_x = fabs(distVector[0]) + samplingDistance;
+	auto side_y = fabs(distVector[1]) + samplingDistance;
+	auto side_z = fabs(distVector[2]) + samplingDistance;
 
-	Real fluidVolume = width * height * length;
+	return side_x * side_y * side_z;
+}
 
-	return new FluidSystem(particlePositions, particleVelocities, particleDensities, restDensity, fluidVolume, eta);
+
+FluidSystem* learnSPH::single_dam(const Vector3R &lowerA, const Vector3R &upperA, Real restDensity, Real samplingDistance, Real eta)
+{
+	vector<Vector3R> positions;
+	vector<Vector3R> velocities;
+	vector<Real> densities;
+
+	Real volumeA = sample_cube(positions, lowerA, upperA, samplingDistance);
+
+	auto n_particles = positions.size();
+
+	velocities.assign(n_particles, Vector3R(0.0, 0.0, 0.0));
+	densities.resize(n_particles, 0.0);
+
+	return new FluidSystem(positions, velocities, densities, restDensity, volumeA, eta);
+}
+
+
+FluidSystem* learnSPH::double_dam(const Vector3R &lowerA, const Vector3R &upperA, const Vector3R &lowerB, const Vector3R &upperB, Real restDensity, Real samplingDistance, Real eta)
+{
+	vector<Vector3R> positions;
+	vector<Vector3R> velocities;
+	vector<Real> densities;
+
+	Real volumeA = sample_cube(positions, lowerA, upperA, samplingDistance);
+	Real volumeB = sample_cube(positions, lowerB, upperB, samplingDistance);
+
+	auto n_particles = positions.size();
+
+	velocities.assign(n_particles, Vector3R(0.0, 0.0, 0.0));
+	densities.resize(n_particles, 0.0);
+
+	return new FluidSystem(positions, velocities, densities, restDensity, volumeA + volumeB, eta);
 }
 
 
