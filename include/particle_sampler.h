@@ -25,6 +25,11 @@ namespace learnSPH{
 	*/
    	void sample_border_model_surface(vector<Vector3R>& borderParticles, const Matrix4d transitionMatr, const string& patToModel, Real samplingDistance, bool samplingType = true);
 	BorderSystem* sample_border_model(const Matrix4d& transitionMatr, const string& patToModel, Real restDensity, Real samplingDistance, Real eta);
+	void sample_fluid_model(const string& pathToModel, 
+											const Vector3R& upperCorner,
+											const Vector3R& lowerCorner,
+											const float samplDist,
+											vector<Vector3R>& fluidPoints);
 
 	/*
 	 *	samples border particles on a triangular face

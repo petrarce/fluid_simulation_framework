@@ -7,6 +7,7 @@
 #include <sstream>
 
 using namespace std;
+using namespace Eigen;
 using namespace learnSPH;
 using namespace learnSPH::kernel;
 
@@ -123,7 +124,6 @@ FluidSystem* learnSPH::sample_fluid_cube(const Vector3R &lowerCorner, const Vect
 	return new FluidSystem(particlePositions, particleVelocities, particleDensities, restDensity, fluidVolume, eta);
 }
 
-
 static inline bool is_in_triangle(const Vector3R& corner_a, const Vector3R& corner_b, const Vector3R& corner_c, const Vector3R& point_p)
 {
 	Vector3R sideAB = corner_b - corner_a;
@@ -140,6 +140,33 @@ static inline bool is_in_triangle(const Vector3R& corner_a, const Vector3R& corn
 
 	return fabs(area_ab + area_bc + area_ca - area_full) < threshold;
 }
+static inline void  ray_triangle_intersect(const Vector3R& rayOrigin, 
+							const Vector3R& rayDirection,
+							const Vector3i& faceIndexes,
+							const vector<Vector3R>& vertices,
+							vector<Vector3R>& intersPoints){
+	//get AB, AC, A, rw vectors
+	Vector3R A = vertices[faceIndexes(0)];
+	Vector3R AB = vertices[faceIndexes(1)] - vertices[faceIndexes(0)];
+	Vector3R AC = vertices[faceIndexes(2)] - vertices[faceIndexes(0)];
+	const Vector3R& R = rayDirection;
+	//ignore parallel faces
+	if(fabs(rayDirection.cross(AB).dot(AC)) < threshold){
+		return;
+	}
+	Matrix3d P;
+	P.col(0) = AB;
+	P.col(1) = AC; 
+	P.col(2) = -R;
+	Vector3R coefs = P.inverse() * (rayOrigin - A);
+	assert( ((rayOrigin + coefs(2) * R) - (A + coefs(0)*AB + coefs(1)*AC)).squaredNorm() < threshold * threshold);
+	Vector3R intPoint = rayOrigin + coefs(2) * R;
+	if(is_in_triangle(vertices[faceIndexes(0)], vertices[faceIndexes(1)], vertices[faceIndexes(2)], intPoint)){
+		intersPoints.push_back(intPoint);
+	}
+}
+
+
 
 
 static Vector3R get_shift(const Vector3R& vec_s, const Vector3R& vec_t, Real margin)
@@ -172,6 +199,67 @@ static void expand_triangle(const Vector3R& vertex_a, const Vector3R& vertex_b, 
 }
 
 
+void learnSPH::sample_fluid_model(const string& pathToModel, 
+											const Vector3R& upperCorner,
+											const Vector3R& lowerCorner,
+											const float samplDist,
+											vector<Vector3R>& fluidPoints)
+{
+	FaceVertexList* faceVertice = parse_wavefront(pathToModel);
+	if(faceVertice == nullptr){
+		return;
+	}
+	Vector3R diagVector = upperCorner - lowerCorner;
+	Vector3R surfTang = Vector3R(0, diagVector(1), 0);
+	float surfWidth = surfTang.norm();
+	Vector3R surfBITang = Vector3R(diagVector(0), 0, 0);
+	float surfLength = surfBITang.norm();
+	Vector3R surfNormal = Vector3R(0, 0, diagVector(2));
+	surfTang.normalize();
+	surfBITang.normalize();
+	surfNormal.normalize();
+	for(int i = 0; (surfTang * i * samplDist).squaredNorm() < surfWidth * surfWidth; i++){
+		for(int j = 0; (surfBITang * j * samplDist).squaredNorm() < surfLength * surfLength; j++){
+			Vector3R curRayOrigin = lowerCorner + (surfTang * i + surfBITang * j) * samplDist;
+			vector<Vector3R> intersPoints;
+			for(const Vector3i& face : faceVertice->faceIndexes){
+				ray_triangle_intersect(curRayOrigin, surfNormal, face, faceVertice->vecrtexes, intersPoints);
+			}
+
+			sort(intersPoints.begin(), intersPoints.end(), 
+					[&curRayOrigin](const Vector3R& p1, const Vector3R& p2){
+						return (p1 - curRayOrigin).squaredNorm() < (p2 - curRayOrigin).squaredNorm();
+					}
+				);
+			//remove points intersection points on the border of the poligons
+			for(int i = intersPoints.size() - 1; i > 0; i--){
+				if(i-1 < 0){
+					break;
+				}
+				if((intersPoints[i] - intersPoints[i-1]).squaredNorm() < threshold * threshold){
+					intersPoints.erase(intersPoints.begin() + i);
+				}
+			}
+			if(intersPoints.size() > 0){
+				fprintf(stderr, "int ponts:");
+				for(const Vector3R& pt : intersPoints){
+					fprintf(stderr, "[%03.4f, %03.4f, %03.4f]", pt(0), pt(1), pt(2));
+				}
+				cout << endl;
+			}
+
+			for(int k = 0; k + 1 < intersPoints.size(); k+=2){
+				//find starting point, that will be aligned with samplDist
+				float alignedNorm = ceil(fabs((curRayOrigin - intersPoints[k]).norm() / samplDist));
+				Vector3R alignedStartPoint = curRayOrigin + surfNormal * alignedNorm * samplDist;
+				for(int l =  0; (surfNormal * l * samplDist).squaredNorm() < 
+								(intersPoints[k+1] - alignedStartPoint).squaredNorm(); l++){
+					fluidPoints.push_back(alignedStartPoint + surfNormal * l * samplDist);
+				}
+			}
+		}
+	}
+}
 void learnSPH::sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_b, const Vector3R &vertex_c, Real samplingDistance, vector<Vector3R> &borderParticles, bool hexagonal)
 {
 	vector<Vector3R> faceParticles;

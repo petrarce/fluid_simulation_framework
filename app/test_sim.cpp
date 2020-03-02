@@ -409,6 +409,7 @@ int main(int ac, char** av)
 		("fluid-displacement", value<vector<string>>(), "specify lower and upper corner of fluid cube, that should be sampled for simulation\n"
 											"\tplease use next format to define fluid cube: "
 											"\"[\%f,\%f,\%f],[\%f,\%f,\%f]\"\n")
+		("fluid-model", value<vector<string>>(), "path to mesh, that should be populated with fluid particles. !!!Mesh should be closed!!!\n")
 		("sim-type", value<string>(), "simulation method type. Next variants are possible: PBF, WCF\n")
 		("sample-dist", value<Real>(), "particle sampling distance\n")
 		("pressure-stiffness", value<Real>()->default_value(80), "pressure coefficient for WCSPH\n")
@@ -448,6 +449,18 @@ int main(int ac, char** av)
 			sample_fluid_cube(positions, fd.lower_corner, fd.upper_corner, cmdValues.sampling_distance);
 			vector<Vector3R> velocity(positions.size(), Vector3R(0,0,0));
 			fluid.add_fluid_particles(positions, velocity);
+		}
+	}
+	if(vm.count("fluid-model")){
+		for(const string& fluid_modle_path : vm["fluid-model"].as<vector<string>>()){
+			vector<Vector3R> fluidParticles;
+			sample_fluid_model(fluid_modle_path, 
+								Vector3R(-5,-5,-5), 
+								Vector3R(5,5,5),
+								cmdValues.sampling_distance,
+								fluidParticles);
+			vector<Vector3R> velocity(fluidParticles.size(), Vector3R(0,0,0));
+			fluid.add_fluid_particles(fluidParticles, velocity);
 		}
 	}
 	fluid.setGravity(cmdValues.gravity);
