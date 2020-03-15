@@ -60,7 +60,7 @@ double learnSPH::kernel::kernelAdhesion(const Vector3d& x1, const Vector3d& x2, 
 {
 	double r = (x1 - x2).norm();
 
-	if (r <= c && r > c / 2) return (0.007 / pow(c, 3.25)) * pow(-4 * pow2(r)/c + 6 * r - 2 * c, 0.25);
+	if (r <= c) return r - pow2(r);
 
 	return 0.0;
 }

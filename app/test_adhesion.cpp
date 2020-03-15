@@ -46,41 +46,43 @@ void save_scalars(const std::string &path, std::vector<Real> &data)
 
 int main(int argc, char** argv)
 {
-	assert(argc == 23);
+	assert(argc == 22);
 
 	std::cout << "Simulation running" << std::endl;
 
-	Vector3R lowerCorner(stod(argv[1]), stod(argv[2]), stod(argv[3]));
-	Vector3R upperCorner(stod(argv[4]), stod(argv[5]), stod(argv[6]));
-
-	Vector3R center(stod(argv[7]), stod(argv[8]), stod(argv[9]));
+	Vector3R fluid_center(stod(argv[1]), stod(argv[2]), stod(argv[3]));
+	Vector3R solid_center(stod(argv[4]), stod(argv[5]), stod(argv[6]));
 	
-	Real radius = stod(argv[10]);
+	Real fluid_radius = stod(argv[7]);
+	Real solid_radius = stod(argv[8]);
 
-	Real sampling_distance = stod(argv[11]);
-	Real eta = stod(argv[12]);
+	Real speed = stod(argv[9]);
+	Real sampling_distance = stod(argv[10]);
+	Real eta = stod(argv[11]);
 
-	size_t n_iterations = stod(argv[13]);
+	size_t n_iterations = stod(argv[12]);
 
-	Real multiplier = stod(argv[14]);
+	Real multiplier = stod(argv[13]);
 
-	Real viscosity = stod(argv[15]);
-	Real friction = stod(argv[16]);
+	Real viscosity = stod(argv[14]);
+	Real friction = stod(argv[15]);
 
-	Real gamma = stod(argv[17]);
-	Real beta = stod(argv[18]);
+	Real gamma = stod(argv[16]);
+	Real beta = stod(argv[17]);
 
-	Real gravity = stod(argv[19]);
+	Real gravity = stod(argv[18]);
 
-	Real render_step = stod(argv[20]);
-	Real sim_duration = stod(argv[21]);
-	string sim_name = argv[22];
+	Real render_step = stod(argv[19]);
+	Real sim_duration = stod(argv[20]);
+	string sim_name = argv[21];
 
-	FluidSystem* fluidParticles = single_dam(lowerCorner, upperCorner, 1000.0, sampling_distance, eta);
+	auto velocity = speed * (solid_center - fluid_center).normalized();
+
+	FluidSystem* fluidParticles = water_drop(fluid_center, velocity, fluid_radius, 1000.0, sampling_distance, eta);
 
 	cout << "Number of fluid particles: " << fluidParticles->size() << endl;
 
-	BorderSystem* borderParticles = sample_border_sphere(radius, center, 3000.0, sampling_distance * 0.5, eta);
+	BorderSystem* borderParticles = sample_border_sphere(solid_radius, solid_center, 2000.0, sampling_distance * 0.5, eta);
 
 	cout << "Number of border particles: " << borderParticles->size() << endl;
 

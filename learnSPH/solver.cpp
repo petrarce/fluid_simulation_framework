@@ -73,13 +73,13 @@ void learnSPH::add_press_component(vector<Vector3R> &accelerations, FluidSystem 
 
 			auto grad_W_ij = kernelGradFunction(positions[i], positions[j], smooth_length);
 
-			acc_press_ff += (pressure_i / (pow2(rho_i) + threshold) + pressure_j / (pow2(rho_j) + threshold)) * grad_W_ij;
+			acc_press_ff += (pressure_i / (pow2(rho_i) + 1e-6) + pressure_j / (pow2(rho_j) + 1e-6)) * grad_W_ij;
 		}
 		acc_press_ff *= fluidParticles->getMass();
 
 		for(unsigned int k : neighbors[i][1]) acc_press_fs += borderVolumes[k] * kernelGradFunction(positions[i], borderPositions[k], smooth_length);
 
-		acc_press_fs *= fluidParticles->getRestDensity() * pressure_i / (pow2(rho_i) + threshold);
+		acc_press_fs *= fluidParticles->getRestDensity() * pressure_i / (pow2(rho_i) + 1e-6);
 
 		accelerations[i] -= acc_press_ff;
 		accelerations[i] -= acc_press_fs;
@@ -127,13 +127,11 @@ void learnSPH::add_visco_component(vector<Vector3R> &accelerations, FluidSystem 
 
 			auto diff_ik = positions[i] - borderPositions[k];
 
-			assert(fabs(diff_ik.dot(diff_ik) + 0.01 * pow2(smooth_length)) > threshold);
+			assert(fabs(diff_ik.dot(diff_ik) + 0.01 * pow2(smooth_length)) > 1e-6);
 
 			sum_visco_fs += borderVolumes[k] * diff_ik.dot(grad_W_ik) / (diff_ik.dot(diff_ik) + 0.01 * pow2(smooth_length));
 		}
 		auto acc_visco_fs = 2.0 * friction * sum_visco_fs * velocities[i];
-
-		assert(fluidParticles->getMass() > threshold);
 
 		accelerations[i] += acc_visco_ff;
 		accelerations[i] += acc_visco_fs;
@@ -191,7 +189,7 @@ void learnSPH::smooth_symplectic_euler(vector<Vector3R> &accelerations, FluidSys
 
 			auto diff_velo_ji = velocities[j] - velocities[i];
 
-			auxiliary_velocity += kernelFunction(positions[i], positions[j], smooth_length) / (densities[i] + densities[j] + threshold) * diff_velo_ji;
+			auxiliary_velocity += kernelFunction(positions[i], positions[j], smooth_length) / (densities[i] + densities[j] + 1e-6) * diff_velo_ji;
 		}
 		auxiliary_velocity = velocities[i] + 2.0 * epsilon * fluidParticles->getMass() * auxiliary_velocity;
 
@@ -231,7 +229,7 @@ void learnSPH::correct_position(FluidSystem *fluidParticles, BorderSystem *borde
 
             Real C_i = densities[i] / fluidParticles->getRestDensity() - 1.0;
 
-            if (fabs(C_i) <= threshold) {
+            if (fabs(C_i) <= 1e-6) {
 
                 lambda[i] = 0.0;
                 continue;

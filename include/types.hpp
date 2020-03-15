@@ -46,5 +46,3 @@ using namespace std;
 
 using Real = double;
 using Vector3R = Eigen::Vector3d;
-
-constexpr Real threshold = 1e-6;

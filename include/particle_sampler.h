@@ -14,7 +14,7 @@ namespace learnSPH{
 	 *		borderParticles		- container for fetched particles
 	 *		hexagonal			- whether to employ hexagonal patterns when sampling the particles (default: false)
 	 */
-	void sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_b, const Vector3R &vertex_c, Real samplingDistance, vector<Vector3R> &borderParticles, bool hexagonal);
+	void sample_triangle(const Vector3R &vertex_a, const Vector3R &vertex_b, const Vector3R &vertex_c, Real samplingDistance, vector<Vector3R> &borderParticles);
 	/*
 	 *	samples border particles on the faces of a cube
 	 *	Args:
@@ -25,7 +25,7 @@ namespace learnSPH{
 	 *		eta					- eta for the border (assumed as constant among all particles)
 	 *		hexagonal			- whether to employ hexagonal patterns when sampling the particles (default: false)
 	 */
-	BorderSystem* sample_border_box(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta, bool hexagonal);
+	BorderSystem* sample_border_box(const Vector3R &lowerCorner, const Vector3R &upperCorner, Real restDensity, Real samplingDistance, Real eta);
 	
 	void sample_ring(vector<Vector3R> &borderParticles, const Vector3R &center, Real radius, const Vector3R &unit_x, const Vector3R &unit_y, Real samplingDistance);
 	/*
@@ -72,4 +72,16 @@ namespace learnSPH{
 	 *		samplingDistance	- distance between the centers of each two adjacent particles
 	 */
 	FluidSystem* double_dam(const Vector3R &lowerA, const Vector3R &upperA, const Vector3R &lowerB, const Vector3R &upperB, Real restDensity, Real samplingDistance, Real eta);
+
+	void sample_shell(vector<Vector3R> &positions, const Vector3R &center, Real radius, Real samplingDistance);
+	/*
+	 *	samples fluid particles inside a sphere with initial velocity
+	 *	Args:
+	 *		center				- center of the sphere
+	 *		speed				- initial velocity
+	 *		radius				- radius of the sphere
+	 *		restDensity			- rest density for the fluid (assumed as constant among all particles)
+	 *		samplingDistance	- distance between the centers of each two adjacent particles
+	 */
+	FluidSystem* water_drop(const Vector3R &center, const Vector3R &speed, Real radius, Real restDensity, Real samplingDistance, Real eta);
 };
