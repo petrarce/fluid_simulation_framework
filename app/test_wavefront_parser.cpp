@@ -6,7 +6,7 @@
 
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
-#include <storage.h>
+#include <learnSPH/core/storage.h>
 #include <types.hpp>
 #include <learnSPH/core/particle_sampler.h>
 #include <CompactNSearch>

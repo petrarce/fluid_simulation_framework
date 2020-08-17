@@ -14,19 +14,19 @@ if( NOT EIGEN3_INCLUDE_DIR )
 endif()
 
 set(SOURCE_FILES
-	core/vtk_writer.cpp
-	core/vtk_writer.h
 	core/kernel.cpp
 	core/kernel.h
 	core/particle_sampler.cpp
 	core/particle_sampler.h
+	core/storage.h
+	core/vtk_writer.cpp
+	core/vtk_writer.h
 	simulation/solver.cpp
 	simulation/solver.h
 	surf_reconstr/marching_cubes.cpp
 	surf_reconstr/marching_cubes.h
 	surf_reconstr/look_up_tables.hpp
 	${CMAKE_SOURCE_DIR}/include/types.hpp
-	${CMAKE_SOURCE_DIR}/include/storage.h
 )
 
 # Create a library version so it can be linked with other modules

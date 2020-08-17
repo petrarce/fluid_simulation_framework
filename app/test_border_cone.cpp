@@ -5,7 +5,7 @@
 #include <algorithm>    // std::max
 
 #include <Eigen/Dense>
-#include <storage.h>
+#include <learnSPH/core/storage.h>
 #include <types.hpp>
 #include <learnSPH/core/particle_sampler.h>
 #include <CompactNSearch>
