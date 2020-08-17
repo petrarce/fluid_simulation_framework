@@ -1,6 +1,6 @@
 #include <storage.h>
-#include <particle_sampler.h>
-#include <kernel.h>
+#include <learnSPH/core/particle_sampler.h>
+#include <learnSPH/core/kernel.h>
 #include <types.hpp>
 #include <Eigen/Geometry>
 #include <fstream>

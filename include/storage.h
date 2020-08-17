@@ -3,7 +3,7 @@
 #include <Eigen/Dense>
 #include <vector>
 #include <CompactNSearch>
-#include <kernel.h>
+#include <learnSPH/core/kernel.h>
 #include <set>
 #include <list>
 

@@ -6,9 +6,9 @@
 #include <algorithm>
 #include <math.h>
 
-#include <vtk_writer.h>
+#include <learnSPH/core/vtk_writer.h>
 #include <types.hpp>
-#include <marching_cubes.h>
+#include <learnSPH/surf_reconstr/marching_cubes.h>
 #include <cereal/types/memory.hpp>
 #include <cereal/archives/binary.hpp>
 

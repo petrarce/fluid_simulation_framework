@@ -14,19 +14,20 @@ if( NOT EIGEN3_INCLUDE_DIR )
 endif()
 
 set(SOURCE_FILES
-	vtk_writer.cpp
-	${CMAKE_SOURCE_DIR}/include/vtk_writer.h
-	kernel.cpp
-	${CMAKE_SOURCE_DIR}/include/kernel.h
+	core/vtk_writer.cpp
+	core/vtk_writer.h
+	core/kernel.cpp
+	core/kernel.h
+	core/particle_sampler.cpp
+	core/particle_sampler.h
+	simulation/solver.cpp
+	simulation/solver.h
+	surf_reconstr/marching_cubes.cpp
+	surf_reconstr/marching_cubes.h
+	surf_reconstr/look_up_tables.hpp
 	${CMAKE_SOURCE_DIR}/include/types.hpp
 	${CMAKE_SOURCE_DIR}/include/storage.h
-	${CMAKE_SOURCE_DIR}/include/particle_sampler.h
-	${CMAKE_SOURCE_DIR}/include/solver.h
-	${CMAKE_SOURCE_DIR}/include/marching_cubes.h
-	${CMAKE_SOURCE_DIR}/include/look_up_tables.hpp
-	particle_sampler.cpp
-	solver.cpp
-	marching_cubes.cpp)
+)
 
 # Create a library version so it can be linked with other modules
 add_library(learnSPH ${SOURCE_FILES})
@@ -35,3 +36,4 @@ include_directories("${CMAKE_SOURCE_DIR}/learnSPH/"
 					"${CMAKE_SOURCE_DIR}/CompactNSearch/include/")
 add_dependencies(learnSPH CompactNSearch)
 target_link_libraries(learnSPH CompactNSearch)
+

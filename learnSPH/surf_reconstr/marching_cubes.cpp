@@ -1,8 +1,8 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
-#include <marching_cubes.h>
-#include <look_up_tables.hpp>
+#include <learnSPH/surf_reconstr/marching_cubes.h>
+#include <learnSPH/surf_reconstr/look_up_tables.hpp>
 
 using namespace std;
 

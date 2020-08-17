@@ -1,5 +1,5 @@
-#include <solver.h>
-#include <kernel.h>
+#include <learnSPH/simulation/solver.h>
+#include <learnSPH/core/kernel.h>
 
 using namespace learnSPH::kernel;
 

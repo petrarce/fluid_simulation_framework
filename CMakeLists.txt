@@ -20,7 +20,10 @@ if (MSVC)
 endif()
 
 include_directories("${CMAKE_SOURCE_DIR}/include/"
-					 "${CMAKE_SOURCE_DIR}/extern/Eigen/")
+					"${CMAKE_SOURCE_DIR}/extern/Eigen/"
+					"${CMAKE_SOURCE_DIR}"
+)
+
 
 # Modules
 add_subdirectory(learnSPH)

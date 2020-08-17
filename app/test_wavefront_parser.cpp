@@ -8,11 +8,11 @@
 #include <Eigen/Geometry>
 #include <storage.h>
 #include <types.hpp>
-#include <particle_sampler.h>
+#include <learnSPH/core/particle_sampler.h>
 #include <CompactNSearch>
 
-#include <vtk_writer.h>
-#include <solver.h>
+#include <learnSPH/core/vtk_writer.h>
+#include <learnSPH/simulation/solver.h>
 #include <chrono>
 
 using namespace learnSPH;

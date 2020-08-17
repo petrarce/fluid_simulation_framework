@@ -3,7 +3,7 @@
 #include <cmath>
 #include <types.hpp>
 #include <vector>
-#include <kernel.h>
+#include <learnSPH/core/kernel.h>
 #include <storage.h>
 
 using namespace learnSPH::kernel;
