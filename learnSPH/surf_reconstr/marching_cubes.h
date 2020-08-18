@@ -139,28 +139,33 @@ class Thorus : public Object3D
 class Fluid : public Object3D{
 
     public:
-        Fluid(learnSPH::FluidSystem *fluidParticles, Real initValue, const Vector3R &lCorner, const Vector3R &uCorner, const Vector3R &cbResol):Object3D(lCorner, uCorner, cbResol)
+        Fluid(learnSPH::FluidSystem& fluidParticles,
+              Real initValue,
+              const Vector3R &lCorner,
+              const Vector3R &uCorner,
+              const Vector3R &cbResol):
+            Object3D(lCorner, uCorner, cbResol)
         {
-            gridPointImplicitFuncs.assign(cubesX * cubesY * cubesZ, -initValue);
+            gridPointImplicitFuncs.assign(cubesX * cubesY * cubesZ, initValue);
 
-            auto positions = fluidParticles->getPositions();
-            auto densities = fluidParticles->getDensities();
+            const auto& positions = fluidParticles.getPositions();
+            const auto& densities = fluidParticles.getDensities();
 
             for (size_t particleID = 0; particleID < positions.size(); particleID ++) {
 
                 auto offset = positions[particleID] - lowerCorner;
 
-                int grid_x_near = floor((offset(0) - fluidParticles->getCompactSupport()) / unit_march_vec(0));
-                int grid_y_near = floor((offset(1) - fluidParticles->getCompactSupport()) / unit_march_vec(1));
-                int grid_z_near = floor((offset(2) - fluidParticles->getCompactSupport()) / unit_march_vec(2));
+                int grid_x_near = floor((offset(0) - fluidParticles.getCompactSupport()) / unit_march_vec(0));
+                int grid_y_near = floor((offset(1) - fluidParticles.getCompactSupport()) / unit_march_vec(1));
+                int grid_z_near = floor((offset(2) - fluidParticles.getCompactSupport()) / unit_march_vec(2));
 
                 grid_x_near = std::max(grid_x_near, 0);
                 grid_y_near = std::max(grid_y_near, 0);
                 grid_z_near = std::max(grid_z_near, 0);
 
-                int grid_x_far = ceil((offset(0) + fluidParticles->getCompactSupport()) / unit_march_vec(0));
-                int grid_y_far = ceil((offset(1) + fluidParticles->getCompactSupport()) / unit_march_vec(1));
-                int grid_z_far = ceil((offset(2) + fluidParticles->getCompactSupport()) / unit_march_vec(2));
+                int grid_x_far = ceil((offset(0) + fluidParticles.getCompactSupport()) / unit_march_vec(0));
+                int grid_y_far = ceil((offset(1) + fluidParticles.getCompactSupport()) / unit_march_vec(1));
+                int grid_z_far = ceil((offset(2) + fluidParticles.getCompactSupport()) / unit_march_vec(2));
 
                 grid_x_far = std::min(grid_x_far, int(cubesX - 1));
                 grid_y_far = std::min(grid_y_far, int(cubesY - 1));
@@ -176,9 +181,9 @@ class Fluid : public Object3D{
 
                             assert(grid_idx < gridPointPositions.size());
 
-                            auto weight = kernelFunction(gridPointPositions[grid_idx], positions[particleID], fluidParticles->getSmoothingLength());
+                            auto weight = kernelFunction(gridPointPositions[grid_idx], positions[particleID], fluidParticles.getSmoothingLength());
 
-                            gridPointImplicitFuncs[grid_idx] += fluidParticles->getMass() / max(densities[particleID], fluidParticles->getRestDensity()) * weight;
+                            gridPointImplicitFuncs[grid_idx] += fluidParticles.getMass() / max(densities[particleID], fluidParticles.getRestDensity()) * weight;
                         }
                     }
                 }
@@ -186,9 +191,16 @@ class Fluid : public Object3D{
             objectDefined = true;
         }
 
-        Fluid(vector<Real> &params, vector<Vector3R> &positions, vector<Real> &densities, Real initValue, const Vector3R &lCorner, const Vector3R &uCorner, const Vector3R &cbResol):Object3D(lCorner, uCorner, cbResol)
+        Fluid(const vector<Real> &params,
+              const vector<Vector3R> &positions,
+              const vector<Real> &densities,
+              Real initValue,
+              const Vector3R &lCorner,
+              const Vector3R &uCorner,
+              const Vector3R &cbResol):
+            Object3D(lCorner, uCorner, cbResol)
         {
-            gridPointImplicitFuncs.assign(cubesX * cubesY * cubesZ, -initValue);
+            gridPointImplicitFuncs.assign(cubesX * cubesY * cubesZ, initValue);
 
             for (size_t particleID = 0; particleID < positions.size(); particleID ++) {
 

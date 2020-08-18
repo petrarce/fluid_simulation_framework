@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <regex>
+#include <experimental/filesystem>
 #include <math.h>
 
 #include <learnSPH/core/vtk_writer.h>
@@ -15,7 +17,7 @@
 using namespace learnSPH;
 using namespace std;
 
-void load_vectors(const std::string &path, std::vector<Vector3R> &data)
+static void load_vectors(const std::string &path, std::vector<Vector3R> &data)
 {
 	std::ifstream is(path, std::ios::binary);
 
@@ -39,7 +41,7 @@ void load_vectors(const std::string &path, std::vector<Vector3R> &data)
 	}
 }
 
-void load_scalars(const std::string &path, std::vector<Real> &data)
+static void load_scalars(const std::string &path, std::vector<Real> &data)
 {
 	std::ifstream is(path, std::ios::binary);
 
@@ -61,43 +63,52 @@ void load_scalars(const std::string &path, std::vector<Real> &data)
 	}
 }
 
+static std::vector<std::string> filterPaths(const std::string& path, const std::string& pathPattern)
+{
+	std::vector<std::string> filteredPaths;
+	std::regex pathRegex(pathPattern, std::regex::grep);
+	for(const auto& p : std::experimental::filesystem::directory_iterator(path))
+	{
+		if(std::regex_search(p.path().string(), pathRegex))
+			filteredPaths.push_back(p.path().string());
+	}
+	std::sort(filteredPaths.begin(), filteredPaths.end());
+	return filteredPaths;
+}
+
 int main(int argc, char** argv)
 {
-	assert(argc == 14);
+	assert(argc == 13);
 
 	std::cout << "Per frame rendering running" << std::endl;
 
 	Vector3R lowerCorner(stod(argv[1]),stod(argv[2]),stod(argv[3]));
 	Vector3R upperCorner(stod(argv[4]),stod(argv[5]),stod(argv[6]));
 
-	Real render_step = stod(argv[7]);
-	Real sim_duration = stod(argv[8]);
-	string sim_name = argv[9];
+	string sim_name = argv[7];
 
-	Vector3R cubeResol(stod(argv[10]), stod(argv[11]), stod(argv[12]));
+	Vector3R cubeResol(stod(argv[8]), stod(argv[9]), stod(argv[10]));
 
-	Real initValue = stod(argv[13]);
+	Real initValue = stod(argv[11]);
+	std::string fileDir(argv[12]);
 
-	MarchingCubes mcb(lowerCorner, upperCorner, cubeResol);
+	std::vector<std::string> paramFiles = filterPaths(fileDir, sim_name + "_params_[0-9]*.cereal");
+	std::vector<std::string> positionFiles = filterPaths(fileDir, sim_name + "_positions_[0-9]*.cereal");
+	std::vector<std::string> densitiesFiles = filterPaths(fileDir, sim_name + ".*_densities_[0-9]*.cereal");
+	assert(paramFiles.size() == positionFiles.size() && paramFiles.size() == densitiesFiles.size());
 
-	unsigned int nsamples = int(sim_duration / render_step);
-
-	for (unsigned int t = 0; t < nsamples; t++) {
+	#pragma omp parallel for
+	for (unsigned int t = 0; t < paramFiles.size(); t++) {
 
 		vector<Real> params;
 		vector<Vector3R> positions;
 		vector<Real> densities;
 
-		string filename = "res/assignment3/" + sim_name + "_params_" + std::to_string(t) + ".cereal";
-
+		std::string filename = fileDir + sim_name + "_params_" + std::to_string(t) + ".cereal";
 		load_scalars(filename, params);
-
-		filename = "res/assignment3/" + sim_name + "_positions_" + std::to_string(t) + ".cereal";
-
+		filename = fileDir + sim_name + "_positions_" + std::to_string(t) + ".cereal";
 		load_vectors(filename, positions);
-
-		filename = "res/assignment3/" + sim_name + "_densities_" + std::to_string(t) + ".cereal";
-
+		filename = fileDir + sim_name + "_densities_" + std::to_string(t) + ".cereal";
 		load_scalars(filename, densities);
 
 		vector<size_t> fugitives;
@@ -122,6 +133,7 @@ int main(int argc, char** argv)
 		for (auto particleID : fugitives) densities.erase(densities.begin() + particleID);
 
 		auto fluid = new Fluid(params, positions, densities, initValue, lowerCorner, upperCorner, cubeResol);
+		MarchingCubes mcb(lowerCorner, upperCorner, cubeResol);
 		mcb.setObject(fluid);
 
 		vector<Vector3R> triangle_mesh;
@@ -133,7 +145,7 @@ int main(int argc, char** argv)
 
 		for(int i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
 
-		std::string surface_filename = "res/assignment3/" + sim_name + "_surface_" + std::to_string(t) + ".vtk";
+		std::string surface_filename = fileDir + sim_name + "_surface_" + std::to_string(t) + ".vtk";
 
 		learnSPH::saveTriMeshToVTK(surface_filename, triangle_mesh, triangles);
 
