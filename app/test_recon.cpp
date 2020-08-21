@@ -9,14 +9,21 @@
 #include <math.h>
 
 #include <types.hpp>
+//learnSPH
 #include <learnSPH/core/vtk_writer.h>
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
+#include <learnSPH/core/storage.h>
+
+//cereal
 #include <cereal/types/memory.hpp>
 #include <cereal/archives/binary.hpp>
-#include <learnSPH/core/storage.h>
+
+//boost
+#include <boost/program_options.hpp>
 
 using namespace learnSPH;
 using namespace std;
+using namespace boost::program_options;
 
 static void load_vectors(const std::string &path, std::vector<Vector3R> &data)
 {
@@ -77,28 +84,134 @@ static std::vector<std::string> filterPaths(const std::string& path, const std::
 	return filteredPaths;
 }
 
+static void removeFugitives(vector<Vector3R>& positions, 
+							vector<Real>& densities, 
+							const Vector3R& lowerCorner, 
+							const Vector3R upperCorner)
+{
+	vector<size_t> fugitives;
+
+	for (size_t particleID = 0; particleID < positions.size(); particleID ++) {
+
+		bool inside = true;
+
+		inside &= (lowerCorner(0) <= positions[particleID](0));
+		inside &= (lowerCorner(1) <= positions[particleID](1));
+		inside &= (lowerCorner(2) <= positions[particleID](2));
+
+		inside &= (positions[particleID](0) <= upperCorner(0));
+		inside &= (positions[particleID](1) <= upperCorner(1));
+		inside &= (positions[particleID](2) <= upperCorner(2));
+
+		if (!inside) fugitives.push_back(particleID);
+	}
+	std::reverse(fugitives.begin(), fugitives.end());
+
+	for (auto particleID : fugitives) positions.erase(positions.begin() + particleID);
+	for (auto particleID : fugitives) densities.erase(densities.begin() + particleID);
+
+}
+
+struct 
+{
+	Vector3R lowerCorner; //upper Domain corner
+	Vector3R upperCorner; //lower Domain corner
+	Real gridResolution;
+	string simName;
+	string simDir;
+	Real initValue;
+	
+	void parse(const variables_map& vm)
+	{
+		if(vm.count("domain"))
+		{
+			auto values(arrayFromString(vm["domain"].as<string>()));
+			if(values.size() != 6)
+				throw invalid_argument("domain specified incorrecly. Reffer to help for the format");
+			lowerCorner = Vector3R(values[0], values[1], values[2]);
+			upperCorner = Vector3R(values[3], values[4], values[5]);
+		} else
+			throw invalid_argument("required option: --domain");
+		
+		if(vm.count("init-val"))
+			initValue = vm["init-val"].as<Real>();
+		else
+			throw invalid_argument("required option: --domain");
+		
+		if(vm.count("grid-resolution"))
+			gridResolution = vm["grid-resolution"].as<Real>();
+		else
+			throw invalid_argument("required option: --grid-resolution");
+		
+		if(vm.count("sim-name"))
+			simName = vm["sim-name"].as<string>();
+		else
+			throw invalid_argument("required option: --sim-name");
+
+		if(vm.count("sim-directory"))
+			simDir = vm["sim-directory"].as<string>();
+		else
+			throw invalid_argument("required option: --sim-directory");
+
+	}
+private:
+	vector<Real> arrayFromString(const string& str)
+	{
+		vector<Real> res;
+		string item;
+		stringstream ss(str);
+		Real val;
+		while(getline(ss, item, ','))
+		{
+	
+	
+			pr_dbg("%s extracted", item.c_str());
+			try{
+				val = stod(item);}
+			catch(...){
+				continue;}
+	
+			res.push_back(val);
+			pr_dbg("pushing %f to vector", val);
+	
+		}
+		return res;
+	}
+} programInput;
+
 int main(int argc, char** argv)
 {
-	assert(argc == 13);
 
+	options_description options;
+	options.add_options()
+			("help", "print this message")
+			("domain", value<string>(), "set lower an upper corners of domain in format %f,%f,%f,%f,%f,%f")
+			("init-val", value<Real>()->default_value(-0.5), "set initial value, that will be applied to discretisation grid ")
+			("sim-name", value<string>(), "simulation name")
+			("sim-directory", value<string>()->default_value("./"), "path to the simulation vtk files")
+			("grid-resolution", value<Real>(), "uniform grid resolution for matching cubes");
+	variables_map vm;
+	store(parse_command_line(argc, argv, options), vm);
+	if(vm.count("help"))
+	{
+		cout << options << endl;
+		return 0;
+	}
+	programInput.parse(vm);
+	
 	std::cout << "Per frame rendering running" << std::endl;
 
-	Vector3R lowerCorner(stod(argv[1]),stod(argv[2]),stod(argv[3]));
-	Vector3R upperCorner(stod(argv[4]),stod(argv[5]),stod(argv[6]));
-
-	string sim_name = argv[7];
-
-	Vector3R cubeResol(stod(argv[8]), stod(argv[9]), stod(argv[10]));
-
-	Real initValue = stod(argv[11]);
-	std::string fileDir(argv[12]);
-
-	std::vector<std::string> paramFiles = filterPaths(fileDir, sim_name + "_params_[0-9]*.cereal");
-	std::vector<std::string> positionFiles = filterPaths(fileDir, sim_name + "_positions_[0-9]*.cereal");
-	std::vector<std::string> densitiesFiles = filterPaths(fileDir, sim_name + ".*_densities_[0-9]*.cereal");
+	std::vector<std::string> paramFiles = filterPaths(programInput.simDir, programInput.simName + "_params_[0-9]*.cereal");
+	std::vector<std::string> positionFiles = filterPaths(programInput.simDir, programInput.simName + "_positions_[0-9]*.cereal");
+	std::vector<std::string> densitiesFiles = filterPaths(programInput.simDir, programInput.simName + ".*_densities_[0-9]*.cereal");
 	assert(paramFiles.size() == positionFiles.size() && paramFiles.size() == densitiesFiles.size());
 
-	NaiveMarchingCubes mcbNew(nullptr, lowerCorner, upperCorner, cubeResol, initValue);
+	NaiveMarchingCubes mcbNew(nullptr, 
+							  programInput.lowerCorner, 
+							  programInput.upperCorner, 
+							  Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
+							  programInput.initValue);
+	
 	#pragma omp parallel for firstprivate(mcbNew)
 	for (size_t t = 0; t < paramFiles.size(); t++) {
 
@@ -106,36 +219,16 @@ int main(int argc, char** argv)
 		vector<Vector3R> positions;
 		vector<Real> densities;
 
-		std::string filename = fileDir + sim_name + "_params_" + std::to_string(t) + ".cereal";
+		std::string filename = programInput.simDir + programInput.simName + "_params_" + std::to_string(t) + ".cereal";
 		load_scalars(filename, params);
-		filename = fileDir + sim_name + "_positions_" + std::to_string(t) + ".cereal";
+		filename = programInput.simDir + programInput.simName + "_positions_" + std::to_string(t) + ".cereal";
 		load_vectors(filename, positions);
-		filename = fileDir + sim_name + "_densities_" + std::to_string(t) + ".cereal";
+		filename = programInput.simDir + programInput.simName + "_densities_" + std::to_string(t) + ".cereal";
 		load_scalars(filename, densities);
 
-		vector<size_t> fugitives;
-
-		for (size_t particleID = 0; particleID < positions.size(); particleID ++) {
-
-			bool inside = true;
-
-			inside &= (lowerCorner(0) <= positions[particleID](0));
-			inside &= (lowerCorner(1) <= positions[particleID](1));
-			inside &= (lowerCorner(2) <= positions[particleID](2));
-
-			inside &= (positions[particleID](0) <= upperCorner(0));
-			inside &= (positions[particleID](1) <= upperCorner(1));
-			inside &= (positions[particleID](2) <= upperCorner(2));
-
-			if (!inside) fugitives.push_back(particleID);
-		}
-		std::reverse(fugitives.begin(), fugitives.end());
-
-		for (auto particleID : fugitives) positions.erase(positions.begin() + particleID);
-		for (auto particleID : fugitives) densities.erase(densities.begin() + particleID);
-
+		removeFugitives(positions, densities, programInput.lowerCorner, programInput.upperCorner);
+				
 		vector<Vector3R> velocities(positions.size());
-		
 		shared_ptr<FluidSystem> fluidSystem = std::make_shared<FluidSystem>(
 			std::move(positions), 
 			std::move(velocities), 
@@ -148,14 +241,11 @@ int main(int argc, char** argv)
 		mcbNew.updateGrid();
 		mcbNew.updateLevelSet();
 		vector<Vector3R> new_triangle_mesh(mcbNew.getTriangles());
-		
 
+		//generate and save triangular mesh
 		vector<array<int, 3>> triangles;
-
 		for(int i = 0; i < new_triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
-
-		std::string surface_filename = fileDir + sim_name + "_surface_" + std::to_string(t) + ".vtk";
-
+		std::string surface_filename = programInput.simDir + programInput.simName + "_surface_" + std::to_string(t) + ".vtk";
 		learnSPH::saveTriMeshToVTK(surface_filename, new_triangle_mesh, triangles);
 
 		cout << "\nframe [" << t << "] rendered" << endl;

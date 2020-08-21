@@ -25,7 +25,7 @@ set(SOURCE_FILES_test_recon test_recon.cpp)
 
 add_executable(test_recon ${SOURCE_FILES_test_recon})
 add_dependencies(test_recon learnSPH)
-target_link_libraries(test_recon learnSPH stdc++fs)
+target_link_libraries(test_recon learnSPH stdc++fs boost_system boost_program_options)
 
 set(SOURCE_FILES_test_border_cone test_border_cone.cpp)
 
