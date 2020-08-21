@@ -11,6 +11,7 @@
 #include <learnSPH/core/vtk_writer.h>
 #include <types.hpp>
 #include <learnSPH/surf_reconstr/marching_cubes.h>
+#include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <cereal/types/memory.hpp>
 #include <cereal/archives/binary.hpp>
 
@@ -132,22 +133,38 @@ int main(int argc, char** argv)
 		for (auto particleID : fugitives) positions.erase(positions.begin() + particleID);
 		for (auto particleID : fugitives) densities.erase(densities.begin() + particleID);
 
+		vector<Vector3R> velocities(positions.size());
 		auto fluid = new Fluid(params, positions, densities, initValue, lowerCorner, upperCorner, cubeResol);
+		const auto& levelSetOld = fluid->levelSet();
 		MarchingCubes mcb(lowerCorner, upperCorner, cubeResol);
 		mcb.setObject(fluid);
-
 		vector<Vector3R> triangle_mesh;
-
 		mcb.getTriangleMesh(triangle_mesh);
+		
+		shared_ptr<FluidSystem> fluidSystem = std::make_shared<FluidSystem>(
+			std::move(positions), 
+			std::move(velocities), 
+			std::move(densities), 
+			params[3] /*restDensity*/, 
+			params[2] /*particleMass*/, 
+			params[0] /*compactSupport*/, 
+			1.0		  /*etaValue*/);
+		NaiveMarchingCubes mcbNew(fluidSystem, lowerCorner, upperCorner, cubeResol, initValue);
+		const auto& levelSetNew = mcbNew.levelSet();
+		mcbNew.updateGrid();
+		mcbNew.updateLevelSet();
+		vector<Vector3R> new_triangle_mesh(mcbNew.getTriangles());
+		
+//		assert(new_triangle_mesh == triangle_mesh);
 		delete fluid;
 
 		vector<array<int, 3>> triangles;
 
-		for(int i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
+		for(int i = 0; i < new_triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
 
 		std::string surface_filename = fileDir + sim_name + "_surface_" + std::to_string(t) + ".vtk";
 
-		learnSPH::saveTriMeshToVTK(surface_filename, triangle_mesh, triangles);
+		learnSPH::saveTriMeshToVTK(surface_filename, new_triangle_mesh, triangles);
 
 		cout << "\nframe [" << t << "] rendered" << endl;
 	}

@@ -61,7 +61,10 @@ void learnSPH::saveTriMeshToVTK(std::string path, const std::vector<Eigen::Vecto
 	}
 }
 
-void learnSPH::saveParticlesToVTK(std::string path, const std::vector<Eigen::Vector3d>& particles, const std::vector<double>& particle_scalar_data, const std::vector<Eigen::Vector3d>& particle_vector_data)
+void learnSPH::saveParticlesToVTK(std::string path, 
+								  const std::vector<Eigen::Vector3d>& particles, 
+								  const std::vector<double>& particle_scalar_data, 
+								  const std::vector<Eigen::Vector3d>& particle_vector_data)
 {
 	// Input checking
 	if ((path.size() < 5) || (path.substr(path.size() - 4) != ".vtk")) {
@@ -168,4 +171,29 @@ void learnSPH::saveParticlesToVTK(std::string path, const std::vector<Eigen::Vec
 	}
 
 	outfile.close();
+}
+
+
+
+void learnSPH::saveParticlesToVTK(std::string path, 
+						const std::vector<Eigen::Vector3d>& particles, 
+						const std::vector<Eigen::Vector3d>& particle_vector_data)
+{
+	std::vector<double> particle_scalar_data(particles.size(), 0);
+	learnSPH::saveParticlesToVTK(path, particles, particle_scalar_data, particle_vector_data);
+}
+
+void learnSPH::saveParticlesToVTK(std::string path, 
+						const std::vector<Eigen::Vector3d>& particles, 
+						const std::vector<double>& particle_scalar_data)
+{
+	std::vector<Eigen::Vector3d> particle_vector_data(particles.size(), Eigen::Vector3d(0,0,0));
+	learnSPH::saveParticlesToVTK(path, particles, particle_scalar_data, particle_vector_data);
+}
+
+void learnSPH::saveParticlesToVTK(std::string path, 
+						const std::vector<Eigen::Vector3d>& particles)
+{
+	std::vector<double> particle_scalar_data(particles.size(), 0);
+	learnSPH::saveParticlesToVTK(path, particles, particle_scalar_data);
 }

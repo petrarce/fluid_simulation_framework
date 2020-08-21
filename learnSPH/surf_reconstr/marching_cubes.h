@@ -27,6 +27,7 @@ class Object3D
         Vector3R upperCorner;
 
     public:
+		const vector<Real>& levelSet() const { return gridPointImplicitFuncs; };
         bool query(const size_t x, const size_t y, const size_t z) const
         {
             assert(objectDefined);

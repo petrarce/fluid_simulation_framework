@@ -145,8 +145,7 @@ namespace learnSPH
 
 			Real mass;
 			Real diameter;
-			Real smooth_length;
-			Real compact_support;
+			Real mEta {1};
 
 			vector<Real> densities;
 			vector<Vector3R> velocities;
@@ -292,12 +291,12 @@ namespace learnSPH
 
 			Real getSmoothingLength() const
 			{
-				return this->smooth_length;
+				return this->mEta * this->diameter / 2;
 			}
 
 			Real getCompactSupport() const
 			{
-				return this->compact_support;
+				return this->mEta * this->diameter;
 			}
 
 			const vector<Real>& getDensities() const
@@ -405,25 +404,47 @@ namespace learnSPH
 				this->densities.insert(this->densities.end(), pos.size(), 0);
 				this->neighbors.resize(this->neighbors.size() + pos.size());
 			}
-			FluidSystem(vector<Vector3R> &positions, vector<Vector3R> &velocities, vector<Real> &densities, Real restDensity, Real fluidVolume, Real eta):
+			FluidSystem(vector<Vector3R> &positions, 
+						vector<Vector3R> &velocities, 
+						vector<Real> &densities, 
+						Real restDensity, 
+						Real fluidVolume, 
+						Real eta):
 				ParticleSystem(positions, restDensity)
 			{
 				this->mass = (this->restDensity * fluidVolume) / this->positions.size();
 				this->diameter = cbrt(this->mass / this->restDensity);
-				this->smooth_length = eta * this->diameter;
-				this->compact_support = 2.0 * this->smooth_length;
 
 				this->densities.assign(densities.begin(), densities.end());
 				this->velocities.assign(velocities.begin(), velocities.end());
 
 				this->neighbors.resize(this->size());
-			};
-			FluidSystem(Real restDensityVal, Real diameterVal, Real etaVal):ParticleSystem(restDensityVal),
+			}
+			FluidSystem(Real restDensityVal, 
+						Real diameterVal,
+						Real etaVal):
+				ParticleSystem(restDensityVal),
 				diameter(diameterVal),
 				mass(pow3(diameterVal) * restDensityVal),
-				smooth_length(diameterVal * etaVal),
-				compact_support(2*diameterVal * etaVal)
+				mEta(etaVal)
 			{
-			};
+			}
+			FluidSystem(vector<Vector3R>&& positions, 
+						vector<Vector3R>&& velocities, 
+						vector<Real>&& densities, 
+						Real restDensity, 
+						Real particleMass,
+						Real compactSuport,
+						Real eta):
+				ParticleSystem(positions, restDensity),
+				mass(particleMass),
+				diameter(compactSuport / eta),
+				mEta(eta)
+			{
+				this->densities.swap(densities);
+				this->velocities.swap(velocities);
+				this->neighbors.resize(this->size());
+			}
+			
 	};
-};
+}

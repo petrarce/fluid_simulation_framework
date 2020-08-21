@@ -26,6 +26,9 @@ set(SOURCE_FILES
 	surf_reconstr/marching_cubes.cpp
 	surf_reconstr/marching_cubes.h
 	surf_reconstr/look_up_tables.hpp
+	surf_reconstr/SurfaceReconstructor.hpp
+	surf_reconstr/NaiveMarchingCubes.hpp
+	surf_reconstr/NaiveMarchingCubes.cpp
 	${CMAKE_SOURCE_DIR}/include/types.hpp
 )
 
