@@ -291,12 +291,12 @@ namespace learnSPH
 
 			Real getSmoothingLength() const
 			{
-				return this->mEta * this->diameter / 2;
+				return this->mEta * this->diameter;
 			}
 
 			Real getCompactSupport() const
 			{
-				return this->mEta * this->diameter;
+				return this->mEta * this->diameter * 2;
 			}
 
 			const vector<Real>& getDensities() const
