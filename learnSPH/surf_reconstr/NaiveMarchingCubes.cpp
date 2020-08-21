@@ -19,12 +19,13 @@ NaiveMarchingCubes::NaiveMarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fl
 		static_cast<size_t>(std::fabs((lCorner(2) - uCorner(2)) / cResolution(2))))
   , mResolution(cResolution)
   , mLevelSetFunction(static_cast<size_t>(mDimentions(0) * mDimentions(1) * mDimentions(2)), initValue)
+  , mInitialValue(initValue)
 {}
 	
 	
 void NaiveMarchingCubes::updateGrid()
 {
-	//do nothing for naive approach - mLevelSetFunction is already allocated at the beginning
+	mLevelSetFunction.assign(this->mLevelSetFunction.size(), mInitialValue);
 }
 void NaiveMarchingCubes::updateLevelSet()
 {

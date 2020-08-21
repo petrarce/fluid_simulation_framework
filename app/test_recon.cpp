@@ -98,7 +98,8 @@ int main(int argc, char** argv)
 	std::vector<std::string> densitiesFiles = filterPaths(fileDir, sim_name + ".*_densities_[0-9]*.cereal");
 	assert(paramFiles.size() == positionFiles.size() && paramFiles.size() == densitiesFiles.size());
 
-	#pragma omp parallel for
+	NaiveMarchingCubes mcbNew(nullptr, lowerCorner, upperCorner, cubeResol, initValue);
+	#pragma omp parallel for firstprivate(mcbNew)
 	for (size_t t = 0; t < paramFiles.size(); t++) {
 
 		vector<Real> params;
@@ -143,7 +144,7 @@ int main(int argc, char** argv)
 			params[2] /*particleMass*/, 
 			params[0] /*compactSupport*/, 
 			1.0		  /*etaValue*/);
-		NaiveMarchingCubes mcbNew(fluidSystem, lowerCorner, upperCorner, cubeResol, initValue);
+		mcbNew.setFluidSystem(fluidSystem);
 		mcbNew.updateGrid();
 		mcbNew.updateLevelSet();
 		vector<Vector3R> new_triangle_mesh(mcbNew.getTriangles());

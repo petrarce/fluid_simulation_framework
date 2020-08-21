@@ -12,11 +12,20 @@ class NaiveMarchingCubes : public SurfaceReconstructor
 	Eigen::Vector3d mUpperCorner;
 	Eigen::Vector3i mDimentions;
 	Eigen::Vector3d mResolution;
+	float mInitialValue {-0.5};
 	std::vector<float> mLevelSetFunction;
 
 public:
 	NaiveMarchingCubes() = delete;
-	NaiveMarchingCubes(const NaiveMarchingCubes&) = delete;
+	NaiveMarchingCubes(const NaiveMarchingCubes& other):
+		mLowerCorner(other.mLowerCorner),
+		mUpperCorner(other.mUpperCorner),
+		mDimentions(other.mDimentions),
+		mResolution(other.mResolution),
+		mInitialValue(other.mInitialValue),
+		mLevelSetFunction(other.mLevelSetFunction)
+	{
+	}
 	NaiveMarchingCubes& operator=(const NaiveMarchingCubes&) = delete;
 	
 	explicit NaiveMarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
@@ -26,10 +35,11 @@ public:
 								float initValue);
 	
 	const std::vector<float>& levelSet() const { return mLevelSetFunction; }
+	void setFluidSystem(std::shared_ptr<learnSPH::FluidSystem> fluid) { mFluid = fluid; }
 	
 	void updateGrid() override;
 	void updateLevelSet() override;
-	vector<Eigen::Vector3d> getTriangles() const override;
+	std::vector<Eigen::Vector3d> getTriangles() const override;
 private:
 	///linear interpolation between two vectors given 2 float values and target value
 	Eigen::Vector3d lerp(const Eigen::Vector3d& a,
