@@ -8,12 +8,12 @@
 #include <experimental/filesystem>
 #include <math.h>
 
-#include <learnSPH/core/vtk_writer.h>
 #include <types.hpp>
-#include <learnSPH/surf_reconstr/marching_cubes.h>
+#include <learnSPH/core/vtk_writer.h>
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <cereal/types/memory.hpp>
 #include <cereal/archives/binary.hpp>
+#include <learnSPH/core/storage.h>
 
 using namespace learnSPH;
 using namespace std;
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
 	assert(paramFiles.size() == positionFiles.size() && paramFiles.size() == densitiesFiles.size());
 
 	#pragma omp parallel for
-	for (unsigned int t = 0; t < paramFiles.size(); t++) {
+	for (size_t t = 0; t < paramFiles.size(); t++) {
 
 		vector<Real> params;
 		vector<Vector3R> positions;
@@ -134,12 +134,6 @@ int main(int argc, char** argv)
 		for (auto particleID : fugitives) densities.erase(densities.begin() + particleID);
 
 		vector<Vector3R> velocities(positions.size());
-		auto fluid = new Fluid(params, positions, densities, initValue, lowerCorner, upperCorner, cubeResol);
-		const auto& levelSetOld = fluid->levelSet();
-		MarchingCubes mcb(lowerCorner, upperCorner, cubeResol);
-		mcb.setObject(fluid);
-		vector<Vector3R> triangle_mesh;
-		mcb.getTriangleMesh(triangle_mesh);
 		
 		shared_ptr<FluidSystem> fluidSystem = std::make_shared<FluidSystem>(
 			std::move(positions), 
@@ -150,13 +144,10 @@ int main(int argc, char** argv)
 			params[0] /*compactSupport*/, 
 			1.0		  /*etaValue*/);
 		NaiveMarchingCubes mcbNew(fluidSystem, lowerCorner, upperCorner, cubeResol, initValue);
-		const auto& levelSetNew = mcbNew.levelSet();
 		mcbNew.updateGrid();
 		mcbNew.updateLevelSet();
 		vector<Vector3R> new_triangle_mesh(mcbNew.getTriangles());
 		
-//		assert(new_triangle_mesh == triangle_mesh);
-		delete fluid;
 
 		vector<array<int, 3>> triangles;
 

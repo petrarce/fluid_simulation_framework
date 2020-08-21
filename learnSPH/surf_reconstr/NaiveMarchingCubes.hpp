@@ -2,6 +2,7 @@
 #include <memory>
 #include <Eigen/Dense>
 #include "SurfaceReconstructor.hpp"
+#include <learnSPH/core/storage.h>
 
 
 class NaiveMarchingCubes : public SurfaceReconstructor
