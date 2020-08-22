@@ -237,14 +237,11 @@ int main(int argc, char** argv)
 			params[2] /*particleMass*/, 
 			params[0] /*compactSupport*/, 
 			1.0		  /*etaValue*/);
-		mcbNew.setFluidSystem(fluidSystem);
-		mcbNew.updateGrid();
-		mcbNew.updateLevelSet();
-		vector<Vector3R> new_triangle_mesh(mcbNew.getTriangles());
+        vector<Vector3R> new_triangle_mesh((mcbNew.generateMesh(fluidSystem)));
 
 		//generate and save triangular mesh
 		vector<array<int, 3>> triangles;
-		for(int i = 0; i < new_triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
+        for(int i = 0; i < new_triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
 		std::string surface_filename = programInput.simDir + programInput.simName + "_surface_" + std::to_string(t) + ".vtk";
 		learnSPH::saveTriMeshToVTK(surface_filename, new_triangle_mesh, triangles);
 

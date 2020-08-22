@@ -2,11 +2,10 @@
 #include <Eigen/Dense>
 #include <learnSPH/core/storage.h>
 #include <learnSPH/core/kernel.h>
-#include "marching_cubes.h"
 #include "look_up_tables.hpp"
 #include "NaiveMarchingCubes.hpp"
-
-NaiveMarchingCubes::NaiveMarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
+using namespace learnSPH;
+MarchingCubes::MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 								const Eigen::Vector3d lCorner,
 								const Eigen::Vector3d uCorner,
 								const Eigen::Vector3d cResolution,
@@ -18,9 +17,17 @@ NaiveMarchingCubes::NaiveMarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fl
 		static_cast<size_t>(std::fabs((lCorner(1) - uCorner(1)) / cResolution(1))),
 		static_cast<size_t>(std::fabs((lCorner(2) - uCorner(2)) / cResolution(2))))
   , mResolution(cResolution)
-  , mLevelSetFunction(static_cast<size_t>(mDimentions(0) * mDimentions(1) * mDimentions(2)), initValue)
   , mInitialValue(initValue)
 {}
+
+std::vector<Eigen::Vector3d> NaiveMarchingCubes::generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid)
+{
+    setFluidSystem(fluid);
+    updateGrid();
+    updateLevelSet();
+    auto mesh = std::move(getTriangles());
+    return mesh;
+}
 	
 	
 void NaiveMarchingCubes::updateGrid()
@@ -55,7 +62,7 @@ void NaiveMarchingCubes::updateLevelSet()
 	}
 }
 	
-vector<Eigen::Vector3d> NaiveMarchingCubes::getTriangles() const
+vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 {
 
 	vector<Eigen::Vector3d> triangleMesh;
@@ -70,12 +77,10 @@ vector<Eigen::Vector3d> NaiveMarchingCubes::getTriangles() const
 				std::array<bool, 8> ptsConfig;
 
 				for(int l = 0; l < 8; l++) 
-					ptsConfig[l] = mLevelSetFunction[
-						cellIndex(
-							Eigen::Vector3i(
+                    ptsConfig[l] = getSDFvalue(
 								i + CELL_VERTICES[l][0], 
 								j + CELL_VERTICES[l][1], 
-								k + CELL_VERTICES[l][2]))] < 0;
+                                k + CELL_VERTICES[l][2]) < 0;
 
 				std::array<std::array<int, 3>, 5> triangle_type = getMarchingCubesCellTriangulation(ptsConfig);
 
@@ -92,8 +97,8 @@ vector<Eigen::Vector3d> NaiveMarchingCubes::getTriangles() const
 						int c2Yind = (j + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][1]);
 						int c2Zind = (k + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][2]);
 						
-						float v1 = mLevelSetFunction[cellIndex(Eigen::Vector3i(c1Xind, c1Yind, c1Zind))];
-						float v2 = mLevelSetFunction[cellIndex(Eigen::Vector3i(c2Xind, c2Yind, c2Zind))];
+                        float v1 = getSDFvalue(c1Xind, c1Yind, c1Zind);
+                        float v2 = getSDFvalue(c2Xind, c2Yind, c2Zind);
 						float factor = v1 / (v1 - v2);
 						Eigen::Vector3d p1 = cellCoord(Eigen::Vector3i(c1Xind, c1Yind, c1Zind));
 						Eigen::Vector3d p2 = cellCoord(Eigen::Vector3i(c2Xind, c2Yind, c2Zind));
@@ -107,13 +112,13 @@ vector<Eigen::Vector3d> NaiveMarchingCubes::getTriangles() const
 	return triangleMesh;
 }
 
-Eigen::Vector3d NaiveMarchingCubes::lerp(const Eigen::Vector3d& a,const Eigen::Vector3d& b, float av, float bv, float tv) const
+Eigen::Vector3d MarchingCubes::lerp(const Eigen::Vector3d& a,const Eigen::Vector3d& b, float av, float bv, float tv) const
 {
 	float factor = (tv - av)/(bv - av);
 	return a * (1 - factor) + factor * b;
 }
 
-Eigen::Vector3i NaiveMarchingCubes::cell(const Eigen::Vector3d& vec) const
+Eigen::Vector3i MarchingCubes::cell(const Eigen::Vector3d& vec) const
 {
 	float xf = (vec(0) - mLowerCorner(0)) / (mUpperCorner(0) - mLowerCorner(0));
 	float yf = (vec(1) - mLowerCorner(1)) / (mUpperCorner(1) - mLowerCorner(1));
@@ -123,7 +128,7 @@ Eigen::Vector3i NaiveMarchingCubes::cell(const Eigen::Vector3d& vec) const
 						   std::floor(mDimentions(2) * zf));
 
 }
-Eigen::Vector3d NaiveMarchingCubes::cellCoord(const Eigen::Vector3i& vec) const
+Eigen::Vector3d MarchingCubes::cellCoord(const Eigen::Vector3i& vec) const
 {
 	float xf = static_cast<double>(vec(0)) / mDimentions(0);
 	float yf = static_cast<double>(vec(1)) / mDimentions(1);
@@ -135,7 +140,7 @@ Eigen::Vector3d NaiveMarchingCubes::cellCoord(const Eigen::Vector3i& vec) const
 	return Eigen::Vector3d(x, y, z);
 	
 }
-int NaiveMarchingCubes::cellIndex(const Eigen::Vector3i& ind) const 
+int MarchingCubes::cellIndex(const Eigen::Vector3i& ind) const
 {
 	return ind(0) * mDimentions(1) * mDimentions(2) + 
 			ind(1) * mDimentions(2) + 
@@ -144,7 +149,7 @@ int NaiveMarchingCubes::cellIndex(const Eigen::Vector3i& ind) const
 
 
 //return indecis of neighbouring vertices
-std::vector<Eigen::Vector3i> NaiveMarchingCubes::getNeighbourCells(const Eigen::Vector3d& position, float radius) const
+std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vector3d& position, float radius) const
 {
 	int xDirPositions = static_cast<size_t>(radius / mResolution(0)) + 1;
 	int yDirPositions = static_cast<size_t>(radius / mResolution(1)) + 1;
