@@ -20,7 +20,7 @@ MarchingCubes::MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
   , mInitialValue(initValue)
 {}
 
-std::vector<Eigen::Vector3d> NaiveMarchingCubes::generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid)
+std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid)
 {
     setFluidSystem(fluid);
     updateGrid();
@@ -61,6 +61,15 @@ void NaiveMarchingCubes::updateLevelSet()
 		}
 	}
 }
+
+Eigen::Vector3i MarchingCubes::cell(size_t index) const
+{
+	int i = index % mDimentions(2);
+	int j = (index / mDimentions(2)) % mDimentions(1);
+	int k = ((index / mDimentions(2)) / mDimentions(1));
+	return Vector3i(i, j, k);
+}
+
 	
 vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 {
@@ -177,7 +186,6 @@ std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vecto
 					continue;
 				
 
-				assert(cellIndex(neighbourCell) < mLevelSetFunction.size() && cellIndex(neighbourCell) >= 0);
 				Eigen::Vector3d neighbour = cellCoord(neighbourCell);
 				
 				if((position - neighbour).squaredNorm() < radius * radius)

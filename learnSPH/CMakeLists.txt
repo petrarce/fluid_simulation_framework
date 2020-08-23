@@ -29,6 +29,9 @@ set(SOURCE_FILES
 	surf_reconstr/SurfaceReconstructor.hpp
 	surf_reconstr/NaiveMarchingCubes.hpp
 	surf_reconstr/NaiveMarchingCubes.cpp
+        surf_reconstr/ZhuBridsonReconstruction.hpp
+        surf_reconstr/ZhuBridsonReconstruction.cpp
+
 	${CMAKE_SOURCE_DIR}/include/types.hpp
 )
 

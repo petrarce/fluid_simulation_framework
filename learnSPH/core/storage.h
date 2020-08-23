@@ -173,7 +173,7 @@ namespace learnSPH
 				Vector3R tg2 = tg1.cross(norm).normalized();
 				tg1 = tg2.cross(norm).normalized();
 				Vector3R initPos =  epos - 0.5 * (tg1 + tg2) * sqrt(partCnt) * samplingDistance;
-				for(int i = 0; i < partCnt; i++){
+				for(size_t i = 0; i < partCnt; i++){
 					unsigned int j = i / sqrt(partCnt);
 					unsigned int k = i % int(sqrt(partCnt));
 					emitedParticlePositions[i] = initPos + (tg1 * j + tg2 * k) * samplingDistance;
@@ -215,7 +215,7 @@ namespace learnSPH
 			//	removes particles from the array
 			
 
-			void emit( const EmiterId emiterId,
+			void emitParticles( const EmiterId emiterId,
 						const Vector3R& extForces,
 						const Real wallockTime, 
 						NeighborhoodSearch& ns,
@@ -251,7 +251,7 @@ namespace learnSPH
 					ns.resize_point_set(0, (Real*)this->positions.data(), this->positions.size());
 				}
 				#pragma omp parallel for schedule(static)
-				for (int i = 0; i < em.chunkSize; ++i)
+				for (size_t i = 0; i < em.chunkSize; ++i)
 				{
 					this->positions[em.chunkOffsets.back() + i] = emitedParticlePositions[i];
 					this->velocities[em.chunkOffsets.back() + i] = velocity;
@@ -260,12 +260,11 @@ namespace learnSPH
 				}
 			};
 
-			void emit(const EmiterId emiterId,
+			void emitParticles(const EmiterId emiterId,
 						const Vector3R& extForces,
 						const Real wallockTime, 
 						NeighborhoodSearch& ns){
-				Emiter& em = emiters[emiterId];
-				emit(emiterId, extForces, wallockTime, ns, emiters[emiterId].emitVelocity);
+				emitParticles(emiterId, extForces, wallockTime, ns, emiters[emiterId].emitVelocity);
 			}
 
 			void setPositions(vector<Vector3R> &newPositions)
@@ -343,7 +342,7 @@ namespace learnSPH
 				ns.update_point_sets();
 
 				#pragma omp parallel for schedule(static)
-				for(int i = 0; i < this->size(); i++) {
+				for(size_t i = 0; i < this->size(); i++) {
 					ns.find_neighbors(0, i, neighbors[i]);
 				}
 			};
@@ -378,7 +377,7 @@ namespace learnSPH
 					return;
 				}
 				#pragma omp parallel for schedule(static)
-				for (int i = 0; i < this->size(); i++){
+				for (size_t i = 0; i < this->size(); i++){
 					if (velocities[i].norm() >= capVelo) {
 						velocities[i] = velocities[i].normalized() * capVelo;
 					}
@@ -390,7 +389,7 @@ namespace learnSPH
 				Real vMaxNorm = 0.0;
 
 				#pragma omp parallel for reduction(max:vMaxNorm)
-				for (int i = 0; i < this->size(); i++){
+				for (size_t i = 0; i < this->size(); i++){
 					vMaxNorm = max(velocities[i].norm(), vMaxNorm);
 				}
 
@@ -410,7 +409,8 @@ namespace learnSPH
 						Real restDensity, 
 						Real fluidVolume, 
 						Real eta):
-				ParticleSystem(positions, restDensity)
+				ParticleSystem(positions, restDensity),
+				mEta(eta)
 			{
 				this->mass = (this->restDensity * fluidVolume) / this->positions.size();
 				this->diameter = cbrt(this->mass / this->restDensity);
@@ -424,8 +424,8 @@ namespace learnSPH
 						Real diameterVal,
 						Real etaVal):
 				ParticleSystem(restDensityVal),
-				diameter(diameterVal),
 				mass(pow3(diameterVal) * restDensityVal),
+				diameter(diameterVal),
 				mEta(etaVal)
 			{
 			}

@@ -12,6 +12,7 @@
 //learnSPH
 #include <learnSPH/core/vtk_writer.h>
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
+#include <learnSPH/surf_reconstr/ZhuBridsonReconstruction.hpp>
 #include <learnSPH/core/storage.h>
 
 //cereal
@@ -112,6 +113,12 @@ static void removeFugitives(vector<Vector3R>& positions,
 
 }
 
+enum ReconstructionMethods
+{
+	NMC = 1,
+	ZB,
+};
+
 struct 
 {
 	Vector3R lowerCorner; //upper Domain corner
@@ -120,6 +127,7 @@ struct
 	string simName;
 	string simDir;
 	Real initValue;
+	ReconstructionMethods method;
 	
 	void parse(const variables_map& vm)
 	{
@@ -152,6 +160,19 @@ struct
 			simDir = vm["sim-directory"].as<string>();
 		else
 			throw invalid_argument("required option: --sim-directory");
+		
+		if(vm.count("method"))
+		{
+			string lmethod = vm["method"].as<string>();
+			if(lmethod == "NaiveMC")
+				method = ReconstructionMethods::NMC;
+			else if(lmethod == "ZhuBridson")
+				method = ReconstructionMethods::ZB;
+			else
+				throw invalid_argument("unknown reconstruction method specified in  --method: " + method);
+		} else
+			throw invalid_argument("required option: --method");
+
 
 	}
 private:
@@ -189,7 +210,8 @@ int main(int argc, char** argv)
 			("init-val", value<Real>()->default_value(-0.5), "set initial value, that will be applied to discretisation grid ")
 			("sim-name", value<string>(), "simulation name")
 			("sim-directory", value<string>()->default_value("./"), "path to the simulation vtk files")
-			("grid-resolution", value<Real>(), "uniform grid resolution for matching cubes");
+			("grid-resolution", value<Real>(), "uniform grid resolution for matching cubes")
+			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson");
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
 	if(vm.count("help"))
@@ -206,15 +228,32 @@ int main(int argc, char** argv)
 	std::vector<std::string> densitiesFiles = filterPaths(programInput.simDir, programInput.simName + ".*_densities_[0-9]*.cereal");
 	assert(paramFiles.size() == positionFiles.size() && paramFiles.size() == densitiesFiles.size());
 
-	NaiveMarchingCubes mcbNew(nullptr, 
-							  programInput.lowerCorner, 
-							  programInput.upperCorner, 
-							  Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
-							  programInput.initValue);
+    std::unique_ptr<MarchingCubes> mcbNew;
 	
-	#pragma omp parallel for firstprivate(mcbNew)
+	#pragma omp parallel for private(mcbNew)
 	for (size_t t = 0; t < paramFiles.size(); t++) {
-
+		if(!mcbNew)
+		{
+			switch(programInput.method)
+			{
+			case ReconstructionMethods::NMC :
+				mcbNew = std::make_unique<NaiveMarchingCubes>(nullptr,
+						  programInput.lowerCorner, 
+						  programInput.upperCorner, 
+						  Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
+						  programInput.initValue);
+				break;
+			case ReconstructionMethods::ZB:
+				mcbNew = std::make_unique<ZhuBridsonReconstruction>(nullptr,
+												   programInput.lowerCorner, 
+												   programInput.upperCorner, 
+												   Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
+												   programInput.initValue);
+				break;
+			default:
+				assert(0);
+			}
+		}
 		vector<Real> params;
 		vector<Vector3R> positions;
 		vector<Real> densities;
@@ -237,7 +276,7 @@ int main(int argc, char** argv)
 			params[2] /*particleMass*/, 
 			params[0] /*compactSupport*/, 
 			1.0		  /*etaValue*/);
-        vector<Vector3R> new_triangle_mesh((mcbNew.generateMesh(fluidSystem)));
+        vector<Vector3R> new_triangle_mesh((mcbNew->generateMesh(fluidSystem)));
 
 		//generate and save triangular mesh
 		vector<array<int, 3>> triangles;

@@ -32,6 +32,7 @@ public:
 								const Eigen::Vector3d uCorner,
 								const Eigen::Vector3d cResolution,
 								float initValue);
+    std::vector<Eigen::Vector3d> generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid) override;
 	
 protected:
     void setFluidSystem(std::shared_ptr<learnSPH::FluidSystem> fluid) { mFluid = fluid; }
@@ -47,6 +48,7 @@ protected:
 	
 	///get nearest cell indeces given coordinate in space
 	Eigen::Vector3i cell(const Eigen::Vector3d& vec) const;
+	Eigen::Vector3i cell(size_t index) const;
 	
 	///Calculate cell vertice coordinate given cell indecis
 	Eigen::Vector3d cellCoord(const Eigen::Vector3i& vec) const;
@@ -74,7 +76,6 @@ public:
         MarchingCubes(other),
         mLevelSetFunction(other.mLevelSetFunction)
     {}
-    std::vector<Eigen::Vector3d> generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid) override;
 
 private:
     void updateGrid() override;
