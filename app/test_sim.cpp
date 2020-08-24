@@ -426,7 +426,8 @@ int main(int ac, char** av)
 		("pbf-velocity-multiplier", value<Real>()->default_value(1.0f), "specify velocity multiplier, which will be applied to particle after correction step in PBFSPH\n")
 		("adhesion", value<Real>()->default_value(1.0f), "specify cohesion coefficient\n")
 		("cohesion", value<Real>()->default_value(1.0f), "specify adhesion coefficient\n")
-		("gravity", value<Real>()->default_value(-9.7), "environment gravity\n");
+		("gravity", value<Real>()->default_value(-9.7), "environment gravity\n")
+		("config", value<string>(), "path to configuration file");
 
 	//parse and assign command line options
 	variables_map vm;
@@ -434,6 +435,15 @@ int main(int ac, char** av)
 	if(vm.count("help")){
 		cout << po_def << endl;
 		return 0;
+	}
+	if(vm.count("config"))
+	{
+		string filePath = vm["config"].as<string>();
+		ifstream configFile{vm["config"].as<string>().c_str()};
+		if(configFile)
+			store(parse_config_file(configFile, po_def), vm);
+		else
+			throw invalid_argument("falied to read config file");
 	}
 	validate_cmd_options(vm);
 	assign_cmd_options(vm);
