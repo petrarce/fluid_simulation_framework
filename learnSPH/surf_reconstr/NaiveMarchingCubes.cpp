@@ -10,29 +10,46 @@ MarchingCubes::MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 								const Eigen::Vector3d uCorner,
 								const Eigen::Vector3d cResolution,
 								float initValue):
-	mFluid(fluid)
-  , mLowerCorner(lCorner)
-  , mUpperCorner(uCorner)
-  , mDimentions(static_cast<size_t>(std::fabs((lCorner(0) - uCorner(0)) / cResolution(0))),
+	  mFluid(fluid)
+	, mLowerCorner(lCorner)
+	, mUpperCorner(uCorner)
+	, mDimentions(static_cast<size_t>(std::fabs((lCorner(0) - uCorner(0)) / cResolution(0))),
 		static_cast<size_t>(std::fabs((lCorner(1) - uCorner(1)) / cResolution(1))),
 		static_cast<size_t>(std::fabs((lCorner(2) - uCorner(2)) / cResolution(2))))
-  , mResolution(cResolution)
-  , mInitialValue(initValue)
+	, mResolution(cResolution)
+	, mInitialValue(initValue)
 {}
 
 std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid)
 {
-    setFluidSystem(fluid);
-    updateGrid();
-    updateLevelSet();
-    auto mesh = std::move(getTriangles());
-    return mesh;
+	setFluidSystem(fluid);
+	mSurfaceParticlesCount = 0;
+	updateSurfaceParticles();
+	
+	updateGrid();
+	updateLevelSet();
+	auto mesh = std::move(getTriangles());
+	return mesh;
 }
 	
 	
 void NaiveMarchingCubes::updateGrid()
 {
 	mLevelSetFunction.assign(this->mLevelSetFunction.size(), mInitialValue);
+	mSurfaceCells.clear();
+	const auto& particles = mFluid->getPositions();
+	int positions = 2;
+	for(int i = 0; i < mSurfaceParticlesCount; i++)
+	{
+		for(int l = -positions; l <= positions + 1; l++)
+			for(int j = -positions; j <= positions + 1; j++)
+				for(int k = -positions; k <= positions + 1; k++)
+				{
+					auto cellInd = cellIndex(cell(particles[i]) + Vector3i(l,j,k));
+					mSurfaceCells[cellInd] = cellInd;
+				}
+							
+	}
 }
 void NaiveMarchingCubes::updateLevelSet()
 {
@@ -64,9 +81,9 @@ void NaiveMarchingCubes::updateLevelSet()
 
 Eigen::Vector3i MarchingCubes::cell(size_t index) const
 {
-	int i = index % mDimentions(2);
+	int k = index % mDimentions(2);
 	int j = (index / mDimentions(2)) % mDimentions(1);
-	int k = ((index / mDimentions(2)) / mDimentions(1));
+	int i = ((index / mDimentions(2)) / mDimentions(1));
 	return Vector3i(i, j, k);
 }
 
@@ -77,44 +94,43 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 	vector<Eigen::Vector3d> triangleMesh;
 	triangleMesh.reserve(mDimentions(0) * mDimentions(1) * mDimentions(2) * 12);
 
-	for(size_t i = 0; i < mDimentions(0) - 1; i++) {
 
-		for(size_t j = 0; j < mDimentions(1) - 1; j++) {
+	for(const auto& cellVert : mSurfaceCells)
+	{
+		Vector3i cellInd = cell(cellVert.second);
+		size_t i = cellInd(0);
+		size_t j = cellInd(1);
+		size_t k = cellInd(2);
+		
+		std::array<bool, 8> ptsConfig;
 
-			for(size_t k = 0; k < mDimentions(2) - 1; k++) {
+		for(int l = 0; l < 8; l++) 
+			ptsConfig[l] = getSDFvalue(
+						i + CELL_VERTICES[l][0], 
+						j + CELL_VERTICES[l][1], 
+						k + CELL_VERTICES[l][2]) < 0;
 
-				std::array<bool, 8> ptsConfig;
+		std::array<std::array<int, 3>, 5> triangle_type = getMarchingCubesCellTriangulation(ptsConfig);
 
-				for(int l = 0; l < 8; l++) 
-                    ptsConfig[l] = getSDFvalue(
-								i + CELL_VERTICES[l][0], 
-								j + CELL_VERTICES[l][1], 
-                                k + CELL_VERTICES[l][2]) < 0;
+		for(size_t l = 0; l < 5; l++) {
+			
+			for(size_t m = 0; m < 3; m++) {
+				if(triangle_type[l][m] == -1) break;
+				
+				int c1Xind = (i + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][0]);
+				int c1Yind = (j + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][1]);
+				int c1Zind = (k + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][2]);
 
-				std::array<std::array<int, 3>, 5> triangle_type = getMarchingCubesCellTriangulation(ptsConfig);
-
-				for(size_t l = 0; l < 5; l++) {
-					
-					for(size_t m = 0; m < 3; m++) {
-						if(triangle_type[l][m] == -1) break;
-						
-						int c1Xind = (i + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][0]);
-						int c1Yind = (j + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][1]);
-						int c1Zind = (k + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][0]][2]);
-
-						int c2Xind = (i + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][0]);
-						int c2Yind = (j + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][1]);
-						int c2Zind = (k + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][2]);
-						
-                        float v1 = getSDFvalue(c1Xind, c1Yind, c1Zind);
-                        float v2 = getSDFvalue(c2Xind, c2Yind, c2Zind);
-						float factor = v1 / (v1 - v2);
-						Eigen::Vector3d p1 = cellCoord(Eigen::Vector3i(c1Xind, c1Yind, c1Zind));
-						Eigen::Vector3d p2 = cellCoord(Eigen::Vector3i(c2Xind, c2Yind, c2Zind));
-
-						triangleMesh.push_back(lerp(p1, p2, v1, v2, 0));
-					}
-				}
+				int c2Xind = (i + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][0]);
+				int c2Yind = (j + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][1]);
+				int c2Zind = (k + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][2]);
+				
+				float v1 = getSDFvalue(c1Xind, c1Yind, c1Zind);
+				float v2 = getSDFvalue(c2Xind, c2Yind, c2Zind);
+				float factor = v1 / (v1 - v2);
+				Eigen::Vector3d p1 = cellCoord(Eigen::Vector3i(c1Xind, c1Yind, c1Zind));
+				Eigen::Vector3d p2 = cellCoord(Eigen::Vector3i(c2Xind, c2Yind, c2Zind));
+				triangleMesh.push_back(lerp(p1, p2, v1, v2, 0));
 			}
 		}
 	}
@@ -167,22 +183,15 @@ std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vecto
 	std::vector<Eigen::Vector3i> neighbours;
 	Eigen::Vector3i baseCell = cell(position);
 	Eigen::Vector3i neighbourCell;
-	for(int i = -xDirPositions; i <= xDirPositions; i++)
+	for(int i = -xDirPositions; i <= xDirPositions+1; i++)
 	{
-		neighbourCell(0) = baseCell(0) + i;
-		for(int j = -yDirPositions; j <= yDirPositions; j++)
+		for(int j = -yDirPositions; j <= yDirPositions+1; j++)
 		{
-			neighbourCell(1) = baseCell(1) + j;
-			for(int k = -zDirPositions; k <= zDirPositions; k++)
+			for(int k = -zDirPositions; k <= zDirPositions+1; k++)
 			{
-				neighbourCell(2) = baseCell(2) + k;
+				neighbourCell = baseCell + Vector3i(i, j, k);
 				
-				//ignore neighbours that are out of domain
-				Eigen::Vector3i check = neighbourCell;
-				if(check(0) < 0 || check(1) < 0 || check(2) < 0)
-					continue;
-				check = mDimentions - Eigen::Vector3i(1, 1, 1) - neighbourCell;
-				if(check(0) < 0 || check(1) < 0 || check(2) < 0)
+				if(mSurfaceCells.find(cellIndex(neighbourCell)) == mSurfaceCells.end())
 					continue;
 				
 
@@ -197,5 +206,39 @@ std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vecto
 	return neighbours;
 }
 
-
+void MarchingCubes::updateSurfaceParticles()
+{
+	auto& particles = mFluid->getPositions();
+	auto& densities = mFluid->getDensities();
 	
+	//neighbourhood search
+	//TODO: get neighbourhood data from the simulation files
+	NeighborhoodSearch ns(mFluid->getCompactSupport());
+	ns.add_point_set((Real*)(particles.data()), particles.size(), false);
+	mFluid->findNeighbors(ns);
+	const auto& neighbors = mFluid->getNeighbors();
+	
+	vector<Real> colorField;
+	#pragma omp parallel for schedule(static)
+	for(int i = 0; i < particles.size(); i++)
+	{
+		Real cf = 0;
+		for(size_t j : neighbors[i][0])
+			cf += (learnSPH::kernel::kernelFunction(particles[i], particles[j], mFluid->getSmoothingLength()) / densities[j]);
+		cf *= mFluid->getMass();
+		colorField.push_back(cf);
+	}
+	
+	//relocate all surface particles at the beginning of the array
+	for(int i = 0; i < particles.size(); i++)
+	{
+		if(colorField[i] < mColorFieldSurfaceFactor)
+		{
+			particles[i].swap(particles[mSurfaceParticlesCount]);
+			auto tmp = densities[i];
+			densities[i] = densities[mSurfaceParticlesCount];
+			densities[mSurfaceParticlesCount] = tmp;
+			mSurfaceParticlesCount++;
+		} 
+	}
+}

@@ -230,7 +230,7 @@ int main(int argc, char** argv)
 
     std::unique_ptr<MarchingCubes> mcbNew;
 	
-	#pragma omp parallel for private(mcbNew)
+	#pragma omp parallel for schedule(static, 1) private(mcbNew)
 	for (size_t t = 0; t < paramFiles.size(); t++) {
 		if(!mcbNew)
 		{

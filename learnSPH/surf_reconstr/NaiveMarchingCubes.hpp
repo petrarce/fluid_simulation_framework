@@ -13,7 +13,10 @@ protected:
 	Eigen::Vector3d mUpperCorner;
 	Eigen::Vector3i mDimentions;
 	Eigen::Vector3d mResolution;
+	size_t mSurfaceParticlesCount {0};
+	Real mColorFieldSurfaceFactor {0.8};
 	float mInitialValue {-0.5};
+	std::unordered_map<size_t, size_t> mSurfaceCells;
 
 public:
     MarchingCubes() = delete;
@@ -22,7 +25,8 @@ public:
 		mUpperCorner(other.mUpperCorner),
 		mDimentions(other.mDimentions),
 		mResolution(other.mResolution),
-        mInitialValue(other.mInitialValue)
+        mInitialValue(other.mInitialValue),
+		mColorFieldSurfaceFactor(other.mColorFieldSurfaceFactor)
 	{
 	}
     MarchingCubes& operator=(const MarchingCubes&) = delete;
@@ -33,11 +37,13 @@ public:
 								const Eigen::Vector3d cResolution,
 								float initValue);
     std::vector<Eigen::Vector3d> generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid) override;
+	void setColorFieldFactor(Real factor) { mColorFieldSurfaceFactor = factor; }
 	
 protected:
     void setFluidSystem(std::shared_ptr<learnSPH::FluidSystem> fluid) { mFluid = fluid; }
     virtual void updateGrid() = 0;
     virtual void updateLevelSet() = 0;
+	virtual void updateSurfaceParticles();
     std::vector<Eigen::Vector3d> getTriangles() const;
 	///linear interpolation between two vectors given 2 float values and target value
 	Eigen::Vector3d lerp(const Eigen::Vector3d& a,
@@ -82,6 +88,8 @@ private:
     void updateLevelSet() override;
     float getSDFvalue(int i, int j, int k) const override
     {
+		if(cellIndex(Eigen::Vector3i(i, j, k)) > mLevelSetFunction.size())
+			return mInitialValue;
         return mLevelSetFunction[cellIndex(Eigen::Vector3i(i, j, k))];
     }
 
