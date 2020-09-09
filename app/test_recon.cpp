@@ -38,7 +38,7 @@ static void load_vectors(const std::string &path, std::vector<Vector3R> &data)
 
 	data.reserve(n_elems);
 
-	for (auto i = 0; i < n_elems; i++) {
+	for (size_t i = 0; i < n_elems; i++) {
 
 		Real x;
 		Real y;
@@ -62,7 +62,7 @@ static void load_scalars(const std::string &path, std::vector<Real> &data)
 
 	data.reserve(n_elems);
 
-	for (auto i = 0; i < n_elems; i++) {
+	for (size_t i = 0; i < n_elems; i++) {
 
 		Real x;
 
@@ -128,6 +128,7 @@ struct
 	string simDir;
 	Real initValue;
 	ReconstructionMethods method;
+	Real supportRad;
 	
 	void parse(const variables_map& vm)
 	{
@@ -161,6 +162,11 @@ struct
 		else
 			throw invalid_argument("required option: --sim-directory");
 		
+		if(vm.count("support-radius"))
+			supportRad = vm["support-radius"].as<Real>();
+		else
+			throw invalid_argument("required option: --support-radius");
+		
 		if(vm.count("method"))
 		{
 			string lmethod = vm["method"].as<string>();
@@ -169,7 +175,7 @@ struct
 			else if(lmethod == "ZhuBridson")
 				method = ReconstructionMethods::ZB;
 			else
-				throw invalid_argument("unknown reconstruction method specified in  --method: " + method);
+				throw invalid_argument("unknown reconstruction method specified in  --method: " + lmethod);
 		} else
 			throw invalid_argument("required option: --method");
 
@@ -211,7 +217,8 @@ int main(int argc, char** argv)
 			("sim-name", value<string>(), "simulation name")
 			("sim-directory", value<string>()->default_value("./"), "path to the simulation vtk files")
 			("grid-resolution", value<Real>(), "uniform grid resolution for matching cubes")
-			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson");
+			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson")
+			("support-radius", value<Real>()->default_value(2), "Support radius for position-based scalar fields");
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
 	if(vm.count("help"))
@@ -229,8 +236,8 @@ int main(int argc, char** argv)
 	assert(paramFiles.size() == positionFiles.size() && paramFiles.size() == densitiesFiles.size());
 
     std::unique_ptr<MarchingCubes> mcbNew;
-	
-	#pragma omp parallel for schedule(static, 1) private(mcbNew)
+	string simtype;
+	#pragma omp parallel for schedule(static, 1) private(mcbNew, simtype)
 	for (size_t t = 0; t < paramFiles.size(); t++) {
 		if(!mcbNew)
 		{
@@ -242,13 +249,15 @@ int main(int argc, char** argv)
 						  programInput.upperCorner, 
 						  Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
 						  programInput.initValue);
+				simtype = "NaiveMC";
 				break;
 			case ReconstructionMethods::ZB:
 				mcbNew = std::make_unique<ZhuBridsonReconstruction>(nullptr,
 												   programInput.lowerCorner, 
 												   programInput.upperCorner, 
 												   Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
-												   programInput.initValue);
+												   programInput.supportRad);
+				simtype = "ZhuBridson";
 				break;
 			default:
 				assert(0);
@@ -281,7 +290,7 @@ int main(int argc, char** argv)
 		//generate and save triangular mesh
 		vector<array<int, 3>> triangles;
         for(int i = 0; i < new_triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
-		std::string surface_filename = programInput.simDir + programInput.simName + "_surface_" + std::to_string(t) + ".vtk";
+		std::string surface_filename = programInput.simDir + programInput.simName + "_surface_" + std::to_string(t) + simtype + ".vtk";
 		learnSPH::saveTriMeshToVTK(surface_filename, new_triangle_mesh, triangles);
 
 		cout << "\nframe [" << t << "] rendered" << endl;

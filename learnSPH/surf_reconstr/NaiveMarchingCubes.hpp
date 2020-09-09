@@ -63,8 +63,9 @@ protected:
 	int cellIndex(const Eigen::Vector3i& ind) const;
 	
 	///Calculate cell indeces of neighbour particles
-	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3d& position, float radius) const;
-    virtual float getSDFvalue(int i, int j, int k) const = 0;
+	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3d& position, float radius, bool existing = true) const;
+
+	virtual float getSDFvalue(int i, int j, int k) const = 0;
 };
 
 class NaiveMarchingCubes : public MarchingCubes

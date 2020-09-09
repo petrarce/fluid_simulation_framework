@@ -2,6 +2,7 @@
 #include <Eigen/Dense>
 #include <learnSPH/core/storage.h>
 #include <learnSPH/core/kernel.h>
+#include <learnSPH/core/vtk_writer.h>
 #include "look_up_tables.hpp"
 #include "NaiveMarchingCubes.hpp"
 using namespace learnSPH;
@@ -23,32 +24,41 @@ MarchingCubes::MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid)
 {
 	setFluidSystem(fluid);
-	mSurfaceParticlesCount = 0;
 	updateSurfaceParticles();
 	
 	updateGrid();
 	updateLevelSet();
-	auto mesh = std::move(getTriangles());
+	
+#ifdef DEBUG
+	static int cnt = 0;
+	vector<Real> sdf;
+	vector<Vector3R> vertices;
+	for(const auto& vert : mSurfaceCells)
+	{
+		auto cI = cell(vert.second);
+		auto cC = cellCoord(cI);
+		auto sdfV = getSDFvalue(cI(0), cI(1), cI(2));
+		vertices.push_back(cC);
+		sdf.push_back(sdfV);
+	}
+	saveParticlesToVTK("/tmp/SDF" + to_string(cnt) + ".vtk", vertices, sdf);
+	cnt++;
+#endif
+	auto mesh = getTriangles();
 	return mesh;
 }
 	
 	
 void NaiveMarchingCubes::updateGrid()
 {
-	mLevelSetFunction.assign(this->mLevelSetFunction.size(), mInitialValue);
+	mLevelSetFunction.assign(this->mLevelSetFunction.size(), mInitialValue);	
 	mSurfaceCells.clear();
 	const auto& particles = mFluid->getPositions();
-	int positions = 2;
 	for(int i = 0; i < mSurfaceParticlesCount; i++)
 	{
-		for(int l = -positions; l <= positions + 1; l++)
-			for(int j = -positions; j <= positions + 1; j++)
-				for(int k = -positions; k <= positions + 1; k++)
-				{
-					auto cellInd = cellIndex(cell(particles[i]) + Vector3i(l,j,k));
-					mSurfaceCells[cellInd] = cellInd;
-				}
-							
+		auto nCells = getNeighbourCells(particles[i], mFluid->getCompactSupport()/2, false);
+		for(const auto& nc : nCells)
+			mSurfaceCells[cellIndex(nc)] = cellIndex(nc);
 	}
 }
 void NaiveMarchingCubes::updateLevelSet()
@@ -174,7 +184,7 @@ int MarchingCubes::cellIndex(const Eigen::Vector3i& ind) const
 
 
 //return indecis of neighbouring vertices
-std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vector3d& position, float radius) const
+std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vector3d &position, float radius, bool existing) const
 {
 	int xDirPositions = static_cast<size_t>(radius / mResolution(0)) + 1;
 	int yDirPositions = static_cast<size_t>(radius / mResolution(1)) + 1;
@@ -191,7 +201,7 @@ std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vecto
 			{
 				neighbourCell = baseCell + Vector3i(i, j, k);
 				
-				if(mSurfaceCells.find(cellIndex(neighbourCell)) == mSurfaceCells.end())
+				if(existing && mSurfaceCells.find(cellIndex(neighbourCell)) == mSurfaceCells.end())
 					continue;
 				
 
@@ -206,8 +216,10 @@ std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vecto
 	return neighbours;
 }
 
+
 void MarchingCubes::updateSurfaceParticles()
 {
+	mSurfaceParticlesCount = 0;
 	auto& particles = mFluid->getPositions();
 	auto& densities = mFluid->getDensities();
 	

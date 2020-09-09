@@ -70,8 +70,8 @@ double learnSPH::kernel::kernelAdhesion(const Vector3d& x1, const Vector3d& x2, 
 double learnSPH::kernel::kernelCubic(const Vector3d& x1, const Vector3d& x2, float R)
 {
     assert(R > 0);
-    double s = (x1 - x2).norm() / R;
-    double v = (1 - s*2);
-    return std::max(-1., std::min(1., v * v * v));
+    double s = (x1 - x2).squaredNorm() / (R * R);
+    double v = (1 - s);
+    return std::max(0., v * v * v);
 
 };
