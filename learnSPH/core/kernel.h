@@ -21,5 +21,6 @@ namespace learnSPH
 		double		kernelCohetion(const Vector3d& x1, const Vector3d& x2, const double c);
 		double		kernelAdhesion(const Vector3d& x1, const Vector3d& x2, double c);
 		double		kernelCubic(const Vector3d& x1, const Vector3d& x2, float R);
+		Vector3d	kernelCubicGrad(const Vector3d& x1, const Vector3d& x2, float R);
 	};
 };

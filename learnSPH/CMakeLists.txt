@@ -2,15 +2,15 @@
 ## OpenMP
 find_package(OpenMP)
 if (OPENMP_FOUND)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 
 ## Eigen
 set( EIGEN3_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/extern/Eigen )
 if( NOT EIGEN3_INCLUDE_DIR )
-    message( FATAL_ERROR "Please point the environment variable EIGEN3_INCLUDE_DIR to the include directory of your Eigen3 installation.")
+	message( FATAL_ERROR "Please point the environment variable EIGEN3_INCLUDE_DIR to the include directory of your Eigen3 installation.")
 endif()
 
 set(SOURCE_FILES
@@ -29,8 +29,10 @@ set(SOURCE_FILES
 	surf_reconstr/SurfaceReconstructor.hpp
 	surf_reconstr/NaiveMarchingCubes.hpp
 	surf_reconstr/NaiveMarchingCubes.cpp
-        surf_reconstr/ZhuBridsonReconstruction.hpp
-        surf_reconstr/ZhuBridsonReconstruction.cpp
+	surf_reconstr/ZhuBridsonReconstruction.hpp
+	surf_reconstr/ZhuBridsonReconstruction.cpp
+	surf_reconstr/SolenthilerReconstruction.cpp
+	surf_reconstr/SolenthilerReconstruction.hpp
 
 	${CMAKE_SOURCE_DIR}/include/types.hpp
 )
@@ -39,7 +41,7 @@ set(SOURCE_FILES
 add_library(learnSPH ${SOURCE_FILES})
 target_include_directories(learnSPH PUBLIC ${EIGEN3_INCLUDE_DIR})
 include_directories("${CMAKE_SOURCE_DIR}/learnSPH/"
-					"${CMAKE_SOURCE_DIR}/CompactNSearch/include/")
+	"${CMAKE_SOURCE_DIR}/CompactNSearch/include/")
 add_dependencies(learnSPH CompactNSearch)
 target_link_libraries(learnSPH CompactNSearch)
 

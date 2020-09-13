@@ -13,6 +13,7 @@
 #include <learnSPH/core/vtk_writer.h>
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <learnSPH/surf_reconstr/ZhuBridsonReconstruction.hpp>
+#include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
 #include <learnSPH/core/storage.h>
 
 //cereal
@@ -117,6 +118,7 @@ enum ReconstructionMethods
 {
 	NMC = 1,
 	ZB,
+	SLH,
 };
 
 struct 
@@ -129,6 +131,8 @@ struct
 	Real initValue;
 	ReconstructionMethods method;
 	Real supportRad;
+	Real tMin;
+	Real tMax;
 	
 	void parse(const variables_map& vm)
 	{
@@ -166,6 +170,15 @@ struct
 			supportRad = vm["support-radius"].as<Real>();
 		else
 			throw invalid_argument("required option: --support-radius");
+		if(vm.count("tmin"))
+			tMin = vm["tmin"].as<Real>();
+		else
+			throw invalid_argument("required option: --tmin");
+		
+		if(vm.count("tmax"))
+			tMax = vm["tmax"].as<Real>();
+		else
+			throw invalid_argument("required option: --tmax");
 		
 		if(vm.count("method"))
 		{
@@ -174,6 +187,8 @@ struct
 				method = ReconstructionMethods::NMC;
 			else if(lmethod == "ZhuBridson")
 				method = ReconstructionMethods::ZB;
+			else if(lmethod == "Solenthiler")
+				method = ReconstructionMethods::SLH;
 			else
 				throw invalid_argument("unknown reconstruction method specified in  --method: " + lmethod);
 		} else
@@ -217,8 +232,10 @@ int main(int argc, char** argv)
 			("sim-name", value<string>(), "simulation name")
 			("sim-directory", value<string>()->default_value("./"), "path to the simulation vtk files")
 			("grid-resolution", value<Real>(), "uniform grid resolution for matching cubes")
-			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson")
-			("support-radius", value<Real>()->default_value(2), "Support radius for position-based scalar fields");
+			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson, Solenthiler")
+			("support-radius", value<Real>()->default_value(2), "Support radius for position-based scalar fields")
+			("tmin", value<Real>()->default_value(1), "lower bound for Solentiler evalue treshold")
+			("tmax", value<Real>()->default_value(2), "upper bound for Solentiler evalue treshold");
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
 	if(vm.count("help"))
@@ -245,19 +262,29 @@ int main(int argc, char** argv)
 			{
 			case ReconstructionMethods::NMC :
 				mcbNew = std::make_unique<NaiveMarchingCubes>(nullptr,
-						  programInput.lowerCorner, 
-						  programInput.upperCorner, 
-						  Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
-						  programInput.initValue);
+					programInput.lowerCorner, 
+					programInput.upperCorner, 
+					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
+					programInput.initValue);
 				simtype = "NaiveMC";
 				break;
 			case ReconstructionMethods::ZB:
 				mcbNew = std::make_unique<ZhuBridsonReconstruction>(nullptr,
-												   programInput.lowerCorner, 
-												   programInput.upperCorner, 
-												   Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
-												   programInput.supportRad);
+					programInput.lowerCorner, 
+					programInput.upperCorner, 
+					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
+					programInput.supportRad);
 				simtype = "ZhuBridson";
+				break;
+			case ReconstructionMethods::SLH:
+				mcbNew = std::make_unique<SolenthilerReconstruction>(nullptr,
+					programInput.lowerCorner, 
+					programInput.upperCorner, 
+					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
+					programInput.supportRad,
+					programInput.tMin,
+					programInput.tMax);
+				simtype = "Solenthiler";
 				break;
 			default:
 				assert(0);

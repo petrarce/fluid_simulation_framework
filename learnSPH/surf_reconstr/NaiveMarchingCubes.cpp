@@ -219,6 +219,7 @@ std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vecto
 
 void MarchingCubes::updateSurfaceParticles()
 {
+#if 0
 	mSurfaceParticlesCount = 0;
 	auto& particles = mFluid->getPositions();
 	auto& densities = mFluid->getDensities();
@@ -253,4 +254,7 @@ void MarchingCubes::updateSurfaceParticles()
 			mSurfaceParticlesCount++;
 		} 
 	}
+#else
+	mSurfaceParticlesCount = mFluid->size();
+#endif
 }

@@ -71,7 +71,20 @@ double learnSPH::kernel::kernelCubic(const Vector3d& x1, const Vector3d& x2, flo
 {
     assert(R > 0);
     double s = (x1 - x2).squaredNorm() / (R * R);
+	if(s > 1)
+		return 0.;
     double v = (1 - s);
     return std::max(0., v * v * v);
 
 };
+
+Vector3d learnSPH::kernel::kernelCubicGrad(const Vector3d& x1, const Vector3d& x2, float R)
+{
+	assert(R > 0);
+	Vector3d v = x1 - x2;
+	double vc = v.transpose() * v;
+	double R2 = R * R;
+	if(vc > R2)
+		return Vector3d(0,0,0);
+	return -6 * (1 - vc / R2) * (1 - vc / R2) *	v / (R2 * R2);
+}

@@ -19,23 +19,24 @@ protected:
 	std::unordered_map<size_t, size_t> mSurfaceCells;
 
 public:
-    MarchingCubes() = delete;
-    MarchingCubes(const MarchingCubes& other):
+	MarchingCubes() = delete;
+	explicit MarchingCubes(const MarchingCubes& other):
 		mLowerCorner(other.mLowerCorner),
 		mUpperCorner(other.mUpperCorner),
 		mDimentions(other.mDimentions),
 		mResolution(other.mResolution),
-        mInitialValue(other.mInitialValue),
-		mColorFieldSurfaceFactor(other.mColorFieldSurfaceFactor)
+		mColorFieldSurfaceFactor(other.mColorFieldSurfaceFactor),
+		mInitialValue(other.mInitialValue)
+		
 	{
 	}
     MarchingCubes& operator=(const MarchingCubes&) = delete;
 	
     explicit MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
-								const Eigen::Vector3d lCorner,
-								const Eigen::Vector3d uCorner,
-								const Eigen::Vector3d cResolution,
-								float initValue);
+		const Eigen::Vector3d lCorner,
+		const Eigen::Vector3d uCorner,
+		const Eigen::Vector3d cResolution,
+		float initValue);
     std::vector<Eigen::Vector3d> generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid) override;
 	void setColorFieldFactor(Real factor) { mColorFieldSurfaceFactor = factor; }
 	
@@ -47,10 +48,10 @@ protected:
     std::vector<Eigen::Vector3d> getTriangles() const;
 	///linear interpolation between two vectors given 2 float values and target value
 	Eigen::Vector3d lerp(const Eigen::Vector3d& a,
-						 const Eigen::Vector3d& b, 
-						 float av, 
-						 float bv, 
-						 float tv) const;
+		const Eigen::Vector3d& b, 
+		float av, 
+		float bv, 
+		float tv) const;
 	
 	///get nearest cell indeces given coordinate in space
 	Eigen::Vector3i cell(const Eigen::Vector3d& vec) const;
@@ -72,10 +73,11 @@ class NaiveMarchingCubes : public MarchingCubes
 {
 public:
     explicit NaiveMarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
-                           const Eigen::Vector3d lCorner,
-                           const Eigen::Vector3d uCorner,
-                           const Eigen::Vector3d cResolution,
-                           float initValue ):
+		const Eigen::Vector3d lCorner,
+		const Eigen::Vector3d uCorner,
+		const Eigen::Vector3d cResolution,
+		float initValue
+	):
         MarchingCubes(fluid, lCorner, uCorner, cResolution, initValue),
         mLevelSetFunction(mDimentions(0) * mDimentions(1) * mDimentions(2))
     {}
