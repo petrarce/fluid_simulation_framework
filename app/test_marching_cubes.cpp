@@ -6,7 +6,7 @@
 
 #include <Eigen/Dense>
 #include <types.hpp>
-#include <learnSPH/surf_reconstr/marching_cubes.h>
+#include <learnSPH/surf_reconstr/marching_cubes_deprecated.h>
 
 #include <learnSPH/core/vtk_writer.h>
 using namespace learnSPH;

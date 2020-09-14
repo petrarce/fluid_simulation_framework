@@ -23,8 +23,8 @@ set(SOURCE_FILES
 	core/vtk_writer.h
 	simulation/solver.cpp
 	simulation/solver.h
-	surf_reconstr/marching_cubes.cpp
-	surf_reconstr/marching_cubes.h
+	surf_reconstr/marching_cubes_deprecated.cpp
+	surf_reconstr/marching_cubes_deprecated.h
 	surf_reconstr/look_up_tables.hpp
 	surf_reconstr/SurfaceReconstructor.hpp
 	surf_reconstr/NaiveMarchingCubes.hpp
