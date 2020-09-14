@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
-#include <learnSPH/surf_reconstr/marching_cubes.h>
+#include <learnSPH/surf_reconstr/marching_cubes_deprecated.h>
 #include <learnSPH/surf_reconstr/look_up_tables.hpp>
 
 using namespace std;
