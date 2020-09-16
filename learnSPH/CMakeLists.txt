@@ -21,6 +21,7 @@ set(SOURCE_FILES
 	core/storage.h
 	core/vtk_writer.cpp
 	core/vtk_writer.h
+	core/cereal_writer.hpp
 	simulation/solver.cpp
 	simulation/solver.h
 	surf_reconstr/marching_cubes_deprecated.cpp

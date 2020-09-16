@@ -250,7 +250,8 @@ int main(int argc, char** argv)
 	std::vector<std::string> paramFiles = filterPaths(programInput.simDir, programInput.simName + "_params_[0-9]*.cereal");
 	std::vector<std::string> positionFiles = filterPaths(programInput.simDir, programInput.simName + "_positions_[0-9]*.cereal");
 	std::vector<std::string> densitiesFiles = filterPaths(programInput.simDir, programInput.simName + ".*_densities_[0-9]*.cereal");
-	assert(paramFiles.size() == positionFiles.size() && paramFiles.size() == densitiesFiles.size());
+	if(paramFiles.size() != positionFiles.size() || paramFiles.size() != densitiesFiles.size())
+		throw runtime_error("lack of input files");
 
     std::unique_ptr<MarchingCubes> mcbNew;
 	string simtype;
