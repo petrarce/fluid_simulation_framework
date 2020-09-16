@@ -89,20 +89,14 @@ void NaiveMarchingCubes::updateLevelSet()
 	}
 }
 
-Eigen::Vector3i MarchingCubes::cell(size_t index) const
-{
-	int k = index % mDimentions(2);
-	int j = (index / mDimentions(2)) % mDimentions(1);
-	int i = ((index / mDimentions(2)) / mDimentions(1));
-	return Vector3i(i, j, k);
-}
+
 
 	
 vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 {
 
 	vector<Eigen::Vector3d> triangleMesh;
-	triangleMesh.reserve(mDimentions(0) * mDimentions(1) * mDimentions(2) * 12);
+	triangleMesh.reserve(mSurfaceCells.size() * 3 * 3);
 
 
 	for(const auto& cellVert : mSurfaceCells)
@@ -147,40 +141,6 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 	return triangleMesh;
 }
 
-Eigen::Vector3d MarchingCubes::lerp(const Eigen::Vector3d& a,const Eigen::Vector3d& b, float av, float bv, float tv) const
-{
-	float factor = (tv - av)/(bv - av);
-	return a * (1 - factor) + factor * b;
-}
-
-Eigen::Vector3i MarchingCubes::cell(const Eigen::Vector3d& vec) const
-{
-	float xf = (vec(0) - mLowerCorner(0)) / (mUpperCorner(0) - mLowerCorner(0));
-	float yf = (vec(1) - mLowerCorner(1)) / (mUpperCorner(1) - mLowerCorner(1));
-	float zf = (vec(2) - mLowerCorner(2)) / (mUpperCorner(2) - mLowerCorner(2));
-	return Eigen::Vector3i(std::floor(mDimentions(0) * xf),
-						   std::floor(mDimentions(1) * yf),
-						   std::floor(mDimentions(2) * zf));
-
-}
-Eigen::Vector3d MarchingCubes::cellCoord(const Eigen::Vector3i& vec) const
-{
-	float xf = static_cast<double>(vec(0)) / mDimentions(0);
-	float yf = static_cast<double>(vec(1)) / mDimentions(1);
-	float zf = static_cast<double>(vec(2)) / mDimentions(2);
-	
-	double x = mLowerCorner(0) * (1- xf) + mUpperCorner(0) * xf;
-	double y = mLowerCorner(1) * (1- yf) + mUpperCorner(1) * yf;
-	double z = mLowerCorner(2) * (1- zf) + mUpperCorner(2) * zf;
-	return Eigen::Vector3d(x, y, z);
-	
-}
-int MarchingCubes::cellIndex(const Eigen::Vector3i& ind) const
-{
-	return ind(0) * mDimentions(1) * mDimentions(2) + 
-			ind(1) * mDimentions(2) + 
-			ind(2);
-}
 
 
 //return indecis of neighbouring vertices
