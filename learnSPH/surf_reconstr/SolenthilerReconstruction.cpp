@@ -17,6 +17,12 @@ void SolenthilerReconstruction::updateGrid()
 		mCellGradComponents[surfCell.first] = {Matrix3d::Zero(), 0, Vector3R::Zero()};
 }
 
+void SolenthilerReconstruction::configureHashTables()
+{
+	ZhuBridsonReconstruction::configureHashTables();
+	mCellGradComponents.max_load_factor(mSurfaceCells.max_load_factor());
+}
+
 static float thresholdFunction(Real EVmax, Real tMin, Real tMax)
 {
 	assert(tMax > tMin);

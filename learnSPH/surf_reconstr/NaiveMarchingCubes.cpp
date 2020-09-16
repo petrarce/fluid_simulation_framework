@@ -20,15 +20,25 @@ MarchingCubes::MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 	, mResolution(cResolution)
 	, mInitialValue(initValue)
 {
-	mSurfaceCells.max_load_factor(std::numeric_limits<float>::max());
-	mSurfaceCells.reserve(10000);
+}
+
+void MarchingCubes::configureHashTables()
+{
+	if(mSurfaceParticlesCount)
+	mSurfaceCells.max_load_factor(2);
+}
+
+void NaiveMarchingCubes::configureHashTables()
+{
+	MarchingCubes::configureHashTables();
+	mLevelSetFunction.max_load_factor(mSurfaceCells.max_load_factor());
 }
 
 std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid)
 {
 	setFluidSystem(fluid);
 	updateSurfaceParticles();
-	
+	configureHashTables();
 	updateGrid();
 	updateLevelSet();
 	

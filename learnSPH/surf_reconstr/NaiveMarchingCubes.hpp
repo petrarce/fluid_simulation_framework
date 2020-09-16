@@ -43,6 +43,7 @@ protected:
     void setFluidSystem(std::shared_ptr<learnSPH::FluidSystem> fluid) { mFluid = fluid; }
     virtual void updateGrid() = 0;
     virtual void updateLevelSet() = 0;
+	virtual void configureHashTables();
 	virtual void updateSurfaceParticles();
     std::vector<Eigen::Vector3d> getTriangles() const;
 
@@ -118,8 +119,6 @@ public:
 	):
         MarchingCubes(fluid, lCorner, uCorner, cResolution, initValue)
     {
-		mLevelSetFunction.max_load_factor(std::numeric_limits<float>::max());
-		mLevelSetFunction.reserve(10000);
 	}
     explicit NaiveMarchingCubes(const NaiveMarchingCubes& other):
         MarchingCubes(other),
@@ -129,6 +128,8 @@ public:
 protected:
     void updateGrid() override;
     void updateLevelSet() override;
+	void configureHashTables() override;
+	
     float getSDFvalue(int i, int j, int k) const override
     {
 		auto val = mLevelSetFunction.find(cellIndex(Eigen::Vector3i(i, j, k)));

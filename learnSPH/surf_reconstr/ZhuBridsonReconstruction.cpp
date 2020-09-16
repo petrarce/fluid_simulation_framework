@@ -21,6 +21,14 @@ void ZhuBridsonReconstruction::updateLevelSet()
 	updateAvgs();
 }
 
+void ZhuBridsonReconstruction::configureHashTables()
+{
+	MarchingCubes::configureHashTables();
+	xAvg.max_load_factor(mSurfaceCells.max_load_factor());
+	rAvg.max_load_factor(mSurfaceCells.max_load_factor());
+	denominators.max_load_factor(mSurfaceCells.max_load_factor());
+}
+
 float ZhuBridsonReconstruction::getSDFvalue(int i, int j, int k) const
 {
 	auto cell = Eigen::Vector3i(i,j,k);
