@@ -19,7 +19,10 @@ MarchingCubes::MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 		static_cast<size_t>(std::fabs((lCorner(2) - uCorner(2)) / cResolution(2))))
 	, mResolution(cResolution)
 	, mInitialValue(initValue)
-{}
+{
+	mSurfaceCells.max_load_factor(std::numeric_limits<float>::max());
+	mSurfaceCells.reserve(10000);
+}
 
 std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid)
 {
@@ -51,8 +54,8 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 	
 void NaiveMarchingCubes::updateGrid()
 {
-	mLevelSetFunction.assign(this->mLevelSetFunction.size(), mInitialValue);	
 	mSurfaceCells.clear();
+	mLevelSetFunction.clear();
 	const auto& particles = mFluid->getPositions();
 	for(int i = 0; i < mSurfaceParticlesCount; i++)
 	{
@@ -84,6 +87,8 @@ void NaiveMarchingCubes::updateLevelSet()
 			);
 			float density = std::max(fluidDensity, mFluid->getRestDensity());
 			float total = mFluid->getMass() / density * weight;
+			if(mLevelSetFunction.find(cellIndex(cell)) == mLevelSetFunction.end())
+				mLevelSetFunction[cellIndex(cell)] = mInitialValue;
 			mLevelSetFunction[cellIndex(cell)] += total;
 		}
 	}

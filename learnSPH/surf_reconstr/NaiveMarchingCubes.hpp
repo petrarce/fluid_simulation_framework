@@ -116,24 +116,27 @@ public:
 		const Eigen::Vector3d cResolution,
 		float initValue
 	):
-        MarchingCubes(fluid, lCorner, uCorner, cResolution, initValue),
-        mLevelSetFunction(mDimentions(0) * mDimentions(1) * mDimentions(2))
-    {}
+        MarchingCubes(fluid, lCorner, uCorner, cResolution, initValue)
+    {
+		mLevelSetFunction.max_load_factor(std::numeric_limits<float>::max());
+		mLevelSetFunction.reserve(10000);
+	}
     explicit NaiveMarchingCubes(const NaiveMarchingCubes& other):
         MarchingCubes(other),
         mLevelSetFunction(other.mLevelSetFunction)
     {}
 
-private:
+protected:
     void updateGrid() override;
     void updateLevelSet() override;
     float getSDFvalue(int i, int j, int k) const override
     {
-		if(cellIndex(Eigen::Vector3i(i, j, k)) > mLevelSetFunction.size())
+		auto val = mLevelSetFunction.find(cellIndex(Eigen::Vector3i(i, j, k)));
+		if(val  == mLevelSetFunction.end())
 			return mInitialValue;
-        return mLevelSetFunction[cellIndex(Eigen::Vector3i(i, j, k))];
+        return val->second;
     }
 
 
-    std::vector<float> mLevelSetFunction;
+    std::unordered_map<int, float> mLevelSetFunction;
 };

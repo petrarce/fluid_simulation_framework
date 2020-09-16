@@ -22,7 +22,14 @@ public:
 		rAvg(mDimentions(0) * mDimentions(1) * mDimentions(2)),
 		xAvg(mDimentions(0) * mDimentions(1) * mDimentions(2)),
 		mRadii(radii)
-	{}
+	{
+		denominators.max_load_factor(numeric_limits<float>::max());
+		rAvg.max_load_factor(numeric_limits<float>::max());
+		xAvg.max_load_factor(numeric_limits<float>::max());
+		denominators.reserve(10000);
+		rAvg.reserve(10000);
+		xAvg.reserve(10000);
+	}
 	
 	explicit ZhuBridsonReconstruction(const ZhuBridsonReconstruction& other ):
 		MarchingCubes(other),

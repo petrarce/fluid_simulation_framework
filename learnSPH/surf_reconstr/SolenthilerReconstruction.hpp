@@ -21,7 +21,10 @@ public:
 		ZhuBridsonReconstruction(other),
 		mTLow(other.mTLow),
 		mTHigh(other.mTHigh)
-	{}
+	{
+		mCellGradComponents.max_load_factor(numeric_limits<float>::max());
+		mCellGradComponents.reserve(10000);
+	}
 		
 private:
 	void updateLevelSet() override;
