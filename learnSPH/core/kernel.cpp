@@ -86,5 +86,5 @@ Vector3d learnSPH::kernel::kernelCubicGrad(const Vector3d& x1, const Vector3d& x
 	double R2 = R * R;
 	if(vc > R2)
 		return Vector3d(0,0,0);
-	return -6 * (1 - vc / R2) * (1 - vc / R2) *	v / (R2 * R2);
+	return -6 * (1 - vc / R2) * (1 - vc / R2) *	v / R2;
 }

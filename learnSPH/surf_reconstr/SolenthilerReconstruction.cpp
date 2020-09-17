@@ -47,6 +47,20 @@ void SolenthilerReconstruction::updateGradientSums()
 			mCellGradComponents[cellIndex(c)].gradSum += gW;
 		}
 	}
+#ifdef DEBUG
+	std::vector<Vector3R> gradSums;
+	std::vector<Vector3R> points;
+	for(const auto& item : mSurfaceCells)
+	{
+		points.push_back(cellCoord(cell(item.second)));
+		gradSums.push_back(mCellGradComponents[item.second].gradSum);
+	}
+	
+	static int cnt = 0;
+	learnSPH::saveParticlesToVTK("/tmp/GradSums" + to_string(cnt) + ".vtk", points, gradSums);
+	cnt++;
+#endif
+	
 }
 
 void SolenthilerReconstruction::updateJakobians()
@@ -61,17 +75,16 @@ void SolenthilerReconstruction::updateJakobians()
 			size_t cI = cellIndex(c);
 			auto gW = learnSPH::kernel::kernelCubicGrad(cellCoord(c), particles[i], mRadii);
 			auto w = learnSPH::kernel::kernelCubic(cellCoord(c), particles[i], mRadii);
-			mCellGradComponents[cI].jakobian += (particles[i] * 
-				gW.transpose())	/ denominators[cI];
-			mCellGradComponents[cI].jakobian -= (particles[i] * mCellGradComponents[cI].gradSum.transpose() * w) / 
-					(denominators[cI] * denominators[cI]);
+			Eigen::Matrix3d a = (particles[i] * gW.transpose())	/ denominators[cI];
+			Eigen::Matrix3d b = (particles[i] * mCellGradComponents[cI].gradSum.transpose() * w) / (denominators[cI] * denominators[cI]);
+			mCellGradComponents[cI].jakobian += a - b;
 		}
 	}
 }
 void SolenthilerReconstruction::updateFFunction()
 {
 #ifdef DEBUG
-	std::vector<Real> evls;
+	std::vector<Eigen::Vector3d> evls;
 	std::vector<Vector3R> pts;
 	std::vector<Real> fvls;
 #endif
@@ -90,10 +103,10 @@ void SolenthilerReconstruction::updateFFunction()
 		Vector3R evaluesReal = Vector3R(/*std::fabs*/(evalues(0).real()), 
 										/*std::fabs*/(evalues(1).real()), 
 										/*std::fabs*/(evalues(2).real()));
-		std::sort(evaluesReal.data(), evaluesReal.data() + evaluesReal.size(), [](Real v1, Real v2) {return v1 > v2; });
+		std::sort(evaluesReal.data(), evaluesReal.data() + evaluesReal.size(), [](Real v1, Real v2) { return v1 > v2; });
 		f.second.fVal = thresholdFunction(evaluesReal(0), this->mTLow, this->mTHigh);
 #ifdef DEBUG
-		evls.push_back(evaluesReal(0));
+		evls.push_back(evaluesReal);
 		pts.push_back(cellCoord(cell(mSurfaceCells[f.first])));
 		fvls.push_back(f.second.fVal);
 #endif
