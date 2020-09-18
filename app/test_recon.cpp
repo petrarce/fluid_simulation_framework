@@ -14,6 +14,7 @@
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <learnSPH/surf_reconstr/ZhuBridsonReconstruction.hpp>
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
+#include <learnSPH/surf_reconstr/TestNaiveMCWithSFSmoothing.hpp>
 #include <learnSPH/core/storage.h>
 
 //cereal
@@ -119,6 +120,7 @@ enum ReconstructionMethods
 	NMC = 1,
 	ZB,
 	SLH,
+	NMCSmooth,
 };
 
 struct 
@@ -133,6 +135,9 @@ struct
 	Real supportRad;
 	Real tMin;
 	Real tMax;
+	Real sdfSmoothingFactor;
+	size_t kernelSize;
+	size_t kernelOffset;
 	
 	void parse(const variables_map& vm)
 	{
@@ -179,6 +184,25 @@ struct
 			tMax = vm["tmax"].as<Real>();
 		else
 			throw invalid_argument("required option: --tmax");
+
+		if(vm.count("sdf-smoothing-factor"))
+		{
+			sdfSmoothingFactor = vm["sdf-smoothing-factor"].as<Real>();
+			if(sdfSmoothingFactor < 0 || sdfSmoothingFactor > 1)
+				throw invalid_argument("invalid --sdf-smoothing-factor. Should be in range [0, 1]");
+		}
+		else
+			throw invalid_argument("required option: --sdf-smoothing-factor");
+
+		if(vm.count("blur-kernel-size"))
+			kernelSize = vm["blur-kernel-size"].as<size_t>();
+		else
+			throw invalid_argument("required option: --blur-kernel-size");
+		
+		if(vm.count("blur-kernel-offset"))
+			kernelOffset = vm["blur-kernel-offset"].as<size_t>();
+		else
+			throw invalid_argument("required option: --blur-kernel-offset");
 		
 		if(vm.count("method"))
 		{
@@ -189,6 +213,8 @@ struct
 				method = ReconstructionMethods::ZB;
 			else if(lmethod == "Solenthiler")
 				method = ReconstructionMethods::SLH;
+			else if(lmethod == "NaiveMCSmooth")
+				method = ReconstructionMethods::NMCSmooth;
 			else
 				throw invalid_argument("unknown reconstruction method specified in  --method: " + lmethod);
 		} else
@@ -232,10 +258,14 @@ int main(int argc, char** argv)
 			("sim-name", value<string>(), "simulation name")
 			("sim-directory", value<string>()->default_value("./"), "path to the simulation vtk files")
 			("grid-resolution", value<Real>(), "uniform grid resolution for matching cubes")
-			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson, Solenthiler")
+			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson, Solenthiler, NaiveMCSmooth")
 			("support-radius", value<Real>()->default_value(2), "Support radius for position-based scalar fields")
 			("tmin", value<Real>()->default_value(1), "lower bound for Solentiler evalue treshold")
-			("tmax", value<Real>()->default_value(2), "upper bound for Solentiler evalue treshold");
+			("tmax", value<Real>()->default_value(2), "upper bound for Solentiler evalue treshold")
+			("sdf-smoothing-factor", value<Real>()->default_value(0), "scalar distance field smoothing factor")
+			("blur-kernel-size", value<size_t>()->default_value(1), "kernel size for sdf bluring")
+			("blur-kernel-offset", value<size_t>()->default_value(1), "bluring kernel offset")
+			;
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
 	if(vm.count("help"))
@@ -286,6 +316,17 @@ int main(int argc, char** argv)
 					programInput.tMin,
 					programInput.tMax);
 				simtype = "Solenthiler";
+				break;
+			case ReconstructionMethods::NMCSmooth:
+				mcbNew = std::make_unique<TestNaiveMCWithSFSmoothing>(nullptr,
+					programInput.lowerCorner, 
+					programInput.upperCorner, 
+					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
+					programInput.supportRad,
+					programInput.sdfSmoothingFactor,
+					programInput.kernelSize,
+					programInput.kernelOffset);
+				simtype = "NaiveMCSmooth";				
 				break;
 			default:
 				assert(0);

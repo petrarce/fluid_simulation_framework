@@ -29,23 +29,26 @@ public:
 		mInitialValue(other.mInitialValue)
 	{
 	}
-    MarchingCubes& operator=(const MarchingCubes&) = delete;
+	MarchingCubes& operator=(const MarchingCubes&) = delete;
 	
-    explicit MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
+	explicit MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 		const Eigen::Vector3d lCorner,
 		const Eigen::Vector3d uCorner,
 		const Eigen::Vector3d cResolution,
 		float initValue);
-    std::vector<Eigen::Vector3d> generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid) override;
+	std::vector<Eigen::Vector3d> generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid) override;
 	void setColorFieldFactor(Real factor) { mColorFieldSurfaceFactor = factor; }
 	
 protected:
-    void setFluidSystem(std::shared_ptr<learnSPH::FluidSystem> fluid) { mFluid = fluid; }
-    virtual void updateGrid() = 0;
-    virtual void updateLevelSet() = 0;
+	void setFluidSystem(std::shared_ptr<learnSPH::FluidSystem> fluid) { mFluid = fluid; }
+	virtual void updateGrid() = 0;
+	virtual void updateLevelSet() = 0;
 	virtual void configureHashTables();
 	virtual void updateSurfaceParticles();
-    std::vector<Eigen::Vector3d> getTriangles() const;
+	virtual float getSDFvalue(int i, int j, int k) const = 0;
+	std::vector<Eigen::Vector3d> getTriangles() const;
+	///Calculate cell indeces of neighbour cells
+	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3d& position, float radius, bool existing = true) const;
 
 	///linear interpolation between two vectors given 2 float values and target value
 	inline Eigen::Vector3d lerp(const Eigen::Vector3d& a,
@@ -102,42 +105,39 @@ protected:
 	}
 	
 	
-	///Calculate cell indeces of neighbour particles
-	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3d& position, float radius, bool existing = true) const;
 
-	virtual float getSDFvalue(int i, int j, int k) const = 0;
 };
 
 class NaiveMarchingCubes : public MarchingCubes
 {
 public:
-    explicit NaiveMarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
+	explicit NaiveMarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 		const Eigen::Vector3d lCorner,
 		const Eigen::Vector3d uCorner,
 		const Eigen::Vector3d cResolution,
 		float initValue
 	):
-        MarchingCubes(fluid, lCorner, uCorner, cResolution, initValue)
-    {
+		MarchingCubes(fluid, lCorner, uCorner, cResolution, initValue)
+	{
 	}
-    explicit NaiveMarchingCubes(const NaiveMarchingCubes& other):
-        MarchingCubes(other),
-        mLevelSetFunction(other.mLevelSetFunction)
-    {}
+	explicit NaiveMarchingCubes(const NaiveMarchingCubes& other):
+		MarchingCubes(other),
+		mLevelSetFunction(other.mLevelSetFunction)
+	{}
 
 protected:
-    void updateGrid() override;
-    void updateLevelSet() override;
+	void updateGrid() override;
+	void updateLevelSet() override;
 	void configureHashTables() override;
 	
-    float getSDFvalue(int i, int j, int k) const override
-    {
+	float getSDFvalue(int i, int j, int k) const override
+	{
 		auto val = mLevelSetFunction.find(cellIndex(Eigen::Vector3i(i, j, k)));
 		if(val  == mLevelSetFunction.end())
 			return mInitialValue;
-        return val->second;
-    }
+		return val->second;
+	}
 
 
-    std::unordered_map<int, float> mLevelSetFunction;
+	std::unordered_map<int, float> mLevelSetFunction;
 };
