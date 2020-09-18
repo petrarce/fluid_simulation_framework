@@ -1,5 +1,7 @@
 #pragma once
 #include "ZhuBridsonReconstruction.hpp"
+#include <learnSPH/core/vtk_writer.h>
+#define DEBUG
 
 class TestNaiveMCWithSFSmoothing : public ZhuBridsonReconstruction
 {
@@ -43,15 +45,32 @@ private:
 	{
 		ZhuBridsonReconstruction::updateLevelSet();
 		saveLevelSetValues();
+#ifdef DEBUG
+		static int cnt = 0;
+		std::vector<Vector3R> points;
+		std::vector<Real> sdf;
+		for(const auto& item : mSurfaceCells)
+		{
+			points.push_back(cellCoord(cell(item.first)));
+			sdf.push_back(mLevelSetValues[item.first]);
+		}
+		learnSPH::saveParticlesToVTK("/tmp/SdfBeforeBlur" + to_string(cnt) + ".vtk", points, sdf);
+#endif
 		blurLevelSet(mKernelSize, mOffset);
+#ifdef DEBUG
+		sdf.clear();
+		for(const auto& item : mSurfaceCells)
+			sdf.push_back(mLevelSetValues[item.first]);
+		learnSPH::saveParticlesToVTK("/tmp/SdfAfterBlur" + to_string(cnt) + ".vtk", points, sdf);
+		cnt++;
+#endif
 	}
 	float getSDFvalue(int i, int j, int k) const override
 	{
 		auto cI = cellIndex(Vector3i(i,j,k));
 		auto sdfItem = mLevelSetValues.find(cI);
 		if(sdfItem == mLevelSetValues.end())
-//			throw std::invalid_argument("cell is not in the domain");
-			return 1;
+			throw std::invalid_argument("cell is not in the domain");
 		
 		return sdfItem->second;
 	}
@@ -73,18 +92,20 @@ private:
 		{
 			auto cI = cellItem.first;
 			auto c = cell(cI);
-			auto dfValue = 0;/*mLevelSetFunction[cI] * learnSPH::kernel::kernelFunction(Vector3R::Zero(), Vector3R::Zero(), mResolution(0) * 1.9);*/
+			auto cC = cellCoord(c);
+			Real dfValue = 0;
 			auto nbs = getNeighbourCells(cellCoord(c), kernelSize, offset);
+			Real wSum = 0;
 			for(const auto& nb : nbs)
 			{
 				float sdfVal = 0;
 				try{ sdfVal = getSDFvalue(nb(0), nb(1), nb(2)); }
 				catch(...){ sdfVal = getSDFvalue(c(0), c(1), c(2)); }
-//				auto nbI = cellIndex(nb);
-//				if(mLevelSetValues.find(nbI) == mLevelSetValues.end())
-//					continue;
-				dfValue += sdfVal * learnSPH::kernel::kernelFunction(cellCoord(nb), cellCoord(c), maxRadii);
+				Real w = learnSPH::kernel::kernelFunction(cellCoord(nb), cC, maxRadii);
+				wSum += w;
+				dfValue += sdfVal * w;
 			}
+			dfValue /= wSum;
 			newLevelSet[cI] = mLevelSetValues[cI] * (1 - mSmoothingFactor) + mSmoothingFactor * dfValue;
 		}
 		mLevelSetValues.swap(newLevelSet);
