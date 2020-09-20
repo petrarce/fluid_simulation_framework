@@ -14,7 +14,7 @@
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <learnSPH/surf_reconstr/ZhuBridsonReconstruction.hpp>
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
-#include <learnSPH/surf_reconstr/TestNaiveMCWithSFSmoothing.hpp>
+#include <learnSPH/surf_reconstr/ZhuBridsonBlured.hpp>
 #include <learnSPH/core/storage.h>
 
 //cereal
@@ -213,7 +213,7 @@ struct
 				method = ReconstructionMethods::ZB;
 			else if(lmethod == "Solenthiler")
 				method = ReconstructionMethods::SLH;
-			else if(lmethod == "NaiveMCSmooth")
+			else if(lmethod == "ZhuBridsonBlured")
 				method = ReconstructionMethods::NMCSmooth;
 			else
 				throw invalid_argument("unknown reconstruction method specified in  --method: " + lmethod);
@@ -258,7 +258,7 @@ int main(int argc, char** argv)
 			("sim-name", value<string>(), "simulation name")
 			("sim-directory", value<string>()->default_value("./"), "path to the simulation vtk files")
 			("grid-resolution", value<Real>(), "uniform grid resolution for matching cubes")
-			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson, Solenthiler, NaiveMCSmooth")
+			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson, Solenthiler, ZhuBridsonBlured")
 			("support-radius", value<Real>()->default_value(2), "Support radius for position-based scalar fields")
 			("tmin", value<Real>()->default_value(1), "lower bound for Solentiler evalue treshold")
 			("tmax", value<Real>()->default_value(2), "upper bound for Solentiler evalue treshold")
@@ -318,7 +318,7 @@ int main(int argc, char** argv)
 				simtype = "Solenthiler";
 				break;
 			case ReconstructionMethods::NMCSmooth:
-				mcbNew = std::make_unique<TestNaiveMCWithSFSmoothing>(nullptr,
+				mcbNew = std::make_unique<ZhuBridsonBlured>(nullptr,
 					programInput.lowerCorner, 
 					programInput.upperCorner, 
 					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
@@ -326,7 +326,7 @@ int main(int argc, char** argv)
 					programInput.sdfSmoothingFactor,
 					programInput.kernelSize,
 					programInput.kernelOffset);
-				simtype = "NaiveMCSmooth";				
+				simtype = "ZhuBridsonBlured";				
 				break;
 			default:
 				assert(0);

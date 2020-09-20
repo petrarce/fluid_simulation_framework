@@ -3,10 +3,10 @@
 #include <learnSPH/core/vtk_writer.h>
 #define DEBUG
 
-class TestNaiveMCWithSFSmoothing : public ZhuBridsonReconstruction
+class ZhuBridsonBlured : public ZhuBridsonReconstruction
 {
 public:
-	explicit TestNaiveMCWithSFSmoothing(
+	explicit ZhuBridsonBlured(
 			std::shared_ptr<learnSPH::FluidSystem> fluid,
 			const Eigen::Vector3d lCorner,
 			const Eigen::Vector3d uCorner,
@@ -22,7 +22,7 @@ public:
 	{
 	}
 	
-	explicit TestNaiveMCWithSFSmoothing(const TestNaiveMCWithSFSmoothing& other):
+	explicit ZhuBridsonBlured(const ZhuBridsonBlured& other):
 		ZhuBridsonReconstruction(other),
 		mSmoothingFactor(other.mSmoothingFactor),
 		mKernelSize(other.mKernelSize),
