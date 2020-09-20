@@ -1,0 +1,20 @@
+20/09/2020
+Tried blurring the level set. Technique works peaty fine depending on the kernel size and offset.
+Varying kernel offset doesn't work pretty well, at least at a cell size, larger, than diameter of particle. 
+Need to check it on the lower cell size (currently i am testing with a cell size equal to a particle diameter).
+Artifacts: holes in the mesh.
+Reason of the artifacts: the kernel offset takes neighbors too far from the blurred cell, so that its level set value is changed too much
+Possible solution: blur level set depending on the curvature and thinness of the regions, e.g. in 
+	high curvature regions and thin regions (where fluid is very thin) or there are two fluids near to each other - blur with lower the kernel offset
+
+TODO: experiment on lower cell sizes
+
+Varying kernel size gives good result of smoothing. Also solves a problem of ZhuBridson method of. Artifacts are the same as in previous. 
+Some sharp features are dramatized.
+
+Also added an option for smoothing factor, 
+TODO: test reconstruction taking different smoothing factors
+TODO: currently weights are taken between the level set values (ZhuBridson and blurred ZhuBridson). Need to try different Constructive Solid Geometry techniques
+
+Cons blurring: Increased computation time due to additional blurring pass (potentially can be parallelized on GPU so that the problem is not severe)
+				Artifacts in the final mesh (see abow)
