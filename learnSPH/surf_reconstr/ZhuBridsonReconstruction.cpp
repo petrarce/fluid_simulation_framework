@@ -81,7 +81,7 @@ void ZhuBridsonReconstruction::updateAvgs()
 			}
 			auto weight = learnSPH::kernel::kernelCubic(cC, particles[i], mRadii);
 			xAvg[cI] += weight / denominators[cI] * particles[i];
-			rAvg[cI] += weight / denominators[cI] * mFluid->getSmoothingLength();
+			rAvg[cI] += weight / denominators[cI] * mFluid->getDiameter() / 2;
 		}
 	}
 }
