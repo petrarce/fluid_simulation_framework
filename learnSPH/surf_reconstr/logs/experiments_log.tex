@@ -18,3 +18,22 @@ TODO: currently weights are taken between the level set values (ZhuBridson and b
 
 Cons blurring: Increased computation time due to additional blurring pass (potentially can be parallelized on GPU so that the problem is not severe)
 				Artifacts in the final mesh (see abow)
+24.09.2020
+Global TODO's:
+1. Check Zhu-Bridson what if the particle radius matches reconstructed surface. Find the problem if exists
+2. Make more efficient usage of the memory for large simulations
+3. Check what is the issue with the blurring technique
+4. Finish the "Level set methods" theory
+5. Finish article from Jose
+6. Implement blurring in the direction of the gradient of scalar field
+7. Think of the smoothing methods, How to apply them on the 3d grid
+8. Optimize triangle mesh computation (avoid redundant points computation, apply decimation)
+9. Smoothing normals of the surface for better rendering
+
+Fixed today:
+ZhuBridson reconstruction surface was 
+
+New idea, how to enhance blurring method:
+	a. Compute gradient of scalar field using forward/backward/central difference
+	b. Blur w.r.t. neighbors, that are in the direction of the gradient of the blurring
+	c. Pick kernel size w.r.t. the curvature, which can be determined according to the difference between the gradient direction of two grid cells

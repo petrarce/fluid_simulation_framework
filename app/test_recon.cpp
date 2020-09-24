@@ -318,7 +318,7 @@ int main(int argc, char** argv)
 				simtype = "Solenthiler";
 				break;
 			case ReconstructionMethods::NMCSmooth:
-				mcbNew = std::make_unique<ZhuBridsonBlured>(nullptr,
+				mcbNew = std::make_unique<ZhuBridsonBlurred>(nullptr,
 					programInput.lowerCorner, 
 					programInput.upperCorner, 
 					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 

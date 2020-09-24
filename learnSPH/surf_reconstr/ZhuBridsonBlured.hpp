@@ -1,29 +1,33 @@
 #pragma once
-#include "ZhuBridsonReconstruction.hpp"
+#include <types.hpp>
 #include <learnSPH/core/vtk_writer.h>
+#include <eigen3/Eigen/Dense>
+#include <unordered_map>
+#include <learnSPH/core/kernel.h>
+#include <learnSPH/surf_reconstr/ZhuBridsonReconstruction.hpp>
+#include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
+#include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
+
 #define DEBUG
 
-class ZhuBridsonBlured : public ZhuBridsonReconstruction
+template<class BaseClass, class... Args>
+class BlurredReconstruction : public BaseClass
 {
 public:
-	explicit ZhuBridsonBlured(
-			std::shared_ptr<learnSPH::FluidSystem> fluid,
-			const Eigen::Vector3d lCorner,
-			const Eigen::Vector3d uCorner,
-			const Eigen::Vector3d cResolution,
-			float radii,
+	explicit BlurredReconstruction(
+			Args... args,
 			float smoothingFactor,
 			int kernelSize,
 			int offset):
-		ZhuBridsonReconstruction(fluid, lCorner, uCorner, cResolution, radii),
+		BaseClass(args...),
 		mSmoothingFactor(smoothingFactor),
 		mKernelSize(kernelSize),
 		mOffset(offset)
 	{
 	}
 	
-	explicit ZhuBridsonBlured(const ZhuBridsonBlured& other):
-		ZhuBridsonReconstruction(other),
+	explicit BlurredReconstruction(const BlurredReconstruction& other):
+		BaseClass(other),
 		mSmoothingFactor(other.mSmoothingFactor),
 		mKernelSize(other.mKernelSize),
 		mOffset(other.mKernelSize)
@@ -31,27 +35,27 @@ public:
 private:
 	void configureHashTables() override
 	{
-		ZhuBridsonReconstruction::configureHashTables();
-		mLevelSetValues.max_load_factor(mSurfaceCells.max_load_factor());
+		BaseClass::configureHashTables();
+		mLevelSetValues.max_load_factor(BaseClass::mSurfaceCells.max_load_factor());
 	}
 	
 	void updateGrid() override
 	{
-		ZhuBridsonReconstruction::updateGrid();
+		BaseClass::updateGrid();
 		mLevelSetValues.clear();
 	}
 	
 	void updateLevelSet() override
 	{
-		ZhuBridsonReconstruction::updateLevelSet();
+		BaseClass::updateLevelSet();
 		saveLevelSetValues();
 #ifdef DEBUG
 		static int cnt = 0;
 		std::vector<Vector3R> points;
 		std::vector<Real> sdf;
-		for(const auto& item : mSurfaceCells)
+		for(const auto& item : BaseClass::mSurfaceCells)
 		{
-			points.push_back(cellCoord(cell(item.first)));
+			points.push_back(BaseClass::cellCoord(BaseClass::cell(item.first)));
 			sdf.push_back(mLevelSetValues[item.first]);
 		}
 		learnSPH::saveParticlesToVTK("/tmp/SdfBeforeBlur" + to_string(cnt) + ".vtk", points, sdf);
@@ -59,7 +63,7 @@ private:
 		blurLevelSet(mKernelSize, mOffset);
 #ifdef DEBUG
 		sdf.clear();
-		for(const auto& item : mSurfaceCells)
+		for(const auto& item : BaseClass::mSurfaceCells)
 			sdf.push_back(mLevelSetValues[item.first]);
 		learnSPH::saveParticlesToVTK("/tmp/SdfAfterBlur" + to_string(cnt) + ".vtk", points, sdf);
 		cnt++;
@@ -67,7 +71,7 @@ private:
 	}
 	float getSDFvalue(int i, int j, int k) const override
 	{
-		auto cI = cellIndex(Vector3i(i,j,k));
+		auto cI = BaseClass::cellIndex(Eigen::Vector3i(i,j,k));
 		auto sdfItem = mLevelSetValues.find(cI);
 		if(sdfItem == mLevelSetValues.end())
 			throw std::invalid_argument("cell is not in the domain");
@@ -77,31 +81,31 @@ private:
 	
 	void saveLevelSetValues()
 	{
-		for(const auto& item : mSurfaceCells)
+		for(const auto& item : BaseClass::mSurfaceCells)
 		{
-			auto c = cell(item.first);
-			mLevelSetValues[item.first] = ZhuBridsonReconstruction::getSDFvalue(c(0), c(1), c(2));
+			auto c = BaseClass::cell(item.first);
+			mLevelSetValues[item.first] = BaseClass::getSDFvalue(c(0), c(1), c(2));
 		}
 	}
 	
 	void blurLevelSet(int kernelSize, int offset)
 	{
 		auto newLevelSet = mLevelSetValues;
-		Real maxRadii = mResolution(0) * offset * kernelSize * 1.1;
-		for(const auto& cellItem : mSurfaceCells)
+		Real maxRadii = BaseClass::mResolution(0) * offset * kernelSize * 1.1;
+		for(const auto& cellItem : BaseClass::mSurfaceCells)
 		{
 			auto cI = cellItem.first;
-			auto c = cell(cI);
-			auto cC = cellCoord(c);
+			auto c =BaseClass:: cell(cI);
+			auto cC = BaseClass::cellCoord(c);
 			Real dfValue = 0;
-			auto nbs = getNeighbourCells(cellCoord(c), kernelSize, offset);
+			auto nbs = getNeighbourCells(BaseClass::cellCoord(c), kernelSize, offset);
 			Real wSum = 0;
 			for(const auto& nb : nbs)
 			{
 				float sdfVal = 0;
 				try{ sdfVal = getSDFvalue(nb(0), nb(1), nb(2)); }
 				catch(...){ sdfVal = getSDFvalue(c(0), c(1), c(2)); }
-				Real w = learnSPH::kernel::kernelFunction(cellCoord(nb), cC, maxRadii);
+				Real w = learnSPH::kernel::kernelFunction(BaseClass::cellCoord(nb), cC, maxRadii);
 				wSum += w;
 				dfValue += sdfVal * w;
 			}
@@ -111,10 +115,10 @@ private:
 		mLevelSetValues.swap(newLevelSet);
 	}
 	
-	std::vector<Vector3i> getNeighbourCells(Eigen::Vector3d position, int kernelSize, int offset)
+	std::vector<Eigen::Vector3i> getNeighbourCells(Eigen::Vector3d position, int kernelSize, int offset)
 	{
 		std::vector<Eigen::Vector3i> neighbors;
-		auto baseCell = cell(position);
+		auto baseCell = BaseClass::cell(position);
 		for(int i = -kernelSize * offset; i <= kernelSize * offset; i += offset)
 			for(int j = -kernelSize * offset; j <= kernelSize * offset; j += offset)
 				for(int k = -kernelSize * offset; k <= kernelSize * offset; k += offset)
@@ -126,5 +130,14 @@ private:
 	float	mSmoothingFactor	{ 1 };
 	size_t	mKernelSize			{ 1 };
 	size_t	mOffset				{ 1 };
-	unordered_map<size_t, Real> mLevelSetValues;
+	std::unordered_map<size_t, Real> mLevelSetValues;
 };
+
+typedef  BlurredReconstruction<ZhuBridsonReconstruction, std::shared_ptr<learnSPH::FluidSystem> , const Eigen::Vector3d , 
+								const Eigen::Vector3d , const Eigen::Vector3d , float > ZhuBridsonBlurred;
+typedef  BlurredReconstruction<SolenthilerReconstruction, std::shared_ptr<learnSPH::FluidSystem>, const Eigen::Vector3d, const Eigen::Vector3d, 
+								const Eigen::Vector3d , float, float, float> SolenthilerBlurred;
+typedef  BlurredReconstruction<NaiveMarchingCubes, std::shared_ptr<learnSPH::FluidSystem>, const Eigen::Vector3d, 
+								const Eigen::Vector3d, const Eigen::Vector3d, float> NaiveBlurred;
+
+
