@@ -18,9 +18,6 @@ public:
 						   const Eigen::Vector3d cResolution,
 						   float radii):
 		MarchingCubes(fluid, lCorner, uCorner, cResolution, radii),
-		denominators(mDimentions(0) * mDimentions(1) * mDimentions(2)),
-		rAvg(mDimentions(0) * mDimentions(1) * mDimentions(2)),
-		xAvg(mDimentions(0) * mDimentions(1) * mDimentions(2)),
 		mRadii(radii)
 	{
 	}
@@ -28,14 +25,14 @@ public:
 	explicit ZhuBridsonReconstruction(const ZhuBridsonReconstruction& other ):
 		MarchingCubes(other),
 		denominators(other.denominators),
-		rAvg(other.rAvg),
+		dAvg(other.dAvg),
 		xAvg(other.xAvg),
 		mRadii(other.mRadii)
 	{}
 
 protected:
 	std::unordered_map<int, Real> denominators;
-	std::unordered_map<int, Real> rAvg;
+	std::unordered_map<int, Real> dAvg;
 	std::unordered_map<int, Vector3R> xAvg;
 	Real mRadii;
 

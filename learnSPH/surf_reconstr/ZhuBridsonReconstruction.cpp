@@ -2,7 +2,7 @@
 
 void ZhuBridsonReconstruction::updateGrid()
 {
-	rAvg.clear();
+	dAvg.clear();
 	xAvg.clear();
 	denominators.clear();
 	mSurfaceCells.clear();
@@ -25,7 +25,7 @@ void ZhuBridsonReconstruction::configureHashTables()
 {
 	MarchingCubes::configureHashTables();
 	xAvg.max_load_factor(mSurfaceCells.max_load_factor());
-	rAvg.max_load_factor(mSurfaceCells.max_load_factor());
+	dAvg.max_load_factor(mSurfaceCells.max_load_factor());
 	denominators.max_load_factor(mSurfaceCells.max_load_factor());
 }
 
@@ -35,11 +35,12 @@ float ZhuBridsonReconstruction::getSDFvalue(int i, int j, int k) const
 	auto cI = cellIndex(cell);
 	auto cC = cellCoord(cell);
 	auto xAvgI = xAvg.find(cI);
-	auto rAvgI = rAvg.find(cI);
+	auto dAvgI = dAvg.find(cI);
 	if(xAvgI == xAvg.end())
 		//TODO compute some acceptable value
-		return 1;
-	return (cC - xAvgI->second).norm() - rAvgI->second;
+		throw std::invalid_argument("cell is not in the domain");
+	
+	return (cC - xAvgI->second).norm() - dAvgI->second / 2;
 }
 
 void ZhuBridsonReconstruction::updateDenominators()
@@ -73,15 +74,15 @@ void ZhuBridsonReconstruction::updateAvgs()
 			auto cI = cellIndex(cell);
 			auto cC = cellCoord(cell);
 			auto xAvgI = xAvg.find(cI);
-			auto rAvgI = rAvg.find(cI);
+			auto dAvgI = dAvg.find(cI);
 			if(xAvg.find(cI) == xAvg.end())
 			{
 				xAvg[cI] = Vector3R(0,0,0);
-				rAvg[cI] = 0;
+				dAvg[cI] = 0;
 			}
 			auto weight = learnSPH::kernel::kernelCubic(cC, particles[i], mRadii);
 			xAvg[cI] += weight / denominators[cI] * particles[i];
-			rAvg[cI] += weight / denominators[cI] * mFluid->getDiameter() / 2;
+			dAvg[cI] += weight / denominators[cI] * mFluid->getDiameter();
 		}
 	}
 }
