@@ -46,6 +46,10 @@ protected:
 	virtual void configureHashTables();
 	virtual void updateSurfaceParticles();
 	virtual float getSDFvalue(int i, int j, int k) const = 0;
+	inline float getSDFvalue(const Vector3i& c) const
+	{
+		return getSDFvalue(c(0), c(1), c(2));
+	}
 	std::vector<Eigen::Vector3d> getTriangles() const;
 	///Calculate cell indeces of neighbour cells
 	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3d& position, float radius, bool existing = true) const;

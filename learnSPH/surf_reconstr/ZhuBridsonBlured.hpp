@@ -8,7 +8,6 @@
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
 
-#define DEBUG
 
 template<class BaseClass, class... Args>
 class BlurredReconstruction : public BaseClass
@@ -98,7 +97,7 @@ private:
 			auto c =BaseClass:: cell(cI);
 			auto cC = BaseClass::cellCoord(c);
 			Real dfValue = 0;
-			auto nbs = getNeighbourCells(BaseClass::cellCoord(c), kernelSize, offset);
+			auto nbs = getNeighbourCells(c, kernelSize, offset);
 			Real wSum = 0;
 			for(const auto& nb : nbs)
 			{
@@ -115,10 +114,10 @@ private:
 		mLevelSetValues.swap(newLevelSet);
 	}
 	
-	std::vector<Eigen::Vector3i> getNeighbourCells(Eigen::Vector3d position, int kernelSize, int offset)
+	std::vector<Eigen::Vector3i> getNeighbourCells(Eigen::Vector3i baseCell, int kernelSize, int offset)
 	{
 		std::vector<Eigen::Vector3i> neighbors;
-		auto baseCell = BaseClass::cell(position);
+		
 		for(int i = -kernelSize * offset; i <= kernelSize * offset; i += offset)
 			for(int j = -kernelSize * offset; j <= kernelSize * offset; j += offset)
 				for(int k = -kernelSize * offset; k <= kernelSize * offset; k += offset)
