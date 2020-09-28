@@ -138,6 +138,7 @@ struct
 	Real sdfSmoothingFactor;
 	size_t kernelSize;
 	size_t kernelOffset;
+	Real kernelDepth;
 	
 	void parse(const variables_map& vm)
 	{
@@ -204,6 +205,17 @@ struct
 		else
 			throw invalid_argument("required option: --blur-kernel-offset");
 		
+		
+		if(vm.count("blur-kernel-depth"))
+		{
+			kernelDepth = vm["blur-kernel-depth"].as<Real>();
+			if(kernelDepth > 1 || kernelDepth< 0)
+				throw invalid_argument("kernel depth should be between 0 and 1");
+		}
+		else
+			throw invalid_argument("required option: --blur-kernel-depth");
+
+		
 		if(vm.count("method"))
 		{
 			string lmethod = vm["method"].as<string>();
@@ -262,9 +274,10 @@ int main(int argc, char** argv)
 			("support-radius", value<Real>()->default_value(2), "Support radius for position-based scalar fields")
 			("tmin", value<Real>()->default_value(1), "lower bound for Solentiler evalue treshold")
 			("tmax", value<Real>()->default_value(2), "upper bound for Solentiler evalue treshold")
-			("sdf-smoothing-factor", value<Real>()->default_value(0), "scalar distance field smoothing factor")
+			("sdf-smoothing-factor", value<Real>()->default_value(1), "scalar distance field smoothing factor")
 			("blur-kernel-size", value<size_t>()->default_value(1), "kernel size for sdf bluring")
 			("blur-kernel-offset", value<size_t>()->default_value(1), "bluring kernel offset")
+			("blur-kernel-depth", value<Real>()->default_value(0.5), "depth of the bluring kernel in the direction normal to the gradient")
 			;
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
@@ -297,7 +310,7 @@ int main(int argc, char** argv)
 					programInput.upperCorner, 
 					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
 					programInput.initValue);
-				simtype = "NaiveMC";
+				simtype = string("NaiveMC") + "_gr-" + to_string(programInput.gridResolution) + "_iv-" + to_string(programInput.initValue);
 				break;
 			case ReconstructionMethods::ZB:
 				mcbNew = std::make_unique<ZhuBridsonReconstruction>(nullptr,
@@ -305,7 +318,7 @@ int main(int argc, char** argv)
 					programInput.upperCorner, 
 					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
 					programInput.supportRad);
-				simtype = "ZhuBridson";
+				simtype = string("ZhuBridson") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad);
 				break;
 			case ReconstructionMethods::SLH:
 				mcbNew = std::make_unique<SolenthilerReconstruction>(nullptr,
@@ -315,7 +328,8 @@ int main(int argc, char** argv)
 					programInput.supportRad,
 					programInput.tMin,
 					programInput.tMax);
-				simtype = "Solenthiler";
+				simtype = string("Solenthiler") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) + 
+						"_tmin-" + to_string(programInput.tMin) + "_tmax-" + to_string(programInput.tMax);
 				break;
 			case ReconstructionMethods::NMCSmooth:
 				mcbNew = std::make_unique<ZhuBridsonBlurred>(nullptr,
@@ -326,7 +340,9 @@ int main(int argc, char** argv)
 					programInput.sdfSmoothingFactor,
 					programInput.kernelSize,
 					programInput.kernelOffset);
-				simtype = "ZhuBridsonBlured";				
+				simtype = string("ZhuBridsonBlured") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) + 
+						"_sf-" + to_string(programInput.sdfSmoothingFactor) + "_ks-" + to_string(programInput.kernelSize) +
+						"_ko-" + to_string(programInput.kernelOffset) + "_kd-" + to_string(programInput.kernelDepth);				
 				break;
 			default:
 				assert(0);
@@ -359,7 +375,7 @@ int main(int argc, char** argv)
 		//generate and save triangular mesh
 		vector<array<int, 3>> triangles;
         for(int i = 0; i < new_triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
-		std::string surface_filename = programInput.simDir + programInput.simName + "_surface_" + std::to_string(t) + simtype + ".vtk";
+		std::string surface_filename = programInput.simDir + programInput.simName + simtype + "_surface_" + std::to_string(t) + ".vtk";
 		learnSPH::saveTriMeshToVTK(surface_filename, new_triangle_mesh, triangles);
 
 		cout << "\nframe [" << t << "] rendered" << endl;
