@@ -339,7 +339,8 @@ int main(int argc, char** argv)
 					programInput.supportRad,
 					programInput.sdfSmoothingFactor,
 					programInput.kernelSize,
-					programInput.kernelOffset);
+					programInput.kernelOffset,
+					programInput.kernelDepth);
 				simtype = string("ZhuBridsonBlured") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) + 
 						"_sf-" + to_string(programInput.sdfSmoothingFactor) + "_ks-" + to_string(programInput.kernelSize) +
 						"_ko-" + to_string(programInput.kernelOffset) + "_kd-" + to_string(programInput.kernelDepth);				

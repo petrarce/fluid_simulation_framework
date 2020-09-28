@@ -1,3 +1,4 @@
+
 20/09/2020
 Tried blurring the level set. Technique works peaty fine depending on the kernel size and offset.
 Varying kernel offset doesn't work pretty well, at least at a cell size, larger, than diameter of particle. 
@@ -20,6 +21,7 @@ Cons blurring: Increased computation time due to additional blurring pass (poten
 				Artifacts in the final mesh (see abow)
 24.09.2020
 Global TODO's:
+
 1. Check Zhu-Bridson what if the particle radius matches reconstructed surface. Find the problem if exists
 2. Make more efficient usage of the memory for large simulations
 3. Check what is the issue with the blurring technique
@@ -37,3 +39,25 @@ New idea, how to enhance blurring method:
 	a. Compute gradient of scalar field using forward/backward/central difference
 	b. Blur w.r.t. neighbors, that are in the direction of the gradient of the blurring
 	c. Pick kernel size w.r.t. the curvature, which can be determined according to the difference between the gradient direction of two grid cells
+
+Possible titles:
+	What am i doing: Find exact and efficient (gpu/cpu, memory) and highly parallelized method grid based method, for reconstruction of the smooth surface of SPH fluid
+
+	 Exact and parallel grid based method of SPH fluid surface reconstruction
+	 Reconstruction of SPH fluid surface using gpu parallelizable grid based approach
+
+25.09.2020
+TODO's:
+
+3. Check what is the issue with the blurring technique
+6. Implement blurring in the direction of the gradient of scalar field
+7. Think of the smoothing methods, How to apply them on the 3d grid
+4. Finish the "Level set methods" theory
+5. Finish article from Jose
+8. Optimize triangle mesh computation (avoid redundant points computation, apply decimation)
+9. Smoothing normals of the surface for better rendering
+10. Regarding the thinness problem: check out Markstein et. all.:  
+
+Something i read and understood about convection:
+	Convection is a technique of the surface propagation using the dynamic information of the fluid, like velocity. E.g. given Level set we can propagate its values between the frames given the velocity information solving the PDE: $\dfrac{dx}\dfrac{dt} = V(x)$.
+	For computing implicit surface changes at $x:\phi(x) = 0$ we solve equation: $\phi_t + V * \ \phi$
