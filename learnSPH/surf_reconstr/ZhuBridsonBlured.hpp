@@ -103,12 +103,14 @@ private:
 			auto c =BaseClass:: cell(cI);
 			auto cC = BaseClass::cellCoord(c);
 			Real dfValue = 0;
+			Real cellSdf = MarchingCubes::getSDFvalue(c);
 			auto nbs = getNeighbourCells(c, kernelSize, offset, depth);
 			Real wSum = 0;
 			for(const auto& nb : nbs)
 			{
 				float sdfVal = 0;
-				sdfVal = getSDFvalue(nb(0), nb(1), nb(2)); 
+				try {sdfVal = getSDFvalue(nb(0), nb(1), nb(2)); }
+				catch(...) {sdfVal = cellSdf;}
 				Real w = learnSPH::kernel::kernelFunction(BaseClass::cellCoord(nb), cC, maxRadii);
 				wSum += w;
 				dfValue += sdfVal * w;
@@ -160,9 +162,6 @@ private:
 				{
 					if(Eigen::Vector3i(i,j,k) == Eigen::Vector3i(0,0,0))
 						neighbors.push_back(baseCell);
-					
-					if(BaseClass::mSurfaceCells.find(BaseClass::cellIndex(baseCell + Eigen::Vector3i(i,j,k))) == BaseClass::mSurfaceCells.end())
-						continue;
 					
 					//if projection of the point offset to gradient in the point is larger, that half of the kernel - dont take the point for bluering while 
 					Eigen::Vector3d offsetVector = BaseClass::cellCoord(baseCell) - BaseClass::cellCoord(baseCell + Eigen::Vector3i(i,j,k));
