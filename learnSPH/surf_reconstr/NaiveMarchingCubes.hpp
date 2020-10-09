@@ -16,7 +16,8 @@ protected:
 	size_t mSurfaceParticlesCount {0};
 	Real mColorFieldSurfaceFactor {0.8};
 	float mInitialValue {-0.5};
-	std::unordered_map<size_t, size_t> mSurfaceCells;
+	std::unordered_map<size_t/*index*/, size_t/*number of particles in the neighbourhood*/> mSurfaceCells;
+	int mPartPerSupportArea {0};
 
 public:
 	MarchingCubes() = delete;

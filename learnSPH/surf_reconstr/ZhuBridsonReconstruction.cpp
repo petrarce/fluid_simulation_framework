@@ -6,12 +6,20 @@ void ZhuBridsonReconstruction::updateGrid()
 	xAvg.clear();
 	denominators.clear();
 	mSurfaceCells.clear();
+	mPartPerSupportArea = (8 * mRadii * mRadii * mRadii) / 
+							(mFluid->getDiameter() * mFluid->getDiameter() * mFluid->getDiameter());	
 	const auto& particles = mFluid->getPositions();
 	for(int i = 0; i < mSurfaceParticlesCount; i++)
 	{
 		auto nCells = getNeighbourCells(particles[i], mRadii, false);
 		for(const auto& nc : nCells)
-			mSurfaceCells[cellIndex(nc)] = cellIndex(nc);
+		{
+			auto cI = cellIndex(nc);
+			if(mSurfaceCells.find(cI) == mSurfaceCells.end())
+				mSurfaceCells[cI] = 1;
+			else
+				mSurfaceCells[cI]++;
+		}
 	}
 }
 

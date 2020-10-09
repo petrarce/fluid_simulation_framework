@@ -116,7 +116,8 @@ private:
 				dfValue += sdfVal * w;
 			}
 			dfValue /= wSum;
-			newLevelSet[cI] = mLevelSetValues[cI] * (1 - mSmoothingFactor) + mSmoothingFactor * dfValue;
+			Real smoothFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
+			newLevelSet[cI] = mLevelSetValues[cI] * (1 - smoothFactor) + smoothFactor * dfValue;
 		}
 		mLevelSetValues.swap(newLevelSet);
 	}

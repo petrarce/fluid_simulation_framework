@@ -52,8 +52,8 @@ void SolenthilerReconstruction::updateGradientSums()
 	std::vector<Vector3R> points;
 	for(const auto& item : mSurfaceCells)
 	{
-		points.push_back(cellCoord(cell(item.second)));
-		gradSums.push_back(mCellGradComponents[item.second].gradSum);
+		points.push_back(cellCoord(cell(item.first)));
+		gradSums.push_back(mCellGradComponents[item.first].gradSum);
 	}
 	
 	static int cnt = 0;

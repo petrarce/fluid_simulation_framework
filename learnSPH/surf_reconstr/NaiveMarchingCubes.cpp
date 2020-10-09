@@ -48,7 +48,7 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 	vector<Vector3R> vertices;
 	for(const auto& vert : mSurfaceCells)
 	{
-		auto cI = cell(vert.second);
+		auto cI = cell(vert.first);
 		auto cC = cellCoord(cI);
 		auto sdfV = getSDFvalue(cI(0), cI(1), cI(2));
 		vertices.push_back(cC);
@@ -66,12 +66,20 @@ void NaiveMarchingCubes::updateGrid()
 {
 	mSurfaceCells.clear();
 	mLevelSetFunction.clear();
+	mPartPerSupportArea = (mFluid->getCompactSupport() * mFluid->getCompactSupport() * mFluid->getCompactSupport()) / 
+							(mFluid->getDiameter() * mFluid->getDiameter() * mFluid->getDiameter());
 	const auto& particles = mFluid->getPositions();
 	for(int i = 0; i < mSurfaceParticlesCount; i++)
 	{
 		auto nCells = getNeighbourCells(particles[i], mFluid->getCompactSupport()/2, false);
 		for(const auto& nc : nCells)
-			mSurfaceCells[cellIndex(nc)] = cellIndex(nc);
+		{
+			auto cI = cellIndex(nc);
+			if(mSurfaceCells.find(cI) == mSurfaceCells.end())
+				mSurfaceCells[cI] = 1;
+			else
+				mSurfaceCells[cI]++;
+		}
 	}
 }
 void NaiveMarchingCubes::updateLevelSet()
@@ -116,7 +124,7 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 
 	for(const auto& cellVert : mSurfaceCells)
 	{
-		Vector3i cellInd = cell(cellVert.second);
+		Vector3i cellInd = cell(cellVert.first);
 		size_t i = cellInd(0);
 		size_t j = cellInd(1);
 		size_t k = cellInd(2);

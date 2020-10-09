@@ -61,3 +61,28 @@ TODO's:
 Something i read and understood about convection:
 	Convection is a technique of the surface propagation using the dynamic information of the fluid, like velocity. E.g. given Level set we can propagate its values between the frames given the velocity information solving the PDE: $\dfrac{dx}\dfrac{dt} = V(x)$.
 	For computing implicit surface changes at $x:\phi(x) = 0$ we solve equation: $\phi_t + V * \ \phi$
+
+26.09.2020
+
+The issue with the blurring technique "lines artifacts" was due to erroneous cell computation when converting from WS coordinate to CellSpace coordinate.
+
+05.10.2020
+TODO:
+1. Finish article from Jose
+2. Count number of fluid particles near the cell and apply blurring kernel size accordingly (Use continuous function for this)
+3. Calculate curvature and apply blurring accordingly
+3. Calculate normal differences in neighborhood and decide the kernel size to apply depending on this information
+4. Use Splats to calculate the neighborhood of the point for blurring
+5. Try to apply on-grid-MLS method for smoothing level set
+6. Think of the smoothing methods, How to apply them on the 3d grid
+7. Finish the "Level set methods" theory
+8. Optimize triangle mesh computation (avoid redundant points computation, apply decimation)
+9. Smoothing normals of the surface for better rendering
+10. Regarding the thinness problem: check out Markstein et. all.
+11. How each method behaves in multiple paths (convergence)
+12. Comparison of 2D and 3D methods
+
+Today i have found potential possibility to of applying the MLS on the SDF grid. After computing the SDF we can apply MLS as a additional pass on SDF grid like in blurring. We compute gradient of the SDF, which is in the direction, normal to the fluid surface at each point, we find a curvature of the fluid at this cell point, find neighbors according to a curvature and normal of the current point, for which we want to modify the SDF value. We assume, that current point with given gradient as a direction, normal to the circle where the point resides, and curvature as a radius of the sphere, we find all neighbors, that also lie near the sphere surface and apply MLS on the neighborhood.
+
+
+

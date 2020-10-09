@@ -189,8 +189,8 @@ struct
 		if(vm.count("sdf-smoothing-factor"))
 		{
 			sdfSmoothingFactor = vm["sdf-smoothing-factor"].as<Real>();
-			if(sdfSmoothingFactor < 0 || sdfSmoothingFactor > 1)
-				throw invalid_argument("invalid --sdf-smoothing-factor. Should be in range [0, 1]");
+			if(sdfSmoothingFactor < 0)
+				throw invalid_argument("invalid --sdf-smoothing-factor. Should be in range [0, +inf]");
 		}
 		else
 			throw invalid_argument("required option: --sdf-smoothing-factor");
