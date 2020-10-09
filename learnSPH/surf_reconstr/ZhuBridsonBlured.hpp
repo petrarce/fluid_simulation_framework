@@ -100,6 +100,8 @@ private:
 		for(const auto& cellItem : BaseClass::mSurfaceCells)
 		{
 			auto cI = cellItem.first;
+			Vector3R ptGrad = getSDFGrad(BaseClass::cell(cI)); 
+			ptGrad.normalize();
 			auto c =BaseClass:: cell(cI);
 			auto cC = BaseClass::cellCoord(c);
 			Real dfValue = 0;
@@ -108,10 +110,15 @@ private:
 			Real wSum = 0;
 			for(const auto& nb : nbs)
 			{
+				Vector3R nbGrad = Vector3R(0,0,0);
+				try{ nbGrad = getSDFGrad(nb);}
+				catch(...){}
+				nbGrad.normalize();
 				float sdfVal = 0;
 				try {sdfVal = getSDFvalue(nb(0), nb(1), nb(2)); }
 				catch(...) {sdfVal = cellSdf;}
-				Real w = learnSPH::kernel::kernelFunction(BaseClass::cellCoord(nb), cC, maxRadii);
+				Real w = std::max(static_cast<Real>(0), nbGrad.dot(ptGrad));
+				w *= learnSPH::kernel::kernelFunction(BaseClass::cellCoord(nb), cC, maxRadii);
 				wSum += w;
 				dfValue += sdfVal * w;
 			}
