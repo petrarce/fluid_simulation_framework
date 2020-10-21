@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <cassert>
+#include <regex>
 #include <learnSPH/core/kernel.h>
 #include <boost/program_options.hpp>
 #include <boost/program_options/options_description.hpp>
@@ -70,6 +71,14 @@ int main(int argc, char** argv)
 	{
 		std::string& inpFile = appInputParams.files[i];
 		assert(inpFile.find(".vtk") != string::npos);
+		std::smatch firstMatch;
+		std::regex integer("[0-9]+");
+		std::regex_search(inpFile, firstMatch, integer);
+		if(!firstMatch.ready() || firstMatch.empty())
+		{
+			pr_warn("file doesnt contain index. Results are not saved");
+			continue;
+		}
 		vtkSmartPointer<vtkUnstructuredGridReader> partReader = vtkSmartPointer<vtkUnstructuredGridReader>::New();
 		partReader->SetFileName(inpFile.c_str());
 		partReader->Update();
@@ -80,15 +89,15 @@ int main(int argc, char** argv)
 			double pt[3];dataArray->GetPoint(j, pt);
 			pointVector[j] = Vector3R(pt[0], pt[1], pt[2]);
 		}
-		
-		save_vectors(simName + "_positions_" + to_string(i) + ".cereal", pointVector);
+        string sequenceNumber = firstMatch.str();
+        save_vectors(simName + "_positions_" + sequenceNumber + ".cereal", pointVector);
 		vector<Real> dencities(pointVector.size(), 0);
-		save_scalars(simName + "_densities_" + to_string(i) + ".cereal", dencities);
+        save_scalars(simName + "_densities_" + sequenceNumber + ".cereal", dencities);
 		vector<Real> params = { 2.4 * partDiameter, 
-								1.2 * partDiameter, 
+								partDiameter, 
 								1/6 * learnSPH::kernel::PI * partDiameter * partDiameter * partDiameter, 
 								1000};
-		save_scalars(simName + "_params_" + to_string(i) + ".cereal", params);
+        save_scalars(simName + "_params_" + sequenceNumber + ".cereal", params);
 	}
 	return 0;
 }

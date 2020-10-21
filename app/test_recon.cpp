@@ -168,7 +168,7 @@ struct
 			throw invalid_argument("required option: --sim-name");
 
 		if(vm.count("sim-directory"))
-			simDir = vm["sim-directory"].as<string>();
+			simDir = vm["sim-directory"].as<string>() + "/";
 		else
 			throw invalid_argument("required option: --sim-directory");
 		
@@ -370,7 +370,7 @@ int main(int argc, char** argv)
 			params[3] /*restDensity*/, 
 			params[2] /*particleMass*/, 
 			params[0] /*compactSupport*/, 
-			1.0		  /*etaValue*/);
+			1.2		  /*etaValue*/);
         vector<Vector3R> new_triangle_mesh((mcbNew->generateMesh(fluidSystem)));
 
 		//generate and save triangular mesh
