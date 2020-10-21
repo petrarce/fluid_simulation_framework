@@ -9,7 +9,7 @@
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
 
-
+#define DEBUG
 template<class BaseClass, class... Args>
 class BlurredReconstruction : public BaseClass
 {
@@ -97,6 +97,11 @@ private:
 	{
 		auto newLevelSet = mLevelSetValues;
 		Real maxRadii = BaseClass::mResolution(0) * offset * kernelSize * 1.1;
+#ifdef DEBUG
+		static int cnt = 0;
+		vector<Real> smoothFactors;
+		vector<Vector3R> points;
+#endif
 		for(const auto& cellItem : BaseClass::mSurfaceCells)
 		{
 			auto cI = cellItem.first;
@@ -111,15 +116,23 @@ private:
 				float sdfVal = 0;
 				try {sdfVal = getSDFvalue(nb(0), nb(1), nb(2)); }
 				catch(...) {sdfVal = cellSdf;}
-				Real w = learnSPH::kernel::kernelFunction(BaseClass::cellCoord(nb), cC, maxRadii);
-				wSum += w;
-				dfValue += sdfVal * w;
+				wSum += 1.;
+				dfValue += sdfVal;
+
 			}
 			dfValue /= wSum;
 			Real smoothFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
 			newLevelSet[cI] = mLevelSetValues[cI] * (1 - smoothFactor) + smoothFactor * dfValue;
+#ifdef DEBUG
+			smoothFactors.push_back(smoothFactor);
+			points.push_back(cC);
+#endif
 		}
 		mLevelSetValues.swap(newLevelSet);
+#ifdef DEBUG
+		learnSPH::saveParticlesToVTK("/tmp/ParticleCountSmoothFactor" + to_string(cnt) + ".vtk", points, smoothFactors);
+		cnt++;
+#endif
 	}
 	
 	Eigen::Vector3d getSDFGrad(const Vector3i& c) const
