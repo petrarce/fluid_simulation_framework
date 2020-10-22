@@ -39,7 +39,7 @@ protected:
 	void updateGrid() override;
 	void updateLevelSet() override;
 	void configureHashTables() override;
-	float getSDFvalue(int i, int j, int k) const override;
+	bool getSDFvalue(int i, int j, int k, float& sdf) const override;
 	
 	void updateDenominators();
 	

@@ -46,10 +46,10 @@ protected:
 	virtual void updateLevelSet() = 0;
 	virtual void configureHashTables();
 	virtual void updateSurfaceParticles();
-	virtual float getSDFvalue(int i, int j, int k) const = 0;
-	inline float getSDFvalue(const Vector3i& c) const
+	virtual bool getSDFvalue(int i, int j, int k, float& sdf) const = 0;
+	inline bool getSDFvalue(const Vector3i& c, float& sdf) const
 	{
-		return getSDFvalue(c(0), c(1), c(2));
+		return getSDFvalue(c(0), c(1), c(2), sdf);
 	}
 	std::vector<Eigen::Vector3d> getTriangles() const;
 	///Calculate cell indeces of neighbour cells
@@ -135,12 +135,13 @@ protected:
 	void updateLevelSet() override;
 	void configureHashTables() override;
 	
-	float getSDFvalue(int i, int j, int k) const override
+	bool getSDFvalue(int i, int j, int k, float& sdf) const override
 	{
 		auto val = mLevelSetFunction.find(cellIndex(Eigen::Vector3i(i, j, k)));
 		if(val  == mLevelSetFunction.end())
-			return mInitialValue;
-		return val->second;
+			return false;
+		sdf = val->second;
+		return true;
 	}
 
 

@@ -73,14 +73,15 @@ private:
 		cnt++;
 #endif
 	}
-	float getSDFvalue(int i, int j, int k) const override
+	bool getSDFvalue(int i, int j, int k, float& sdf) const override
 	{
 		auto cI = BaseClass::cellIndex(Eigen::Vector3i(i,j,k));
 		auto sdfItem = mLevelSetValues.find(cI);
 		if(sdfItem == mLevelSetValues.end())
-			throw std::invalid_argument("cell is not in the domain");
+			return false;
 		
-		return sdfItem->second;
+		sdf = sdfItem->second;
+		return true;
 	}
 	
 	void saveLevelSetValues()
@@ -88,7 +89,10 @@ private:
 		for(const auto& item : BaseClass::mSurfaceCells)
 		{
 			auto c = BaseClass::cell(item.first);
-			mLevelSetValues[item.first] = BaseClass::getSDFvalue(c(0), c(1), c(2));
+			float sdfVal;
+			bool res = BaseClass::getSDFvalue(c(0), c(1), c(2), sdfVal);
+			assert(res);
+			mLevelSetValues[item.first] = sdfVal;
 		}
 	}
 	
@@ -107,14 +111,15 @@ private:
 			auto c =BaseClass:: cell(cI);
 			auto cC = BaseClass::cellCoord(c);
 			Real dfValue = 0;
-			Real cellSdf = MarchingCubes::getSDFvalue(c);
+			float cellSdf; bool res = MarchingCubes::getSDFvalue(c, cellSdf);
+			assert(res);
 			auto nbs = getNeighbourCells(c, kernelSize, offset, depth);
 			Real wSum = 0;
 			for(const auto& nb : nbs)
 			{
 				float sdfVal = 0;
-				try {sdfVal = getSDFvalue(nb(0), nb(1), nb(2)); }
-				catch(...) {sdfVal = cellSdf;}
+				if(!getSDFvalue(nb(0), nb(1), nb(2), sdfVal))
+					sdfVal = cellSdf;
 				wSum += 1.;
 				dfValue += sdfVal;
 
@@ -136,16 +141,18 @@ private:
 	
 	Eigen::Vector3d getSDFGrad(const Vector3i& c) const
 	{
-		float cellSDFval = MarchingCubes::getSDFvalue(c);
+		float cellSDFval;
+		bool res = MarchingCubes::getSDFvalue(c, cellSDFval);
+		assert(res);
 		float sdfValX = 0.f;
 		float sdfValY = 0.f;
 		float sdfValZ = 0.f;
-		try {sdfValX = MarchingCubes::getSDFvalue(c - Vector3i(1, 0, 0));}
-		catch(...){sdfValX = cellSDFval;}
-		try {sdfValY = MarchingCubes::getSDFvalue(c - Vector3i(0, 1, 0));}
-		catch(...){sdfValY = cellSDFval;}
-		try {sdfValZ = MarchingCubes::getSDFvalue(c - Vector3i(0, 0, 1));}
-		catch(...){sdfValZ = cellSDFval;}
+		if(!MarchingCubes::getSDFvalue(c - Vector3i(1, 0, 0), sdfValX))
+			sdfValX = cellSDFval;
+		if(!MarchingCubes::getSDFvalue(c - Vector3i(0, 1, 0), sdfValY))
+			sdfValY = cellSDFval;
+		if(!MarchingCubes::getSDFvalue(c - Vector3i(0, 0, 1), sdfValZ))
+			sdfValZ = cellSDFval;
 		float dx = (cellSDFval - sdfValX) / BaseClass::mResolution(0);
 		float dy = (cellSDFval - sdfValY) / BaseClass::mResolution(1);
 		float dz = (cellSDFval - sdfValZ) / BaseClass::mResolution(2);
@@ -169,19 +176,22 @@ private:
 			return neighbors;
 		grad.normalize();
 		
+		neighbors.reserve(kernelSize * offset * kernelSize * offset * kernelSize * offset * 8);
 		for(int i = -kernelSize * offset; i <= kernelSize * offset; i += offset)
 			for(int j = -kernelSize * offset; j <= kernelSize * offset; j += offset)
 				for(int k = -kernelSize * offset; k <= kernelSize * offset; k += offset)
 				{
-					if(Eigen::Vector3i(i,j,k) == Eigen::Vector3i(0,0,0))
+					if(i == 0 && j == 0 && k == 0)
 						neighbors.push_back(baseCell);
 					
 					//if projection of the point offset to gradient in the point is larger, that half of the kernel - dont take the point for bluering while 
-					Eigen::Vector3d offsetVector = BaseClass::cellCoord(baseCell) - BaseClass::cellCoord(baseCell + Eigen::Vector3i(i,j,k));
-					if(std::fabs(offsetVector.dot(grad)) > (depth * (kernelSize) * BaseClass::mResolution(0)))
+					Eigen::Vector3d offsetVector = Eigen::Vector3d(-i * BaseClass::mResolution(0),
+																   -j * BaseClass::mResolution(1),
+																   -k * BaseClass::mResolution(0));
+					if(std::fabs(offsetVector(0) * grad(0) + offsetVector(1) * grad(1) + offsetVector(2) * grad(2)) > (depth * kernelSize * BaseClass::mResolution(0)))
 						continue;
 					
-					neighbors.push_back(baseCell + Eigen::Vector3i(i,j,k));
+					neighbors.push_back(Eigen::Vector3i(baseCell(0) + i, baseCell(1) + j, baseCell(2) + k));
 #ifdef DEBUG
 					cells.push_back(BaseClass::cellCoord(baseCell + Eigen::Vector3i(i,j,k)));
 #endif

@@ -37,7 +37,7 @@ void ZhuBridsonReconstruction::configureHashTables()
 	denominators.max_load_factor(mSurfaceCells.max_load_factor());
 }
 
-float ZhuBridsonReconstruction::getSDFvalue(int i, int j, int k) const
+bool ZhuBridsonReconstruction::getSDFvalue(int i, int j, int k, float& sdf) const
 {
 	auto cell = Eigen::Vector3i(i,j,k);
 	auto cI = cellIndex(cell);
@@ -46,9 +46,10 @@ float ZhuBridsonReconstruction::getSDFvalue(int i, int j, int k) const
 	auto dAvgI = dAvg.find(cI);
 	if(xAvgI == xAvg.end())
 		//TODO compute some acceptable value
-		throw std::invalid_argument("cell is not in the domain");
+		return false;
 	
-	return (cC - xAvgI->second).norm() - dAvgI->second / 2;
+	sdf = (cC - xAvgI->second).norm() - dAvgI->second / 2;
+	return true;
 }
 
 void ZhuBridsonReconstruction::updateDenominators()

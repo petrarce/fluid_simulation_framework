@@ -50,7 +50,9 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 	{
 		auto cI = cell(vert.first);
 		auto cC = cellCoord(cI);
-		auto sdfV = getSDFvalue(cI(0), cI(1), cI(2));
+		float sdfV; 
+		bool res = getSDFvalue(cI(0), cI(1), cI(2), sdfV);
+		assert(res);
 		vertices.push_back(cC);
 		sdf.push_back(sdfV);
 	}
@@ -133,14 +135,15 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 
 		for(int l = 0; l < 8; l++) 
 		{
-			try {
-				ptsConfig[l] = getSDFvalue(
-							i + CELL_VERTICES[l][0], 
+			float sdf;
+			if(!getSDFvalue(i + CELL_VERTICES[l][0], 
 							j + CELL_VERTICES[l][1], 
-							k + CELL_VERTICES[l][2]) < 0;
-			} catch (...) {
-				ptsConfig[l] = getSDFvalue(i, j, k) < 0;
+							k + CELL_VERTICES[l][2], sdf))
+			{
+				bool res = getSDFvalue(i, j, k, sdf);
+				assert(res);
 			}
+			ptsConfig[l] = sdf < 0;
 		}
 
 		std::array<std::array<int, 3>, 5> triangle_type = getMarchingCubesCellTriangulation(ptsConfig);
@@ -159,11 +162,17 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 				int c2Zind = (k + CELL_VERTICES[CELL_EDGES[triangle_type[l][m]][1]][2]);
 				float v1, v2;
 				
-				try { v1 = getSDFvalue(c1Xind, c1Yind, c1Zind); }
-				catch (...) { v1 = getSDFvalue(i,j,k); }
+				if(!getSDFvalue(c1Xind, c1Yind, c1Zind, v1))
+				{
+					bool res = getSDFvalue(i,j,k, v1);
+					assert(res);
+				}
 				
-				try { v2 = getSDFvalue(c2Xind, c2Yind, c2Zind); }
-				catch (...) { v2 = getSDFvalue(i,j,k); }
+				if(!getSDFvalue(c2Xind, c2Yind, c2Zind, v2))
+				{
+					bool res = getSDFvalue(i,j,k, v2);
+					assert(res);
+				}
 
 				Eigen::Vector3d p1 = cellCoord(Eigen::Vector3i(c1Xind, c1Yind, c1Zind));
 				Eigen::Vector3d p2 = cellCoord(Eigen::Vector3i(c2Xind, c2Yind, c2Zind));

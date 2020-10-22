@@ -122,7 +122,7 @@ void SolenthilerReconstruction::updateFFunction()
 #endif
 	
 }
-float SolenthilerReconstruction::getSDFvalue(int i, int j, int k) const
+bool SolenthilerReconstruction::getSDFvalue(int i, int j, int k, float& sdf) const
 {
 	auto cell = Eigen::Vector3i(i,j,k);
 	auto cI = cellIndex(cell);
@@ -132,6 +132,7 @@ float SolenthilerReconstruction::getSDFvalue(int i, int j, int k) const
 	auto fVal = mCellGradComponents.find(cI);
 	if(xAvgI == xAvg.end())
 		//TODO compute some acceptable value
-		throw std::invalid_argument("cell is not in the domain");
-	return ((cC - xAvgI->second).norm() - dAvgI->second * fVal->second.fVal / 2);
+		return false;
+	sdf = ((cC - xAvgI->second).norm() - dAvgI->second * fVal->second.fVal / 2);
+	return true;
 }
