@@ -353,11 +353,11 @@ int main(int argc, char** argv)
 		vector<Vector3R> positions;
 		vector<Real> densities;
 
-		std::string filename = programInput.simDir + programInput.simName + "_params_" + std::to_string(t) + ".cereal";
+		std::string filename = paramFiles[t];
 		load_scalars(filename, params);
-		filename = programInput.simDir + programInput.simName + "_positions_" + std::to_string(t) + ".cereal";
+		filename = positionFiles[t];
 		load_vectors(filename, positions);
-		filename = programInput.simDir + programInput.simName + "_densities_" + std::to_string(t) + ".cereal";
+		filename = densitiesFiles[t];
 		load_scalars(filename, densities);
 
 		removeFugitives(positions, densities, programInput.lowerCorner, programInput.upperCorner);
@@ -376,7 +376,11 @@ int main(int argc, char** argv)
 		//generate and save triangular mesh
 		vector<array<int, 3>> triangles;
         for(int i = 0; i < new_triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
-		std::string surface_filename = programInput.simDir + programInput.simName + simtype + "_surface_" + std::to_string(t) + ".vtk";
+		std::regex integer("[0-9]+");
+		std::smatch integerMatch;
+		std::regex_search(filename, integerMatch, integer);
+		assert(integerMatch.ready() && !integerMatch.empty());
+		std::string surface_filename = programInput.simDir + programInput.simName + simtype + "_surface_" + integerMatch.str() + ".vtk";
 		learnSPH::saveTriMeshToVTK(surface_filename, new_triangle_mesh, triangles);
 
 		cout << "\nframe [" << t << "] rendered" << endl;

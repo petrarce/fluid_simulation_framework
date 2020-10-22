@@ -9,7 +9,6 @@
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
 
-#define DEBUG
 template<class BaseClass, class... Args>
 class BlurredReconstruction : public BaseClass
 {
