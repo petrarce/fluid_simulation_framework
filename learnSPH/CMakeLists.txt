@@ -34,7 +34,6 @@ set(SOURCE_FILES
 	surf_reconstr/ZhuBridsonReconstruction.cpp
 	surf_reconstr/SolenthilerReconstruction.cpp
 	surf_reconstr/SolenthilerReconstruction.hpp
-	surf_reconstr/ZhuBridsonBlurred.cpp
 	surf_reconstr/BlurredReconstruction.hpp
 
 	${CMAKE_SOURCE_DIR}/include/types.hpp
