@@ -14,7 +14,7 @@
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <learnSPH/surf_reconstr/ZhuBridsonReconstruction.hpp>
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
-#include <learnSPH/surf_reconstr/ZhuBridsonBlured.hpp>
+#include <learnSPH/surf_reconstr/BlurredReconstruction.hpp>
 #include <learnSPH/core/storage.h>
 
 //cereal
@@ -225,7 +225,7 @@ struct
 				method = ReconstructionMethods::ZB;
 			else if(lmethod == "Solenthiler")
 				method = ReconstructionMethods::SLH;
-			else if(lmethod == "ZhuBridsonBlured")
+			else if(lmethod == "ZhuBridsonBlurred")
 				method = ReconstructionMethods::NMCSmooth;
 			else
 				throw invalid_argument("unknown reconstruction method specified in  --method: " + lmethod);
@@ -270,7 +270,7 @@ int main(int argc, char** argv)
 			("sim-name", value<string>(), "simulation name")
 			("sim-directory", value<string>()->default_value("./"), "path to the simulation vtk files")
 			("grid-resolution", value<Real>(), "uniform grid resolution for matching cubes")
-			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson, Solenthiler, ZhuBridsonBlured")
+			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson, Solenthiler, ZhuBridsonBlurred")
 			("support-radius", value<Real>()->default_value(2), "Support radius for position-based scalar fields")
 			("tmin", value<Real>()->default_value(1), "lower bound for Solentiler evalue treshold")
 			("tmax", value<Real>()->default_value(2), "upper bound for Solentiler evalue treshold")
@@ -341,7 +341,7 @@ int main(int argc, char** argv)
 					programInput.kernelSize,
 					programInput.kernelOffset,
 					programInput.kernelDepth);
-				simtype = string("ZhuBridsonBlured") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) + 
+				simtype = string("ZhuBridsonBlurred") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) + 
 						"_sf-" + to_string(programInput.sdfSmoothingFactor) + "_ks-" + to_string(programInput.kernelSize) +
 						"_ko-" + to_string(programInput.kernelOffset) + "_kd-" + to_string(programInput.kernelDepth);				
 				break;
