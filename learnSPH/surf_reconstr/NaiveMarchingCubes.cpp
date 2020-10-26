@@ -210,7 +210,7 @@ std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vecto
 		{
 			for(int k = -zDirPositions; k <= zDirPositions+1; k++)
 			{
-				neighbourCell = baseCell + Vector3i(i, j, k);
+				neighbourCell = Vector3i(baseCell(0) + i,baseCell(1) + j, baseCell(2) +  k);
 				
 				if(existing && mSurfaceCells.find(cellIndex(neighbourCell)) == mSurfaceCells.end())
 					continue;
@@ -218,7 +218,7 @@ std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vecto
 
 				Eigen::Vector3d neighbour = cellCoord(neighbourCell);
 				
-				if((position - neighbour).squaredNorm() < radius * radius)
+				if(((i*i + j*j + k*k) * mResolution(0) * mResolution(0)) < radius * radius)
 					neighbours.push_back(neighbourCell);
 			}
 		}
