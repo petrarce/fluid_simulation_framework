@@ -62,8 +62,7 @@ void ZhuBridsonReconstruction::updateDenominators()
 		for(const auto& cell : neighbours){
 			auto cI = cellIndex(cell);
 			auto cC = cellCoord(cell);
-			auto denominatorsI = denominators.find(cI);
-			if(denominatorsI == denominators.end())
+			if(denominators.find(cI) == denominators.end())
 				denominators[cI] = 0;
 			denominators[cI] += learnSPH::kernel::kernelCubic(cC, particles[i], mRadii);
 		}
