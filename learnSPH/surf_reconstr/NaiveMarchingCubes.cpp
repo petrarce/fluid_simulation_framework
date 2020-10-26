@@ -41,9 +41,7 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 	configureHashTables();
 	updateGrid();
 	updateLevelSet();
-	
 #ifdef DEBUG
-	static int cnt = 0;
 	vector<Real> sdf;
 	vector<Vector3R> vertices;
 	for(const auto& vert : mSurfaceCells)
@@ -56,8 +54,15 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 		vertices.push_back(cC);
 		sdf.push_back(sdfV);
 	}
-	saveParticlesToVTK("/tmp/SDF" + to_string(cnt) + ".vtk", vertices, sdf);
-	cnt++;
+	saveParticlesToVTK("/tmp/SDF" + mFrameNumber + ".vtk", vertices, sdf);
+
+	auto intersectionCellVertices = computeIntersectionCellVertices();
+	vector<Vector3R> intersectionCellVerticePoints;
+	intersectionCellVerticePoints.reserve(intersectionCellVertices.size());
+	for(const auto& c : intersectionCellVertices)
+		intersectionCellVerticePoints.push_back(cellCoord(cell(c.first)));
+	saveParticlesToVTK("/tmp/SurfaceCellVertices" + mFrameNumber + ".vtk", intersectionCellVerticePoints);
+
 #endif
 	auto mesh = getTriangles();
 	return mesh;
@@ -97,7 +102,7 @@ void NaiveMarchingCubes::updateLevelSet()
 		double fluidDensity = densities[i];
 		const Eigen::Vector3d& particle = positions[i];
 		std::vector<Eigen::Vector3i> neighbourCells = 
-				std::move(getNeighbourCells(particle, mFluid->getCompactSupport()));
+				getNeighbourCells(particle, mFluid->getCompactSupport());
 		for(const auto& cell : neighbourCells)
 		{
 			float weight = learnSPH::kernel::kernelFunction(
@@ -114,39 +119,22 @@ void NaiveMarchingCubes::updateLevelSet()
 	}
 }
 
-
-
-	
 vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 {
 
 	vector<Eigen::Vector3d> triangleMesh;
 	triangleMesh.reserve(mSurfaceCells.size() * 3 * 3);
 
+	auto intersectionCells = computeIntersectionCells();
 
-	for(const auto& cellVert : mSurfaceCells)
+	for(const auto& cellVert : intersectionCells)
 	{
 		Vector3i cellInd = cell(cellVert.first);
 		size_t i = cellInd(0);
 		size_t j = cellInd(1);
 		size_t k = cellInd(2);
 		
-		std::array<bool, 8> ptsConfig;
-
-		for(int l = 0; l < 8; l++) 
-		{
-			float sdf;
-			if(!getSDFvalue(i + CELL_VERTICES[l][0], 
-							j + CELL_VERTICES[l][1], 
-							k + CELL_VERTICES[l][2], sdf))
-			{
-				bool res = getSDFvalue(i, j, k, sdf);
-				assert(res);
-			}
-			ptsConfig[l] = sdf < 0;
-		}
-
-		std::array<std::array<int, 3>, 5> triangle_type = getMarchingCubesCellTriangulation(ptsConfig);
+		const std::array<std::array<int, 3>, 5>& triangle_type = cellVert.second;
 
 		for(size_t l = 0; l < 5; l++) {
 			
@@ -183,7 +171,28 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 	return triangleMesh;
 }
 
-
+std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionCellVertices() const
+{
+	std::unordered_map<size_t, size_t> intersectionCellVertices;
+	auto intersectionCells = computeIntersectionCells();
+	intersectionCellVertices.reserve(intersectionCells.size());
+	for(const auto& iCell : intersectionCells)
+	{
+		Eigen::Vector3i c = cell(iCell.first);
+		for(int i = 0; i < 8; i++)
+		{
+			Eigen::Vector3i nc = c + Eigen::Vector3i(1<<i & 0x4, 1 << i & 0x2, 1 << i & 0x1);
+			size_t ncI = cellIndex(nc);
+			if(intersectionCellVertices.find(ncI) != intersectionCellVertices.end())
+				continue;
+			auto fluidCell = mSurfaceCells.find(ncI);
+			if(fluidCell == mSurfaceCells.end())
+				continue;
+			intersectionCellVertices.insert(*fluidCell);
+		}
+	}
+	return intersectionCellVertices;
+}
 
 //return indecis of neighbouring vertices
 std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vector3d &position, float radius, bool existing) const
@@ -217,6 +226,41 @@ std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vecto
 
 	return neighbours;
 }
+
+std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> MarchingCubes::computeIntersectionCells() const
+{
+	std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> intersectionCells;
+	intersectionCells.reserve(mSurfaceCells.size());
+	for(const auto& c : mSurfaceCells)
+	{
+		Vector3i cellInd = cell(c.first);
+		size_t i = cellInd(0);
+		size_t j = cellInd(1);
+		size_t k = cellInd(2);
+
+		std::array<bool, 8> ptsConfig;
+
+		for(int l = 0; l < 8; l++)
+		{
+			float sdf;
+			if(!getSDFvalue(i + CELL_VERTICES[l][0],
+							j + CELL_VERTICES[l][1],
+							k + CELL_VERTICES[l][2], sdf))
+			{
+				bool res = getSDFvalue(i, j, k, sdf);
+				assert(res);
+			}
+			ptsConfig[l] = sdf < 0;
+		}
+
+		std::array<std::array<int, 3>, 5> triangle_type = getMarchingCubesCellTriangulation(ptsConfig);
+		if(triangle_type[0][0] == -1)
+			continue;
+		intersectionCells.push_back(std::make_pair(c.first, triangle_type));
+	}
+	return intersectionCells;
+}
+
 
 
 void MarchingCubes::updateSurfaceParticles()

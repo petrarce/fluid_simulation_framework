@@ -139,6 +139,8 @@ struct
 	size_t kernelSize;
 	size_t kernelOffset;
 	Real kernelDepth;
+	bool blurSurfaceCellsOnly {false};
+	size_t blurIterations {1};
 	
 	void parse(const variables_map& vm)
 	{
@@ -232,7 +234,13 @@ struct
 		} else
 			throw invalid_argument("required option: --method");
 
+		if(vm.count("blur-surface-cells-only"))
+			blurSurfaceCellsOnly = true;
 
+		if(vm.count("blur-iterations"))
+			blurIterations = vm["blur-iterations"].as<size_t>();
+		else
+			throw invalid_argument("required option: --blur-iterations");
 	}
 private:
 	vector<Real> arrayFromString(const string& str)
@@ -278,6 +286,8 @@ int main(int argc, char** argv)
 			("blur-kernel-size", value<size_t>()->default_value(1), "kernel size for sdf bluring")
 			("blur-kernel-offset", value<size_t>()->default_value(1), "bluring kernel offset")
 			("blur-kernel-depth", value<Real>()->default_value(0.5), "depth of the bluring kernel in the direction normal to the gradient")
+			("blur-surface-cells-only", "if flag is selected blurr will be applyed only on surface cells")
+			("blur-iterations", value<size_t>()->default_value(1), "number of iterations blur is applied to the grid")
 			;
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
@@ -340,10 +350,15 @@ int main(int argc, char** argv)
 					programInput.sdfSmoothingFactor,
 					programInput.kernelSize,
 					programInput.kernelOffset,
-					programInput.kernelDepth);
+					programInput.kernelDepth,
+					programInput.blurSurfaceCellsOnly,
+					programInput.blurIterations);
 				simtype = string("ZhuBridsonBlurred") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) + 
 						"_sf-" + to_string(programInput.sdfSmoothingFactor) + "_ks-" + to_string(programInput.kernelSize) +
-						"_ko-" + to_string(programInput.kernelOffset) + "_kd-" + to_string(programInput.kernelDepth);				
+						"_ko-" + to_string(programInput.kernelOffset) + "_kd-" +
+						to_string(programInput.kernelDepth) +
+						((programInput.blurSurfaceCellsOnly)?"_sfco":"_nsfco") +
+						"_bi-" + to_string(programInput.blurIterations);
 				break;
 			default:
 				assert(0);
@@ -371,15 +386,17 @@ int main(int argc, char** argv)
 			params[2] /*particleMass*/, 
 			params[0] /*compactSupport*/, 
 			1.2		  /*etaValue*/);
+		std::regex integer("[0-9]+");
+		std::smatch integerMatch;
+		std::regex_search(filename, integerMatch, integer);
+		if(!integerMatch.ready() || integerMatch.empty())
+			throw std::invalid_argument("cereal file should have a sequence number");
+		mcbNew->setFrameNumber(integerMatch.str());
         vector<Vector3R> new_triangle_mesh((mcbNew->generateMesh(fluidSystem)));
 
 		//generate and save triangular mesh
 		vector<array<int, 3>> triangles;
         for(int i = 0; i < new_triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
-		std::regex integer("[0-9]+");
-		std::smatch integerMatch;
-		std::regex_search(filename, integerMatch, integer);
-		assert(integerMatch.ready() && !integerMatch.empty());
 		std::string surface_filename = programInput.simDir + programInput.simName + simtype + "_surface_" + integerMatch.str() + ".vtk";
 		learnSPH::saveTriMeshToVTK(surface_filename, new_triangle_mesh, triangles);
 

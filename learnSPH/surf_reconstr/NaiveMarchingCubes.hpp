@@ -18,6 +18,7 @@ protected:
 	float mInitialValue {-0.5};
 	std::unordered_map<size_t/*index*/, size_t/*number of particles in the neighbourhood*/> mSurfaceCells;
 	int mPartPerSupportArea {0};
+	string mFrameNumber {"UNDEFINED"};
 
 public:
 	MarchingCubes() = delete;
@@ -32,6 +33,7 @@ public:
 	}
 	MarchingCubes& operator=(const MarchingCubes&) = delete;
 	
+	void setFrameNumber(const string& frame) { mFrameNumber = frame; }
 	explicit MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 		const Eigen::Vector3d lCorner,
 		const Eigen::Vector3d uCorner,
@@ -47,14 +49,17 @@ protected:
 	virtual void configureHashTables();
 	virtual void updateSurfaceParticles();
 	virtual bool getSDFvalue(int i, int j, int k, float& sdf) const = 0;
+
 	inline bool getSDFvalue(const Vector3i& c, float& sdf) const
 	{
 		return getSDFvalue(c(0), c(1), c(2), sdf);
 	}
+
 	std::vector<Eigen::Vector3d> getTriangles() const;
 	///Calculate cell indeces of neighbour cells
 	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3d& position, float radius, bool existing = true) const;
-
+	std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> computeIntersectionCells() const;
+	std::unordered_map<size_t, size_t> computeIntersectionCellVertices() const;
 	///linear interpolation between two vectors given 2 float values and target value
 	inline Eigen::Vector3d lerp(const Eigen::Vector3d& a,
 		const Eigen::Vector3d& b, 

@@ -8,7 +8,6 @@
 #include <learnSPH/surf_reconstr/ZhuBridsonReconstruction.hpp>
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
-
 template<class BaseClass, class... Args>
 class BlurredReconstruction : public BaseClass
 {
@@ -18,12 +17,16 @@ public:
 			float smoothingFactor,
 			int kernelSize,
 			int offset,
-			float depth):
+			float depth,
+			bool blurSurfaceCellsOnly,
+			size_t blurIterations):
 		BaseClass(args...),
 		mSmoothingFactor(smoothingFactor),
 		mKernelSize(kernelSize),
 		mOffset(offset),
-		mKernelDepth(depth)
+		mKernelDepth(depth),
+		mBlurrSurfaceCellsOnly(blurSurfaceCellsOnly),
+		mBlurIterations(blurIterations)
 	{
 	}
 	
@@ -32,7 +35,9 @@ public:
 		mSmoothingFactor(other.mSmoothingFactor),
 		mKernelSize(other.mKernelSize),
 		mOffset(other.mKernelSize),
-		mKernelDepth(other.mKernelDepth)
+		mKernelDepth(other.mKernelDepth),
+		mBlurrSurfaceCellsOnly(other.mBlurrSurfaceCellsOnly),
+		mBlurIterations(other.mBlurIterations)
 	{}
 private:
 	void configureHashTables() override
@@ -62,14 +67,15 @@ private:
 			sdf.push_back(mLevelSetValues[item.first]);
 			sdfGradients.push_back(getSDFGrad(BaseClass::cell(item.first)));
 		}
-		learnSPH::saveParticlesToVTK("/tmp/SdfBeforeBlur" + to_string(cnt) + ".vtk", points, sdf, sdfGradients);
+		learnSPH::saveParticlesToVTK("/tmp/SdfBeforeBlur" + BaseClass::mFrameNumber + ".vtk", points, sdf, sdfGradients);
 #endif
-		blurLevelSet(mKernelSize, mOffset, mKernelDepth);
+		for(int i = 0; i < mBlurIterations; i++)
+			blurLevelSet(mKernelSize, mOffset, mKernelDepth);
 #ifdef DEBUG
 		sdf.clear();
 		for(const auto& item : BaseClass::mSurfaceCells)
 			sdf.push_back(mLevelSetValues[item.first]);
-		learnSPH::saveParticlesToVTK("/tmp/SdfAfterBlur" + to_string(cnt) + ".vtk", points, sdf);
+		learnSPH::saveParticlesToVTK("/tmp/SdfAfterBlur" + BaseClass::mFrameNumber + ".vtk", points, sdf);
 		cnt++;
 #endif
 	}
@@ -104,11 +110,16 @@ private:
 		static int cnt = 0;
 		vector<Real> smoothFactors;
 		vector<Vector3R> points;
+		vector<Real> curvatures;
 #endif
-		for(const auto& cellItem : BaseClass::mSurfaceCells)
+		typedef decltype(BaseClass::mSurfaceCells) CellsContainer;
+		const CellsContainer* cellVertices = &this->mSurfaceCells;
+		if(mBlurrSurfaceCellsOnly)
+			cellVertices = new CellsContainer(BaseClass::computeIntersectionCellVertices());
+		for(const auto& cellItem : *cellVertices)
 		{
 			auto cI = cellItem.first;
-			auto c =BaseClass:: cell(cI);
+			auto c =BaseClass::cell(cI);
 			auto cC = BaseClass::cellCoord(c);
 			Real dfValue = 0;
 			float cellSdf; bool res = MarchingCubes::getSDFvalue(c, cellSdf);
@@ -130,11 +141,15 @@ private:
 #ifdef DEBUG
 			smoothFactors.push_back(smoothFactor);
 			points.push_back(cC);
+			curvatures.push_back(getCurvature(c));
 #endif
 		}
 		mLevelSetValues.swap(newLevelSet);
+		if(mBlurrSurfaceCellsOnly)
+			delete cellVertices;
 #ifdef DEBUG
-		learnSPH::saveParticlesToVTK("/tmp/ParticleCountSmoothFactor" + to_string(cnt) + ".vtk", points, smoothFactors);
+		learnSPH::saveParticlesToVTK("/tmp/ParticleCountSmoothFactor" + BaseClass::mFrameNumber + ".vtk", points, smoothFactors);
+		learnSPH::saveParticlesToVTK("/tmp/Curvature" + BaseClass::mFrameNumber + ".vtk", points, curvatures);
 		cnt++;
 #endif
 	}
@@ -159,6 +174,110 @@ private:
 		
 		return Eigen::Vector3d(dx, dy, dz);
 	}
+
+	inline bool getSDFderivX(const Vector3i& c, float& deriv) const
+	{
+		float sdf1;
+		if(!getSDFvalue(c(0), c(1), c(2), sdf1))
+			return false;
+		float sdf2;
+		if(!getSDFvalue(c(0) - 1, c(1), c(2), sdf2))
+			sdf2 = sdf1;
+
+		deriv = sdf1 - sdf2 / BaseClass::mResolution(0);
+		return true;
+	}
+
+	inline bool getSDFderivY(const Vector3i& c, float& deriv) const
+	{
+		float sdf1;
+		if(!getSDFvalue(c(0), c(1), c(2), sdf1))
+			return false;
+		float sdf2;
+		if(!getSDFvalue(c(0), c(1) - 1, c(2), sdf2))
+			sdf2 = sdf1;
+
+		deriv = sdf1 - sdf2 / BaseClass::mResolution(1);
+		return true;
+	}
+
+	inline bool getSDFderivZ(const Vector3i& c, float& deriv) const
+	{
+		float sdf1;
+		if(!getSDFvalue(c(0), c(1), c(2), sdf1))
+			return false;
+		float sdf2;
+		if(!getSDFvalue(c(0), c(1), c(2) - 1, sdf2))
+			sdf2 = sdf1;
+
+		deriv = sdf1 - sdf2 / BaseClass::mResolution(2);
+		return true;
+	}
+
+	float getCurvature(const Vector3i& c) const
+	{
+		float sdfC;
+		bool res = MarchingCubes::getSDFvalue(c, sdfC);
+		assert(res);
+
+		float phiX, phiY, phiZ;
+		res = getSDFderivX(c, phiX);
+		assert(res);
+		res = getSDFderivY(c, phiY);
+		assert(res);
+		res = getSDFderivZ(c, phiZ);
+		assert(res);
+
+		float phiX_, phiY_, phiZ_;
+		if(!getSDFderivX(c + Eigen::Vector3i(1,0,0), phiX_))
+			phiX_ = phiX;
+		if(!getSDFderivY(c + Eigen::Vector3i(0,1,0), phiY_))
+			phiY_ = phiY;
+		if(!getSDFderivZ(c + Eigen::Vector3i(0,0,1), phiZ_))
+			phiZ_ = phiZ;
+
+		float phiXX = (phiX_ - phiX) / BaseClass::mResolution(0);
+		float phiYY = (phiY_ - phiY) / BaseClass::mResolution(1);
+		float phiZZ = (phiZ_ - phiZ) / BaseClass::mResolution(2);
+
+		//compute second derivitives of different arguments (XY, XZ, YZ)
+		float sdfXY_, sdfYZ_, sdfXZ_, sdfX_, sdfY_, sdfZ_;
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(0,1,1), sdfYZ_))
+			sdfYZ_ = sdfC;
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(1,0,1), sdfXZ_))
+			sdfXZ_ = sdfC;
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(1,1,0), sdfXY_))
+			sdfXY_ = sdfC;
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(0,0,1), sdfZ_))
+			sdfZ_ = sdfC;
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(0,1,0), sdfY_))
+			sdfY_ = sdfC;
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(1,0,0), sdfX_))
+			sdfX_ = sdfC;
+
+		float phiXY, phiXZ, phiYZ;
+		phiXY = (sdfC - sdfY_ - sdfX_ + sdfXY_) / (BaseClass::mResolution(0) * BaseClass::mResolution(1));
+		phiXZ = (sdfC - sdfZ_ - sdfX_ + sdfXZ_) / (BaseClass::mResolution(0) * BaseClass::mResolution(2));
+		phiYZ = (sdfC - sdfY_ - sdfZ_ + sdfYZ_) / (BaseClass::mResolution(1) * BaseClass::mResolution(2));
+		auto grad = getSDFGrad(c);
+		float gradNorm = grad.norm();
+		float gradNorm3 = gradNorm * gradNorm * gradNorm;
+		float curvature = (
+					phiX * phiX * phiYY +
+					phiY * phiY * phiXX -
+					2 * phiX * phiY * phiXY +
+					phiX * phiX * phiZZ +
+					phiZ * phiZ * phiXX -
+					2 * phiX * phiZ * phiXZ +
+					phiY * phiY * phiZZ +
+					phiZ * phiZ * phiYY -
+					2 * phiY * phiZ * phiYZ
+					) / (gradNorm3 + 1e-6);
+		return curvature;
+	}
+
+
+
 	
 	std::vector<Eigen::Vector3i> getNeighbourCells(Eigen::Vector3i baseCell, int kernelSize, int offset, Real depth)
 	{
@@ -203,7 +322,7 @@ private:
 			cells.push_back(BaseClass::cellCoord(baseCell));
 			std::vector<Real> dencities(cells.size() - 1, 0);
 			dencities.push_back(1);
-			learnSPH::saveParticlesToVTK("/tmp/GradNeighbours" + to_string(cnt) + ".vtk", cells, dencities, std::vector<Vector3R>(cells.size(), grad));
+			learnSPH::saveParticlesToVTK("/tmp/GradNeighbours" + BaseClass::mFrameNumber + ".vtk", cells, dencities, std::vector<Vector3R>(cells.size(), grad));
 			cnt++;
 		}
 #endif
@@ -215,6 +334,8 @@ private:
 	size_t	mOffset				{ 1 };
 	float	mKernelDepth		{ 0.5 };
 	std::unordered_map<size_t, Real> mLevelSetValues;
+	bool	mBlurrSurfaceCellsOnly {false};
+	size_t mBlurIterations {1};
 };
 
 typedef  BlurredReconstruction<ZhuBridsonReconstruction, std::shared_ptr<learnSPH::FluidSystem> , const Eigen::Vector3d , 
