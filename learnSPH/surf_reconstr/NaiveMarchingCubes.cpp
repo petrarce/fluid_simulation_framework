@@ -26,12 +26,14 @@ void MarchingCubes::configureHashTables()
 {
 	if(mSurfaceParticlesCount)
 	mSurfaceCells.max_load_factor(2);
+	mSurfaceCells.rehash(mFluid->size() * 2);
 }
 
 void NaiveMarchingCubes::configureHashTables()
 {
 	MarchingCubes::configureHashTables();
 	mLevelSetFunction.max_load_factor(mSurfaceCells.max_load_factor());
+	mLevelSetFunction.rehash(mSurfaceCells.bucket_count());
 }
 
 std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid)

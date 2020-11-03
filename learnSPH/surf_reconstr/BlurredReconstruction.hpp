@@ -8,6 +8,7 @@
 #include <learnSPH/surf_reconstr/ZhuBridsonReconstruction.hpp>
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
+#include <cassert>
 template<class BaseClass, class... Args>
 class BlurredReconstruction : public BaseClass
 {
@@ -44,6 +45,7 @@ private:
 	{
 		BaseClass::configureHashTables();
 		mLevelSetValues.max_load_factor(BaseClass::mSurfaceCells.max_load_factor());
+		mLevelSetValues.rehash(BaseClass::mSurfaceCells.bucket_count());
 	}
 	
 	void updateGrid() override
@@ -135,7 +137,7 @@ private:
 				dfValue += sdfVal;
 
 			}
-			dfValue /= wSum;
+			dfValue /= (wSum + 1e-6);
 			Real smoothFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
 			newLevelSet[cI] = mLevelSetValues[cI] * (1 - smoothFactor) + smoothFactor * dfValue;
 #ifdef DEBUG

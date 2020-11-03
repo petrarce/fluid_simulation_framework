@@ -21,6 +21,7 @@ void SolenthilerReconstruction::configureHashTables()
 {
 	ZhuBridsonReconstruction::configureHashTables();
 	mCellGradComponents.max_load_factor(mSurfaceCells.max_load_factor());
+	mCellGradComponents.rehash(mSurfaceCells.bucket_count());
 }
 
 static float thresholdFunction(Real EVmax, Real tMin, Real tMax)

@@ -35,6 +35,9 @@ void ZhuBridsonReconstruction::configureHashTables()
 	xAvg.max_load_factor(mSurfaceCells.max_load_factor());
 	dAvg.max_load_factor(mSurfaceCells.max_load_factor());
 	denominators.max_load_factor(mSurfaceCells.max_load_factor());
+	xAvg.rehash(mSurfaceCells.bucket_count());
+	dAvg.rehash(mSurfaceCells.bucket_count());
+	denominators.rehash(mSurfaceCells.bucket_count());
 }
 
 bool ZhuBridsonReconstruction::getSDFvalue(int i, int j, int k, float& sdf) const
