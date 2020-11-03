@@ -382,10 +382,9 @@ int main(int argc, char** argv)
 			std::move(positions), 
 			std::move(velocities), 
 			std::move(densities), 
-			params[3] /*restDensity*/, 
-			params[2] /*particleMass*/, 
-			params[0] /*compactSupport*/, 
-			1.2		  /*etaValue*/);
+			params[0]	/*restDensity*/,
+			params[1]	/*compactSupport*/,
+			params[2]	/*etaValue*/);
 		std::regex integer("[0-9]+");
 		std::smatch integerMatch;
 		std::regex_search(filename, integerMatch, integer);

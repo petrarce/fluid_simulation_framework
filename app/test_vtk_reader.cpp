@@ -14,9 +14,14 @@
 #include <learnSPH/core/kernel.h>
 #include <boost/program_options.hpp>
 #include <boost/program_options/options_description.hpp>
+#include <CompactNSearch>
+#include <learnSPH/simulation/solver.h>
+#include <learnSPH/core/storage.h>
+#include <learnSPH/core/vtk_writer.h>
 
 using namespace boost::program_options;
 using namespace boost;
+using namespace CompactNSearch;
 
 struct {
 	Real particleRadius;
@@ -90,14 +95,29 @@ int main(int argc, char** argv)
 			pointVector[j] = Vector3R(pt[0], pt[1], pt[2]);
 		}
         string sequenceNumber = firstMatch.str();
-        save_vectors(simName + "_positions_" + sequenceNumber + ".cereal", pointVector);
-		vector<Real> dencities(pointVector.size(), 0);
-        save_scalars(simName + "_densities_" + sequenceNumber + ".cereal", dencities);
-		vector<Real> params = { 2.4 * partDiameter, 
-								partDiameter, 
-								1/6 * learnSPH::kernel::PI * partDiameter * partDiameter * partDiameter, 
-								1000};
+		//compute dencities
+		learnSPH::FluidSystem fluid(std::move(pointVector),
+									vector<Vector3R>(dataArray->GetNumberOfPoints()),
+									std::vector<Real>(dataArray->GetNumberOfPoints()),
+									1000.,
+									appInputParams.particleRadius * 2 * 1.2,
+									1.2);
+		learnSPH::BorderSystem border;
+		NeighborhoodSearch ns(fluid.getCompactSupport());
+		ns.add_point_set((Real*)fluid.getPositions().data(), fluid.size(), true);
+		ns.add_point_set((Real*)border.getPositions().data(), border.size(), false);
+		fluid.findNeighbors(ns);
+		learnSPH::calculate_dencities((&fluid), (&border));
+
+		vector<Real> params = { 1000.									/*rest dencity*/,
+								appInputParams.particleRadius * 2 * 1.2	/*compact support*/,
+								1.2										/*eta value*/};
+		save_vectors(simName + "_positions_" + sequenceNumber + ".cereal", fluid.getPositions());
+		save_scalars(simName + "_densities_" + sequenceNumber + ".cereal", fluid.getDensities());
         save_scalars(simName + "_params_" + sequenceNumber + ".cereal", params);
+#ifdef DEBUG
+		learnSPH::saveParticlesToVTK("/tmp/ParticlesWithDencities" + sequenceNumber + ".vtk", fluid.getPositions(), fluid.getDensities());
+#endif
 	}
 	return 0;
 }

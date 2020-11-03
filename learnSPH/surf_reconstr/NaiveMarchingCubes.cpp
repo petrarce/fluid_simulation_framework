@@ -78,9 +78,9 @@ void NaiveMarchingCubes::updateGrid()
 	mPartPerSupportArea = (mFluid->getCompactSupport() * mFluid->getCompactSupport() * mFluid->getCompactSupport()) / 
 							(mFluid->getDiameter() * mFluid->getDiameter() * mFluid->getDiameter());
 	const auto& particles = mFluid->getPositions();
-	for(int i = 0; i < mSurfaceParticlesCount; i++)
+	for(size_t i = 0; i < mSurfaceParticlesCount; i++)
 	{
-		auto nCells = getNeighbourCells(particles[i], mFluid->getCompactSupport()/2, false);
+		auto nCells = getNeighbourCells(particles[i], mFluid->getCompactSupport(), false);
 		for(const auto& nc : nCells)
 		{
 			auto cI = cellIndex(nc);

@@ -49,7 +49,7 @@ namespace learnSPH
 			};
 
 			ParticleSystem(Real restDensity):restDensity(restDensity){};
-
+			ParticleSystem(){};
 			virtual ~ParticleSystem(){};
 	};
 
@@ -68,7 +68,7 @@ namespace learnSPH
 			{
 				return volumes;
 			};
-
+			BorderSystem(){};
 			BorderSystem(vector<Vector3R>& positions, Real restDensity, Real diameter, Real eta):ParticleSystem(positions, restDensity)
 			{
 				this->volumes.resize(this->positions.size());
@@ -285,7 +285,7 @@ namespace learnSPH
 
 			Real getMass() const
 			{
-				return this->mass;
+				return this->diameter * this->diameter * this->diameter * restDensity;
 			}
 
 			Real getSmoothingLength() const
@@ -433,11 +433,9 @@ namespace learnSPH
 						vector<Vector3R>&& velocities, 
 						vector<Real>&& densities, 
 						Real restDensity, 
-						Real particleMass,
 						Real compactSuport,
 						Real eta):
 				ParticleSystem(positions, restDensity),
-				mass(particleMass),
 				diameter(compactSuport / eta),
 				mEta(eta)
 			{
