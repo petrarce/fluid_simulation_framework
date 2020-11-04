@@ -264,7 +264,7 @@ std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> MarchingCubes:
 
 void MarchingCubes::updateSurfaceParticles()
 {
-#if 0
+#if 1
 	mSurfaceParticlesCount = 0;
 	auto& particles = mFluid->getPositions();
 	auto& densities = mFluid->getDensities();
