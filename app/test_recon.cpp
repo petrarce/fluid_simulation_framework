@@ -120,7 +120,8 @@ enum ReconstructionMethods
 	NMC = 1,
 	ZB,
 	SLH,
-	NMCSmooth,
+	ZBBlur,
+	NMCBlur,
 };
 
 struct 
@@ -141,6 +142,7 @@ struct
 	Real kernelDepth;
 	bool blurSurfaceCellsOnly {false};
 	size_t blurIterations {1};
+	float colorFieldFactor;
 	
 	void parse(const variables_map& vm)
 	{
@@ -228,7 +230,9 @@ struct
 			else if(lmethod == "Solenthiler")
 				method = ReconstructionMethods::SLH;
 			else if(lmethod == "ZhuBridsonBlurred")
-				method = ReconstructionMethods::NMCSmooth;
+				method = ReconstructionMethods::ZBBlur;
+			else if(lmethod == "NaiveMCBlurred")
+				method = ReconstructionMethods::NMCBlur;
 			else
 				throw invalid_argument("unknown reconstruction method specified in  --method: " + lmethod);
 		} else
@@ -241,6 +245,12 @@ struct
 			blurIterations = vm["blur-iterations"].as<size_t>();
 		else
 			throw invalid_argument("required option: --blur-iterations");
+
+		if(vm.count("cff"))
+			colorFieldFactor = vm["cff"].as<float>();
+		else
+			throw invalid_argument("required option: --cff");
+
 	}
 private:
 	vector<Real> arrayFromString(const string& str)
@@ -278,7 +288,7 @@ int main(int argc, char** argv)
 			("sim-name", value<string>(), "simulation name")
 			("sim-directory", value<string>()->default_value("./"), "path to the simulation vtk files")
 			("grid-resolution", value<Real>(), "uniform grid resolution for matching cubes")
-			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson, Solenthiler, ZhuBridsonBlurred")
+			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson, Solenthiler, ZhuBridsonBlurred, NaiveMCBlurred")
 			("support-radius", value<Real>()->default_value(2), "Support radius for position-based scalar fields")
 			("tmin", value<Real>()->default_value(1), "lower bound for Solentiler evalue treshold")
 			("tmax", value<Real>()->default_value(2), "upper bound for Solentiler evalue treshold")
@@ -288,6 +298,7 @@ int main(int argc, char** argv)
 			("blur-kernel-depth", value<Real>()->default_value(0.5), "depth of the bluring kernel in the direction normal to the gradient")
 			("blur-surface-cells-only", "if flag is selected blurr will be applyed only on surface cells")
 			("blur-iterations", value<size_t>()->default_value(1), "number of iterations blur is applied to the grid")
+			("cff", value<float>()->default_value(0.8), "color field factor")
 			;
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
@@ -341,7 +352,7 @@ int main(int argc, char** argv)
 				simtype = string("Solenthiler") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) + 
 						"_tmin-" + to_string(programInput.tMin) + "_tmax-" + to_string(programInput.tMax);
 				break;
-			case ReconstructionMethods::NMCSmooth:
+			case ReconstructionMethods::ZBBlur:
 				mcbNew = std::make_unique<ZhuBridsonBlurred>(nullptr,
 					programInput.lowerCorner, 
 					programInput.upperCorner, 
@@ -353,13 +364,35 @@ int main(int argc, char** argv)
 					programInput.kernelDepth,
 					programInput.blurSurfaceCellsOnly,
 					programInput.blurIterations);
-				simtype = string("ZhuBridsonBlurred") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) + 
+				simtype = string("ZhuBridsonBlurred") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) +
 						"_sf-" + to_string(programInput.sdfSmoothingFactor) + "_ks-" + to_string(programInput.kernelSize) +
 						"_ko-" + to_string(programInput.kernelOffset) + "_kd-" +
 						to_string(programInput.kernelDepth) +
 						((programInput.blurSurfaceCellsOnly)?"_sfco":"_nsfco") +
 						"_bi-" + to_string(programInput.blurIterations);
 				break;
+			case ReconstructionMethods::NMCBlur:
+				mcbNew = std::make_unique<NaiveBlurred>(nullptr,
+					 programInput.lowerCorner,
+					 programInput.upperCorner,
+					 Vector3R(programInput.gridResolution,
+							  programInput.gridResolution,
+							  programInput.gridResolution),
+					 programInput.initValue,
+					 programInput.sdfSmoothingFactor,
+					 programInput.kernelSize,
+					 programInput.kernelOffset,
+					 programInput.kernelDepth,
+					 programInput.blurSurfaceCellsOnly,
+					 programInput.blurIterations);
+				simtype = string("NaiveMCBlurred") + "_gr-" + to_string(programInput.gridResolution) + "_iv-" + to_string(programInput.initValue) +
+						"_sf-" + to_string(programInput.sdfSmoothingFactor) + "_ks-" + to_string(programInput.kernelSize) +
+						"_ko-" + to_string(programInput.kernelOffset) + "_kd-" +
+						to_string(programInput.kernelDepth) +
+						((programInput.blurSurfaceCellsOnly)?"_sfco":"_nsfco") +
+						"_bi-" + to_string(programInput.blurIterations);
+				break;
+
 			default:
 				assert(0);
 			}
@@ -390,6 +423,7 @@ int main(int argc, char** argv)
 		std::regex_search(filename, integerMatch, integer);
 		if(!integerMatch.ready() || integerMatch.empty())
 			throw std::invalid_argument("cereal file should have a sequence number");
+		mcbNew->setColorFieldFactor(programInput.colorFieldFactor);
 		mcbNew->setFrameNumber(integerMatch.str());
         vector<Vector3R> new_triangle_mesh((mcbNew->generateMesh(fluidSystem)));
 

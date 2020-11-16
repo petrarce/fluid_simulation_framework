@@ -138,7 +138,10 @@ private:
 
 			}
 			dfValue /= (wSum + 1e-6);
-			Real smoothFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
+			//Real smoothFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
+			Real smoothFactor = mSmoothingFactor * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea;
+			smoothFactor = std::cbrt((smoothFactor*4 - 2)) + 1;
+			smoothFactor = std::max(0., std::min(1., smoothFactor));
 			newLevelSet[cI] = mLevelSetValues[cI] * (1 - smoothFactor) + smoothFactor * dfValue;
 #ifdef DEBUG
 			smoothFactors.push_back(smoothFactor);
