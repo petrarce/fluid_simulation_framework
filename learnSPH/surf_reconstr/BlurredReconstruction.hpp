@@ -59,7 +59,6 @@ private:
 		BaseClass::updateLevelSet();
 		saveLevelSetValues();
 #ifdef DEBUG
-		static int cnt = 0;
 		std::vector<Vector3R> points;
 		std::vector<Real> sdf;
 		std::vector<Vector3R> sdfGradients;
@@ -78,7 +77,6 @@ private:
 		for(const auto& item : BaseClass::mSurfaceCells)
 			sdf.push_back(mLevelSetValues[item.first]);
 		learnSPH::saveParticlesToVTK("/tmp/SdfAfterBlur" + BaseClass::mFrameNumber + ".vtk", points, sdf);
-		cnt++;
 #endif
 	}
 	bool getSDFvalue(int i, int j, int k, float& sdf) const override
@@ -108,12 +106,6 @@ private:
 	{
 		auto newLevelSet = mLevelSetValues;
 		Real maxRadii = BaseClass::mResolution(0) * offset * kernelSize * 1.1;
-#ifdef DEBUG
-		static int cnt = 0;
-		vector<Real> smoothFactors;
-		vector<Vector3R> points;
-		vector<Real> curvatures;
-#endif
 		typedef decltype(BaseClass::mSurfaceCells) CellsContainer;
 		const CellsContainer* cellVertices = &this->mSurfaceCells;
 		if(mBlurrSurfaceCellsOnly)
@@ -155,7 +147,6 @@ private:
 #ifdef DEBUG
 		learnSPH::saveParticlesToVTK("/tmp/ParticleCountSmoothFactor" + BaseClass::mFrameNumber + ".vtk", points, smoothFactors);
 		learnSPH::saveParticlesToVTK("/tmp/Curvature" + BaseClass::mFrameNumber + ".vtk", points, curvatures);
-		cnt++;
 #endif
 	}
 	
@@ -292,7 +283,6 @@ private:
 		static auto dice = std::bind(distr, generator);
 		std::vector<Vector3R> cells;
 		float probability = std::min(1., 1000. / BaseClass::mSurfaceCells.size());
-		static size_t cnt = 0;
 #endif
 		std::vector<Eigen::Vector3i> neighbors;
 		Eigen::Vector3d grad = getSDFGrad(baseCell);
@@ -328,7 +318,6 @@ private:
 			std::vector<Real> dencities(cells.size() - 1, 0);
 			dencities.push_back(1);
 			learnSPH::saveParticlesToVTK("/tmp/GradNeighbours" + BaseClass::mFrameNumber + ".vtk", cells, dencities, std::vector<Vector3R>(cells.size(), grad));
-			cnt++;
 		}
 #endif
 		return neighbors;

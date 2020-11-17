@@ -16,9 +16,15 @@ void ZhuBridsonReconstruction::updateGrid()
 		{
 			auto cI = cellIndex(nc);
 			if(mSurfaceCells.find(cI) == mSurfaceCells.end())
+			{
 				mSurfaceCells[cI] = 1;
+				mSurfaceCellsCurvature[cI] = mCurvature[i];
+			}
 			else
+			{
 				mSurfaceCells[cI]++;
+				mSurfaceCellsCurvature[cI] += mCurvature[i];
+			}
 		}
 	}
 }

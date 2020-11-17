@@ -331,7 +331,7 @@ int main(int argc, char** argv)
 					programInput.upperCorner, 
 					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
 					programInput.initValue);
-				simtype = string("NaiveMC") + "_gr-" + to_string(programInput.gridResolution) + "_iv-" + to_string(programInput.initValue);
+				simtype = string("NaiveMC") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_iv-" + to_string(programInput.initValue);
 				break;
 			case ReconstructionMethods::ZB:
 				mcbNew = std::make_unique<ZhuBridsonReconstruction>(nullptr,
@@ -339,7 +339,7 @@ int main(int argc, char** argv)
 					programInput.upperCorner, 
 					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
 					programInput.supportRad);
-				simtype = string("ZhuBridson") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad);
+				simtype = string("ZhuBridson") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad);
 				break;
 			case ReconstructionMethods::SLH:
 				mcbNew = std::make_unique<SolenthilerReconstruction>(nullptr,
@@ -349,7 +349,7 @@ int main(int argc, char** argv)
 					programInput.supportRad,
 					programInput.tMin,
 					programInput.tMax);
-				simtype = string("Solenthiler") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) + 
+				simtype = string("Solenthiler") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) +
 						"_tmin-" + to_string(programInput.tMin) + "_tmax-" + to_string(programInput.tMax);
 				break;
 			case ReconstructionMethods::ZBBlur:
@@ -364,7 +364,7 @@ int main(int argc, char** argv)
 					programInput.kernelDepth,
 					programInput.blurSurfaceCellsOnly,
 					programInput.blurIterations);
-				simtype = string("ZhuBridsonBlurred") + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) +
+				simtype = string("ZhuBridsonBlurred") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) +
 						"_sf-" + to_string(programInput.sdfSmoothingFactor) + "_ks-" + to_string(programInput.kernelSize) +
 						"_ko-" + to_string(programInput.kernelOffset) + "_kd-" +
 						to_string(programInput.kernelDepth) +
@@ -385,7 +385,7 @@ int main(int argc, char** argv)
 					 programInput.kernelDepth,
 					 programInput.blurSurfaceCellsOnly,
 					 programInput.blurIterations);
-				simtype = string("NaiveMCBlurred") + "_gr-" + to_string(programInput.gridResolution) + "_iv-" + to_string(programInput.initValue) +
+				simtype = string("NaiveMCBlurred") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_iv-" + to_string(programInput.initValue) +
 						"_sf-" + to_string(programInput.sdfSmoothingFactor) + "_ks-" + to_string(programInput.kernelSize) +
 						"_ko-" + to_string(programInput.kernelOffset) + "_kd-" +
 						to_string(programInput.kernelDepth) +

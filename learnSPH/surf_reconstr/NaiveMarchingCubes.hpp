@@ -19,6 +19,8 @@ protected:
 	std::unordered_map<size_t/*index*/, size_t/*number of particles in the neighbourhood*/> mSurfaceCells;
 	int mPartPerSupportArea {0};
 	string mFrameNumber {"UNDEFINED"};
+	vector<Real> mCurvature;
+	std::unordered_map<size_t, Real> mSurfaceCellsCurvature;
 
 public:
 	MarchingCubes() = delete;
@@ -112,6 +114,17 @@ protected:
 		return ind(0) * mDimentions(1) * mDimentions(2) + 
 				ind(1) * mDimentions(2) + 
 				ind(2);
+	}
+
+	inline bool getCurvature(size_t index, Real& curvature) const
+	{
+		auto cellCount = mSurfaceCells.find(index);
+		if(cellCount == mSurfaceCells.end())
+			return false;
+		auto nonNormalizedCurvature = mSurfaceCellsCurvature.find(index);
+		assert(nonNormalizedCurvature != mSurfaceCellsCurvature.end());
+		curvature = nonNormalizedCurvature->second / cellCount->second;
+		return true;
 	}
 	
 	

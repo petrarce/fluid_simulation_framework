@@ -84,5 +84,6 @@ TODO:
 
 Today i have found potential possibility to of applying the MLS on the SDF grid. After computing the SDF we can apply MLS as a additional pass on SDF grid like in blurring. We compute gradient of the SDF, which is in the direction, normal to the fluid surface at each point, we find a curvature of the fluid at this cell point, find neighbors according to a curvature and normal of the current point, for which we want to modify the SDF value. We assume, that current point with given gradient as a direction, normal to the circle where the point resides, and curvature as a radius of the sphere, we find all neighbors, that also lie near the sphere surface and apply MLS on the neighborhood.
 
-
+12.11.2020
+Blurring works bad on naive marching cubes algorythm, perhaps due to the structure of the scalar distance field values.
 

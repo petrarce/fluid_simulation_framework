@@ -3,8 +3,15 @@
 #include <learnSPH/core/storage.h>
 #include <learnSPH/core/kernel.h>
 #include <learnSPH/core/vtk_writer.h>
+#include <learnSPH/simulation/solver.h>
 #include "look_up_tables.hpp"
 #include "NaiveMarchingCubes.hpp"
+
+#if 0
+#ifndef DEBUG
+#define DEBUG
+#endif
+#endif
 using namespace learnSPH;
 MarchingCubes::MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 								const Eigen::Vector3d lCorner,
@@ -46,6 +53,7 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 #ifdef DEBUG
 	vector<Real> sdf;
 	vector<Vector3R> vertices;
+	vector<Real> cellCurvature;
 	for(const auto& vert : mSurfaceCells)
 	{
 		auto cI = cell(vert.first);
@@ -55,15 +63,23 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 		assert(res);
 		vertices.push_back(cC);
 		sdf.push_back(sdfV);
+		Real curvature; getCurvature(cellIndex(cI), curvature);
+		cellCurvature.push_back(curvature);
 	}
 	saveParticlesToVTK("/tmp/SDF" + mFrameNumber + ".vtk", vertices, sdf);
+	saveParticlesToVTK("/tmp/CellsCurvature" + mFrameNumber + ".vtk", vertices, cellCurvature);
 
 	auto intersectionCellVertices = computeIntersectionCellVertices();
 	vector<Vector3R> intersectionCellVerticePoints;
 	intersectionCellVerticePoints.reserve(intersectionCellVertices.size());
+	vector<Real> intersectionCellCurvature;
 	for(const auto& c : intersectionCellVertices)
+	{
 		intersectionCellVerticePoints.push_back(cellCoord(cell(c.first)));
-	saveParticlesToVTK("/tmp/SurfaceCellVertices" + mFrameNumber + ".vtk", intersectionCellVerticePoints);
+		Real curvature; getCurvature(c.first, curvature);
+		intersectionCellCurvature.push_back(curvature);
+	}
+	saveParticlesToVTK("/tmp/IntersectionCellsCurvature" + mFrameNumber + ".vtk", intersectionCellVerticePoints, intersectionCellCurvature);
 
 #endif
 	auto mesh = getTriangles();
@@ -85,11 +101,19 @@ void NaiveMarchingCubes::updateGrid()
 		{
 			auto cI = cellIndex(nc);
 			if(mSurfaceCells.find(cI) == mSurfaceCells.end())
+			{
 				mSurfaceCells[cI] = 1;
+				mSurfaceCellsCurvature[cI] = mCurvature[i];
+			}
 			else
+			{
 				mSurfaceCells[cI]++;
+				mSurfaceCellsCurvature[cI] += mCurvature[i];
+			}
 		}
 	}
+	//no need in particle curvature any more. Free space
+	mCurvature.clear();
 }
 void NaiveMarchingCubes::updateLevelSet()
 {
@@ -268,13 +292,23 @@ void MarchingCubes::updateSurfaceParticles()
 	mSurfaceParticlesCount = 0;
 	auto& particles = mFluid->getPositions();
 	auto& densities = mFluid->getDensities();
-	
 	//neighbourhood search
 	//TODO: get neighbourhood data from the simulation files
 	NeighborhoodSearch ns(mFluid->getCompactSupport());
 	ns.add_point_set((Real*)(particles.data()), particles.size(), false);
 	mFluid->findNeighbors(ns);
 	const auto& neighbors = mFluid->getNeighbors();
+	mCurvature = learnSPH::compute_curvature(mFluid.get());
+#ifdef DEBUG
+	saveParticlesToVTK("/tmp/ParticleCurvature" + mFrameNumber + ".vtk", particles, mCurvature);
+#endif
+
+	if(mColorFieldSurfaceFactor > 0.95)
+	{
+		mSurfaceParticlesCount = mFluid->size();
+		return;
+	}
+	
 	
 	vector<Real> colorField;
 	#pragma omp parallel for schedule(static)
@@ -296,9 +330,13 @@ void MarchingCubes::updateSurfaceParticles()
 			auto tmp = densities[i];
 			densities[i] = densities[mSurfaceParticlesCount];
 			densities[mSurfaceParticlesCount] = tmp;
+			tmp = mCurvature[i];
+			mCurvature[i] = mCurvature[mSurfaceParticlesCount];
+			mCurvature[mSurfaceParticlesCount] = tmp;
 			mSurfaceParticlesCount++;
 		} 
 	}
+	mCurvature.resize(mSurfaceParticlesCount);
 #else
 	mSurfaceParticlesCount = mFluid->size();
 #endif

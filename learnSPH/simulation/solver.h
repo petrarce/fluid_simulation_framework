@@ -29,5 +29,6 @@ void add_surface_tension_component(vector<Vector3R>& accelerations,
 							const BorderSystem *borderParticles,
 							Real lambda,
 							Real betha);
+vector<Real> compute_curvature(const FluidSystem *fluidParticles);
 
 }

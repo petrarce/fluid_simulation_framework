@@ -356,3 +356,33 @@ void learnSPH::add_surface_tension_component(vector<Vector3R>& accelerations,
 		accelerations[i] -= betha * acc_adhesion;
 	}
 }
+
+vector<Real> learnSPH::compute_curvature(const FluidSystem *fluidParticles)
+{
+	const Real c = fluidParticles->getCompactSupport();
+	const Real h = fluidParticles->getSmoothingLength();
+	const Real flMass = fluidParticles->getMass();
+	const vector<Real>& densities = fluidParticles->getDensities();
+	const vector<Vector3R>& positions = fluidParticles->getPositions();
+	const vector<vector<vector<unsigned int>>>& neighbors = fluidParticles->getNeighbors();
+
+	//compute normals
+	vector<Vector3R> normals(fluidParticles->size(), Vector3R(0,0,0));
+	#pragma omp parallel for schedule(guided, 100)
+	for(size_t i = 0; i < fluidParticles->size(); i++){
+		for(unsigned int j : neighbors[i][0]){
+			normals[i] += kernelGradFunction(positions[i], positions[j], h) /
+							densities[j];
+		}
+		normals[i] = normals[i] * c * flMass;
+	}
+	std::vector<Real> curvature(fluidParticles->size(), 0);
+	#pragma omp parallel for schedule(guided, 100)
+	for(size_t i = 0; i < fluidParticles->size(); i++){
+		for(auto nb : neighbors[i][0])
+			curvature[i] += (1 - normals[i].dot(normals[nb])) * std::max(0., 1 - std::fabs((positions[i] - positions[nb]).norm()) / h);
+	}
+
+	return curvature;
+
+}
