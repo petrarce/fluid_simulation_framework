@@ -54,6 +54,7 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 	vector<Real> sdf;
 	vector<Vector3R> vertices;
 	vector<Real> cellCurvature;
+	vector<Real> particleConcentration;
 	for(const auto& vert : mSurfaceCells)
 	{
 		auto cI = cell(vert.first);
@@ -65,9 +66,11 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 		sdf.push_back(sdfV);
 		Real curvature; getCurvature(cellIndex(cI), curvature);
 		cellCurvature.push_back(curvature);
+		particleConcentration.push_back(static_cast<Real>(vert.second) / mPartPerSupportArea);
 	}
 	saveParticlesToVTK("/tmp/SDF" + mFrameNumber + ".vtk", vertices, sdf);
 	saveParticlesToVTK("/tmp/CellsCurvature" + mFrameNumber + ".vtk", vertices, cellCurvature);
+	saveParticlesToVTK("/tmp/ParticleConcentrationPerSupportVolume" + mFrameNumber + ".vtk", vertices, particleConcentration);
 
 	auto intersectionCellVertices = computeIntersectionCellVertices();
 	vector<Vector3R> intersectionCellVerticePoints;
@@ -91,7 +94,7 @@ void NaiveMarchingCubes::updateGrid()
 {
 	mSurfaceCells.clear();
 	mLevelSetFunction.clear();
-	mPartPerSupportArea = (mFluid->getCompactSupport() * mFluid->getCompactSupport() * mFluid->getCompactSupport()) / 
+	mPartPerSupportArea = 8 * (mFluid->getSmoothingLength() * mFluid->getSmoothingLength() * mFluid->getSmoothingLength()) /
 							(mFluid->getDiameter() * mFluid->getDiameter() * mFluid->getDiameter());
 	const auto& particles = mFluid->getPositions();
 	for(size_t i = 0; i < mSurfaceParticlesCount; i++)
@@ -115,6 +118,7 @@ void NaiveMarchingCubes::updateGrid()
 	//no need in particle curvature any more. Free space
 	mCurvature.clear();
 }
+
 void NaiveMarchingCubes::updateLevelSet()
 {
 	if(!mFluid)

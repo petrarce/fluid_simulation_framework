@@ -298,7 +298,7 @@ int main(int argc, char** argv)
 			("blur-kernel-depth", value<Real>()->default_value(0.5), "depth of the bluring kernel in the direction normal to the gradient")
 			("blur-surface-cells-only", "if flag is selected blurr will be applyed only on surface cells")
 			("blur-iterations", value<size_t>()->default_value(1), "number of iterations blur is applied to the grid")
-			("cff", value<float>()->default_value(0.8), "color field factor")
+			("cff", value<float>()->default_value(1), "color field factor ( > 0.95 color field particles detection is not applied)")
 			;
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
