@@ -362,7 +362,7 @@ void gen_frames_thread(FluidSystem& fluid, NeighborhoodSearch& ns,BorderSystem& 
 		assert(curFluidState != 0);
 
 		simulationStateQueue.push(curFluidState);
-#ifdef DEBUG
+#ifdef DBG
 		boost::mutex::scoped_lock(print_lock);
 		fprintf(stderr, "pushed new simulation state\n");
 #endif
@@ -380,7 +380,7 @@ void save_sim_state_thread(){
 			break;
 		}
 		save_current_state(cmdValues.outp_dir_path, cmdValues.sim_name, frame_num, *fluid);
-#ifdef DEBUG
+#ifdef DBG
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
 		boost::mutex::scoped_lock(print_lock);
 		fprintf(stderr, "saved simulation state\n");

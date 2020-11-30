@@ -31,7 +31,7 @@ do{ \
 
 using namespace std;
 
-#ifdef DEBUG
+#ifdef DBG
 #define pr_dbg(str, args...) fprintf(stderr, "[%s,%s,%d\t]: " str "\n", __FILE__, __FUNCTION__, __LINE__, ##args)
 #define pr_stack()
 #else

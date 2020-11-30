@@ -50,7 +50,7 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 	configureHashTables();
 	updateGrid();
 	updateLevelSet();
-#ifdef DEBUG
+#ifdef DBG
 	vector<Real> sdf;
 	vector<Vector3R> vertices;
 	vector<Real> cellCurvature;
@@ -303,7 +303,7 @@ void MarchingCubes::updateSurfaceParticles()
 	mFluid->findNeighbors(ns);
 	const auto& neighbors = mFluid->getNeighbors();
 	mCurvature = learnSPH::compute_curvature(mFluid.get());
-#ifdef DEBUG
+#ifdef DBG
 	saveParticlesToVTK("/tmp/ParticleCurvature" + mFrameNumber + ".vtk", particles, mCurvature);
 #endif
 

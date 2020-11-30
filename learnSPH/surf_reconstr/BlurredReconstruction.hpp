@@ -58,7 +58,7 @@ private:
 	{
 		BaseClass::updateLevelSet();
 		saveLevelSetValues();
-#ifdef DEBUG
+#ifdef DBG
 		std::vector<Vector3R> points;
 		std::vector<Real> sdf;
 		std::vector<Vector3R> sdfGradients;
@@ -72,7 +72,7 @@ private:
 #endif
 		for(int i = 0; i < mBlurIterations; i++)
 			blurLevelSet(mKernelSize, mOffset, mKernelDepth);
-#ifdef DEBUG
+#ifdef DBG
 		sdf.clear();
 		for(const auto& item : BaseClass::mSurfaceCells)
 			sdf.push_back(mLevelSetValues[item.first]);
@@ -133,7 +133,7 @@ private:
 			Real smoothFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
 			smoothFactor = -1 * std::pow(1 - smoothFactor*smoothFactor, 10.) + 1
 			newLevelSet[cI] = mLevelSetValues[cI] * (1 - smoothFactor) + smoothFactor * dfValue;
-#ifdef DEBUG
+#ifdef DBG
 			smoothFactors.push_back(smoothFactor);
 			points.push_back(cC);
 			curvatures.push_back(getCurvature(c));
@@ -142,7 +142,7 @@ private:
 		mLevelSetValues.swap(newLevelSet);
 		if(mBlurrSurfaceCellsOnly)
 			delete cellVertices;
-#ifdef DEBUG
+#ifdef DBG
 		learnSPH::saveParticlesToVTK("/tmp/ParticleCountSmoothFactor" + BaseClass::mFrameNumber + ".vtk", points, smoothFactors);
 		learnSPH::saveParticlesToVTK("/tmp/Curvature" + BaseClass::mFrameNumber + ".vtk", points, curvatures);
 #endif
@@ -275,7 +275,7 @@ private:
 	
 	std::vector<Eigen::Vector3i> getNeighbourCells(Eigen::Vector3i baseCell, int kernelSize, int offset, Real depth)
 	{
-#ifdef DEBUG
+#ifdef DBG
 		static std::mt19937 generator(1);
 		static std::uniform_real_distribution<float> distr {0, 1};
 		static auto dice = std::bind(distr, generator);
@@ -304,12 +304,12 @@ private:
 						continue;
 					
 					neighbors.push_back(Eigen::Vector3i(baseCell(0) + i, baseCell(1) + j, baseCell(2) + k));
-#ifdef DEBUG
+#ifdef DBG
 					cells.push_back(BaseClass::cellCoord(baseCell + Eigen::Vector3i(i,j,k)));
 #endif
 				}
 		
-#ifdef DEBUG
+#ifdef DBG
 		if(dice() < probability)
 		{
 			cells.push_back(BaseClass::cellCoord(baseCell));

@@ -115,7 +115,7 @@ int main(int argc, char** argv)
 		save_vectors(simName + "_positions_" + sequenceNumber + ".cereal", fluid.getPositions());
 		save_scalars(simName + "_densities_" + sequenceNumber + ".cereal", fluid.getDensities());
         save_scalars(simName + "_params_" + sequenceNumber + ".cereal", params);
-#ifdef DEBUG
+#ifdef DBG
 		learnSPH::saveParticlesToVTK("/tmp/ParticlesWithDencities" + sequenceNumber + ".vtk", fluid.getPositions(), fluid.getDensities());
 #endif
 	}

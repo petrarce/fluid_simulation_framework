@@ -48,7 +48,7 @@ void SolenthilerReconstruction::updateGradientSums()
 			mCellGradComponents[cellIndex(c)].gradSum += gW;
 		}
 	}
-#ifdef DEBUG
+#ifdef DBG
 	std::vector<Vector3R> gradSums;
 	std::vector<Vector3R> points;
 	for(const auto& item : mSurfaceCells)
@@ -84,7 +84,7 @@ void SolenthilerReconstruction::updateJakobians()
 }
 void SolenthilerReconstruction::updateFFunction()
 {
-#ifdef DEBUG
+#ifdef DBG
 	std::vector<Eigen::Vector3d> evls;
 	std::vector<Vector3R> pts;
 	std::vector<Real> fvls;
@@ -106,13 +106,13 @@ void SolenthilerReconstruction::updateFFunction()
 										/*std::fabs*/(evalues(2).real()));
 		std::sort(evaluesReal.data(), evaluesReal.data() + evaluesReal.size(), [](Real v1, Real v2) { return v1 > v2; });
 		f.second.fVal = thresholdFunction(evaluesReal(0), this->mTLow, this->mTHigh);
-#ifdef DEBUG
+#ifdef DBG
 		evls.push_back(evaluesReal);
 		pts.push_back(cellCoord(cell(mSurfaceCells[f.first])));
 		fvls.push_back(f.second.fVal);
 #endif
 	}
-#ifdef DEBUG
+#ifdef DBG
 	static int cnt = 0;
 	learnSPH::saveParticlesToVTK("/tmp/EVALUES" + to_string(cnt) + ".vtk", 
 								 pts, evls);
