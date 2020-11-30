@@ -1,8 +1,13 @@
 #pragma once
 #include <memory>
+#include <vector>
+#include <unordered_map>
+
 #include <Eigen/Dense>
+
 #include "SurfaceReconstructor.hpp"
 #include <learnSPH/core/storage.h>
+
 
 
 class MarchingCubes : public SurfaceReconstructor
@@ -56,12 +61,16 @@ protected:
 	{
 		return getSDFvalue(c(0), c(1), c(2), sdf);
 	}
+	inline bool getSDFvalue(size_t cellInd, float& sdf)
+	{
+		return getSDFvalue(cell(cellInd), sdf);
+	}
 
 	std::vector<Eigen::Vector3d> getTriangles() const;
 	///Calculate cell indeces of neighbour cells
 	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3d& position, float radius, bool existing = true) const;
 	std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> computeIntersectionCells() const;
-	std::unordered_map<size_t, size_t> computeIntersectionCellVertices() const;
+	std::unordered_map<size_t, size_t> computeIntersectionCellVertices(int neighborsCnt = 0) const;
 	///linear interpolation between two vectors given 2 float values and target value
 	inline Eigen::Vector3d lerp(const Eigen::Vector3d& a,
 		const Eigen::Vector3d& b, 

@@ -109,7 +109,7 @@ private:
 		typedef decltype(BaseClass::mSurfaceCells) CellsContainer;
 		const CellsContainer* cellVertices = &this->mSurfaceCells;
 		if(mBlurrSurfaceCellsOnly)
-			cellVertices = new CellsContainer(BaseClass::computeIntersectionCellVertices());
+			cellVertices = new CellsContainer(BaseClass::computeIntersectionCellVertices(mKernelSize));
 		for(const auto& cellItem : *cellVertices)
 		{
 			auto cI = cellItem.first;

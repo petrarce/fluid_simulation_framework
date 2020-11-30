@@ -35,6 +35,7 @@ set(SOURCE_FILES
 	surf_reconstr/SolenthilerReconstruction.cpp
 	surf_reconstr/SolenthilerReconstruction.hpp
 	surf_reconstr/BlurredReconstruction.hpp
+	surf_reconstr/MlsReconstruction.hpp
 
 	${CMAKE_SOURCE_DIR}/include/types.hpp
 )

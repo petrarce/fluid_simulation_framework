@@ -201,7 +201,7 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 	return triangleMesh;
 }
 
-std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionCellVertices() const
+std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionCellVertices(int neighborsCnt) const
 {
 	std::unordered_map<size_t, size_t> intersectionCellVertices;
 	auto intersectionCells = computeIntersectionCells();
@@ -212,13 +212,23 @@ std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionCellVertice
 		for(int i = 0; i < 8; i++)
 		{
 			Eigen::Vector3i nc = c + Eigen::Vector3i(1<<i & 0x4, 1 << i & 0x2, 1 << i & 0x1);
-			size_t ncI = cellIndex(nc);
-			if(intersectionCellVertices.find(ncI) != intersectionCellVertices.end())
-				continue;
-			auto fluidCell = mSurfaceCells.find(ncI);
-			if(fluidCell == mSurfaceCells.end())
-				continue;
-			intersectionCellVertices.insert(*fluidCell);
+			for(int i = -neighborsCnt; i <= neighborsCnt; i++)
+			{
+				for(int j = -neighborsCnt; j <= neighborsCnt; j++)
+				{
+					for(int k = -neighborsCnt; k <= neighborsCnt; k++)
+					{
+
+						size_t ncI = cellIndex(nc + Eigen::Vector3i(i, j, k));
+						if(intersectionCellVertices.find(ncI) != intersectionCellVertices.end())
+							continue;
+						auto fluidCell = mSurfaceCells.find(ncI);
+						if(fluidCell == mSurfaceCells.end())
+							continue;
+						intersectionCellVertices.insert(*fluidCell);
+					}
+				}
+			}
 		}
 	}
 	return intersectionCellVertices;
