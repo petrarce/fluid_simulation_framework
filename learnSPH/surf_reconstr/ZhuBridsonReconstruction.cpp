@@ -56,8 +56,10 @@ bool ZhuBridsonReconstruction::getSDFvalue(int i, int j, int k, float& sdf) cons
 	if(xAvgI == xAvg.end())
 		//TODO compute some acceptable value
 		return false;
-	
-	sdf = (cC - xAvgI->second).norm() - dAvgI->second / 2;
+
+	float norm = (cC - xAvgI->second).norm();
+	float radiusAvg = dAvgI->second;
+	sdf = norm - radiusAvg / 2;
 	return true;
 }
 
@@ -90,16 +92,15 @@ void ZhuBridsonReconstruction::updateAvgs()
 		{
 			auto cI = cellIndex(cell);
 			auto cC = cellCoord(cell);
-			auto xAvgI = xAvg.find(cI);
-			auto dAvgI = dAvg.find(cI);
 			if(xAvg.find(cI) == xAvg.end())
 			{
 				xAvg[cI] = Vector3R(0,0,0);
 				dAvg[cI] = 0;
 			}
 			auto weight = learnSPH::kernel::kernelCubic(cC, particles[i], mRadii);
-			xAvg[cI] += weight / denominators[cI] * particles[i];
-			dAvg[cI] += weight / denominators[cI] * mFluid->getDiameter();
+			float denominator = denominators[cI] + 1e-6;
+			xAvg[cI] += weight / denominator * particles[i];
+			dAvg[cI] += weight / denominator * mFluid->getDiameter();
 		}
 	}
 }
