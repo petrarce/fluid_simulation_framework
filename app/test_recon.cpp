@@ -124,6 +124,7 @@ enum ReconstructionMethods
 	ZBBlur,
 	NMCBlur,
 	ZBMls,
+	NMCMLS
 };
 
 struct 
@@ -238,6 +239,8 @@ struct
 				method = ReconstructionMethods::NMCBlur;
 			else if(lmethod == "ZhuBridsonMls")
 				method = ReconstructionMethods::ZBMls;
+			else if(lmethod == "NaiveMCMls")
+				method = ReconstructionMethods::NMCMLS;
 			else
 				throw invalid_argument("unknown reconstruction method specified in  --method: " + lmethod);
 		} else
@@ -342,7 +345,10 @@ int main(int argc, char** argv)
 					programInput.upperCorner, 
 					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
 					programInput.initValue);
-				simtype = string("NaiveMC") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_iv-" + to_string(programInput.initValue);
+				simtype = string("NaiveMC")
+						+ "_cff-" + to_string(programInput.colorFieldFactor)
+						+ "_gr-" + to_string(programInput.gridResolution)
+						+ "_iv-" + to_string(programInput.initValue);
 				break;
 			case ReconstructionMethods::ZB:
 				mcbNew = std::make_unique<ZhuBridsonReconstruction>(nullptr,
@@ -409,11 +415,32 @@ int main(int argc, char** argv)
 														 programInput.upperCorner,
 														 Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
 														 programInput.supportRad,
+														 programInput.kernelOffset,
 														 programInput.kernelSize,
 														 programInput.similarityThreshold,
 														 programInput.blurSurfaceCellsOnly);
 				simtype = string("ZhuBridsonMls") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad)
 						+ "_ks-" + to_string(programInput.kernelSize)
+						+ "_ko-" + to_string(programInput.kernelOffset)
+						+ "_st-" + to_string(programInput.similarityThreshold)
+						+ "_sfco-" + (programInput.blurSurfaceCellsOnly?"true":"false");
+				break;
+			case ReconstructionMethods::NMCMLS:
+				mcbNew = std::make_unique<NaiveMls>(nullptr,
+													programInput.lowerCorner,
+													programInput.upperCorner,
+													Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
+													programInput.initValue,
+													programInput.kernelSize,
+													programInput.kernelOffset,
+													programInput.similarityThreshold,
+													programInput.blurSurfaceCellsOnly);
+				simtype = string("NaiveMls")
+						+ "_cff-" + to_string(programInput.colorFieldFactor)
+						+ "_gr-" + to_string(programInput.gridResolution)
+						+ "_iv-" + to_string(programInput.initValue)
+						+ "_ks-" + to_string(programInput.kernelSize)
+						+ "_ko-" + to_string(programInput.kernelOffset)
 						+ "_st-" + to_string(programInput.similarityThreshold)
 						+ "_sfco-" + (programInput.blurSurfaceCellsOnly?"true":"false");
 				break;
@@ -458,6 +485,6 @@ int main(int argc, char** argv)
 		std::string surface_filename = programInput.simDir + programInput.simName + simtype + "_surface_" + integerMatch.str() + ".vtk";
 		learnSPH::saveTriMeshToVTK(surface_filename, new_triangle_mesh, triangles);
 
-		cout << "\nframe [" << t << "] rendered" << endl;
+		cout << "\nframe [" << integerMatch.str() << "] rendered" << endl;
 	}
 }

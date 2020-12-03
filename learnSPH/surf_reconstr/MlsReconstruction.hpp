@@ -20,10 +20,12 @@ class MlsReconstruction : public BaseClass
 public:
 	explicit MlsReconstruction(Args... args,
 							   size_t kernelSize,
+							   size_t kernelOffset,
 							   float similarityThreshold,
 							   bool surfaceCellsOnly):
 		BaseClass(args...),
 		mKernelSize(kernelSize),
+		mKernelOffset(kernelOffset),
 		mSdfSimilarityThreshold(similarityThreshold),
 		mSurfaceCellsOnly(surfaceCellsOnly)
 	{
@@ -33,6 +35,7 @@ public:
 		BaseClass(other),
 		mLevelSet(other.mLevelSet),
 		mKernelSize(other.mKernelSize),
+		mKernelOffset(other.mKernelOffset),
 		mSdfSimilarityThreshold(other.mSdfSimilarityThreshold),
 		mSurfaceCellsOnly(other.mSurfaceCellsOnly)
 	{}
@@ -83,7 +86,7 @@ private:
 		std::unordered_map<size_t, float> levelSet = mLevelSet;
 		const std::unordered_map<size_t, size_t>* surfaceCells;
 		if(mSurfaceCellsOnly)
-			surfaceCells = new std::unordered_map<size_t, size_t>(MarchingCubes::computeIntersectionCellVertices(mKernelSize));
+			surfaceCells = new std::unordered_map<size_t, size_t>(MarchingCubes::computeIntersectionCellVertices(mKernelSize * mKernelOffset));
 		else
 			surfaceCells = &(MarchingCubes::mSurfaceCells);
 
@@ -97,8 +100,12 @@ private:
 #ifdef DBG
 			averageNeighbors += nbs.size();
 #endif
-			float newSmoothing = getMlsCorrectedSdf(c, nbs);
-			levelSet[cellItem.first] = newSmoothing;
+			float newLevenSetValue = getMlsCorrectedSdf(c, nbs);
+//			Real smoothFactor = std::min(1.f, 2 * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
+//			smoothFactor = -1 * std::pow(1 - smoothFactor*smoothFactor, 10.) + 1;
+//			levelSet[cellItem.first] = smoothFactor * newLevenSetValue + (1 - smoothFactor) * mLevelSet[cellItem.first];
+			levelSet[cellItem.first] = newLevenSetValue;
+
 		}
 #ifdef DBG
 		averageNeighbors /= mLevelSet.size();
@@ -121,7 +128,7 @@ private:
 			{
 				for(int k = -kernelSize; k <= kernelSize; k++)
 				{
-					Eigen::Vector3i c = baseCell + Eigen::Vector3i(i, j, k);
+					Eigen::Vector3i c = baseCell + Eigen::Vector3i(i * mKernelOffset, j * mKernelOffset, k * mKernelOffset);
 					size_t cI = MarchingCubes::cellIndex(c);
 					unordered_map<size_t, size_t>::const_iterator item = MarchingCubes::mSurfaceCells.find(cI);
 					if(item == MarchingCubes::mSurfaceCells.cend())
@@ -215,6 +222,7 @@ private:
 private:
 	unordered_map<size_t, float> mLevelSet;
 	int mKernelSize {1};
+	int mKernelOffset {1};
 	float mSdfSimilarityThreshold {0.5};
 	bool mSurfaceCellsOnly {false};
 };
