@@ -98,12 +98,34 @@ private:
 #endif
 		for(auto cellItem : *surfaceCells)
 		{
+			Real curvature; bool res = BaseClass::getCurvature(cellItem.first, curvature);
+			int kernelOffset = mKernelOffset;
+			int kernelSize = mKernelSize;
+			if(std::fabs(curvature) < 0.5)
+			{
+				kernelOffset *= 2;
+				kernelSize *= 2;
+			}
+			else if(std::fabs(curvature) < 1.5)
+			{
+				kernelSize *= 2;
+			}
+
+			int maxNeighborNodes = mMaxNeighborNodes;
+			//empirically determined, that half of the nores is enough to build smooth surface
+			if(mMaxNeighborNodes < 0)
+				maxNeighborNodes = std::pow(kernelSize * 2 + 1, 3) / 2;
+
+
 			Eigen::Vector3i c = MarchingCubes::cell(cellItem.first);
-			std::vector<Eigen::Vector3i> nbs = getNeighbourCells(c, mKernelSize);
+			std::vector<Eigen::Vector3i> nbs = getNeighbourCells(c,
+																 kernelSize,
+																 kernelOffset,
+																 maxNeighborNodes);
 #ifdef DBG
 			averageNeighbors += nbs.size();
 #endif
-			float newLevenSetValue = getMlsCorrectedSdf(c, nbs);
+			float newLevenSetValue = getMlsCorrectedSdf(c, nbs, kernelSize, kernelOffset);
 			levelSet[cellItem.first] = newLevenSetValue;
 
 		}
@@ -116,7 +138,10 @@ private:
 		mLevelSet.swap(levelSet);
 	}
 
-	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3i& baseCell, int kernelSize) const
+	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3i& baseCell,
+												   int kernelSize,
+												   int kernelOffset,
+												   int maxSamples) const
 	{
 		std::vector<Eigen::Vector3i> neighbors;
 		neighbors.reserve(pow(kernelSize, 3));
@@ -128,30 +153,28 @@ private:
 			{
 				for(int k = -kernelSize; k <= kernelSize; k++)
 				{
-					Eigen::Vector3i c = baseCell + Eigen::Vector3i(i * mKernelOffset, j * mKernelOffset, k * mKernelOffset);
+					Eigen::Vector3i c = baseCell + Eigen::Vector3i(i * kernelOffset, j * kernelOffset, k * kernelOffset);
 					size_t cI = MarchingCubes::cellIndex(c);
-					unordered_map<size_t, size_t>::const_iterator item = MarchingCubes::mSurfaceCells.find(cI);
-					if(item == MarchingCubes::mSurfaceCells.cend())
-						continue;
-					float sdf;
-					res = MarchingCubes::getSDFvalue(c, sdf);
-					if(std::fabs(sdf - baseSdf) > mSdfSimilarityThreshold)
+					float sdf; res = MarchingCubes::getSDFvalue(c, sdf);
+					if(!res || std::fabs(sdf - baseSdf) > mSdfSimilarityThreshold)
 						continue;
 					neighbors.push_back(c);
 				}
 			}
 		}
 
-		if(mMaxNeighborNodes  >= 0)
+		if(maxSamples  >= 0)
 		{
 			//pick randomly up to mMaxNeighbor from the given neighborhood
 			std::random_shuffle(neighbors.begin(), neighbors.end());
-			neighbors.resize(std::min(neighbors.size(), static_cast<size_t>(mMaxNeighborNodes)));
+			neighbors.resize(std::min(neighbors.size(), static_cast<size_t>(maxSamples)));
 		}
 		return neighbors;
 	}
 
-	float getMlsCorrectedSdf(const Eigen::Vector3i& baseCell, const std::vector<Eigen::Vector3i>& cellNeighbors)
+	float getMlsCorrectedSdf(const Eigen::Vector3i& baseCell, const std::vector<Eigen::Vector3i>& cellNeighbors,
+							 int kernelSize,
+							 int kernelOffset)
 	{
 
 		//compute matrix B
@@ -172,7 +195,7 @@ private:
 		for(int i = 0; i < cellNeighbors.size(); i++)
 		{
 			auto nC = BaseClass::cellCoord(cellNeighbors[i]);
-			W(i, i) = learnSPH::kernel::kernelFunction(cC, nC, 1.5 * BaseClass::mResolution(0) * (mKernelSize * mKernelOffset) + 1e-6);
+			W(i, i) = learnSPH::kernel::kernelFunction(cC, nC, 1.5 * BaseClass::mResolution(0) * (kernelSize * kernelOffset) + 1e-6);
 		}
 
 		//compute vector u from existing SDF values
