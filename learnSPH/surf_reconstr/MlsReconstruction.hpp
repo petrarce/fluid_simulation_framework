@@ -22,12 +22,14 @@ public:
 							   size_t kernelSize,
 							   size_t kernelOffset,
 							   float similarityThreshold,
+							   int maxNeighborNodes,
 							   bool surfaceCellsOnly):
 		BaseClass(args...),
 		mKernelSize(kernelSize),
 		mKernelOffset(kernelOffset),
 		mSdfSimilarityThreshold(similarityThreshold),
-		mSurfaceCellsOnly(surfaceCellsOnly)
+		mSurfaceCellsOnly(surfaceCellsOnly),
+		mMaxNeighborNodes(maxNeighborNodes)
 	{
 		assert(similarityThreshold > 0);
 	}
@@ -37,7 +39,8 @@ public:
 		mKernelSize(other.mKernelSize),
 		mKernelOffset(other.mKernelOffset),
 		mSdfSimilarityThreshold(other.mSdfSimilarityThreshold),
-		mSurfaceCellsOnly(other.mSurfaceCellsOnly)
+		mSurfaceCellsOnly(other.mSurfaceCellsOnly),
+		mMaxNeighborNodes(other.mMaxNeighborNodes)
 	{}
 private:
 
@@ -101,9 +104,6 @@ private:
 			averageNeighbors += nbs.size();
 #endif
 			float newLevenSetValue = getMlsCorrectedSdf(c, nbs);
-//			Real smoothFactor = std::min(1.f, 2 * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
-//			smoothFactor = -1 * std::pow(1 - smoothFactor*smoothFactor, 10.) + 1;
-//			levelSet[cellItem.first] = smoothFactor * newLevenSetValue + (1 - smoothFactor) * mLevelSet[cellItem.first];
 			levelSet[cellItem.first] = newLevenSetValue;
 
 		}
@@ -141,6 +141,13 @@ private:
 				}
 			}
 		}
+
+		if(mMaxNeighborNodes  >= 0)
+		{
+			//pick randomly up to mMaxNeighbor from the given neighborhood
+			std::random_shuffle(neighbors.begin(), neighbors.end());
+			neighbors.resize(std::min(neighbors.size(), static_cast<size_t>(mMaxNeighborNodes)));
+		}
 		return neighbors;
 	}
 
@@ -165,8 +172,7 @@ private:
 		for(int i = 0; i < cellNeighbors.size(); i++)
 		{
 			auto nC = BaseClass::cellCoord(cellNeighbors[i]);
-			//W(i,i) = learnSPH::kernel::kernelFunction(cC, nC, BaseClass::mResolution(0) * (mKernelSize) + 1e-6);
-			//W(i,i) = learnSPH::kernel::kernelCubic(cC, nC, BaseClass::mResolution(0) * (mKernelSize) + 1e-6);
+			W(i, i) = learnSPH::kernel::kernelFunction(cC, nC, 1.5 * BaseClass::mResolution(0) * (mKernelSize * mKernelOffset) + 1e-6);
 		}
 
 		//compute vector u from existing SDF values
@@ -225,6 +231,7 @@ private:
 	int mKernelOffset {1};
 	float mSdfSimilarityThreshold {0.5};
 	bool mSurfaceCellsOnly {false};
+	int mMaxNeighborNodes {-1};
 };
 
 typedef  MlsReconstruction<ZhuBridsonReconstruction, std::shared_ptr<learnSPH::FluidSystem> , const Eigen::Vector3d ,

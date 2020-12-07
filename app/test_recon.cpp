@@ -147,6 +147,7 @@ struct
 	size_t blurIterations {1};
 	float colorFieldFactor;
 	float similarityThreshold {0.5};
+	int mlsMaxSamples {-1};
 	
 	void parse(const variables_map& vm)
 	{
@@ -264,6 +265,11 @@ struct
 		else
 			throw invalid_argument("required option: --mls-similarity-threshold");
 
+		if(vm.count("mls-max-neighbors"))
+			mlsMaxSamples= vm["mls-max-neighbors"].as<int>();
+		else
+			throw invalid_argument("required option: --mls-max-neighbors");
+
 	}
 private:
 	vector<Real> arrayFromString(const string& str)
@@ -313,6 +319,7 @@ int main(int argc, char** argv)
 			("blur-iterations", value<size_t>()->default_value(1), "number of iterations blur is applied to the grid")
 			("cff", value<float>()->default_value(1), "color field factor ( > 0.95 color field particles detection is not applied)")
 			("mls-similarity-threshold", value<float>()->default_value(0.5), "how far avay two similar sdf values should be when computing mls neighbourhood")
+			("mls-max-neighbors", value<int>()->default_value(-1), "maximum number of sample points")
 			;
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
@@ -418,10 +425,12 @@ int main(int argc, char** argv)
 														 programInput.kernelOffset,
 														 programInput.kernelSize,
 														 programInput.similarityThreshold,
+														 programInput.mlsMaxSamples,
 														 programInput.blurSurfaceCellsOnly);
 				simtype = string("ZhuBridsonMls") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad)
 						+ "_ks-" + to_string(programInput.kernelSize)
 						+ "_ko-" + to_string(programInput.kernelOffset)
+						+ "_ms-" + to_string(programInput.mlsMaxSamples)
 						+ "_st-" + to_string(programInput.similarityThreshold)
 						+ "_sfco-" + (programInput.blurSurfaceCellsOnly?"true":"false");
 				break;
@@ -434,6 +443,7 @@ int main(int argc, char** argv)
 													programInput.kernelSize,
 													programInput.kernelOffset,
 													programInput.similarityThreshold,
+													programInput.mlsMaxSamples,
 													programInput.blurSurfaceCellsOnly);
 				simtype = string("NaiveMls")
 						+ "_cff-" + to_string(programInput.colorFieldFactor)
@@ -441,6 +451,7 @@ int main(int argc, char** argv)
 						+ "_iv-" + to_string(programInput.initValue)
 						+ "_ks-" + to_string(programInput.kernelSize)
 						+ "_ko-" + to_string(programInput.kernelOffset)
+						+ "_ms-" + to_string(programInput.mlsMaxSamples)
 						+ "_st-" + to_string(programInput.similarityThreshold)
 						+ "_sfco-" + (programInput.blurSurfaceCellsOnly?"true":"false");
 				break;
