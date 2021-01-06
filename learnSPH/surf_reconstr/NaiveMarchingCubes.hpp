@@ -54,14 +54,14 @@ protected:
 	virtual void updateGrid() = 0;
 	virtual void updateLevelSet() = 0;
 	virtual void configureHashTables();
-	virtual void updateSurfaceParticles();
 	virtual bool getSDFvalue(int i, int j, int k, float& sdf) const = 0;
+	void updateSurfaceParticles();
 
 	inline bool getSDFvalue(const Vector3i& c, float& sdf) const
 	{
 		return getSDFvalue(c(0), c(1), c(2), sdf);
 	}
-	inline bool getSDFvalue(size_t cellInd, float& sdf)
+	inline bool getSDFvalue(size_t cellInd, float& sdf) const
 	{
 		return getSDFvalue(cell(cellInd), sdf);
 	}
