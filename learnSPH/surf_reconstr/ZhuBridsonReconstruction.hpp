@@ -31,18 +31,19 @@ public:
 	{}
 
 protected:
-	std::unordered_map<int, Real> denominators;
-	std::unordered_map<int, Real> dAvg;
-	std::unordered_map<int, Vector3R> xAvg;
-	Real mRadii;
 
 	void updateGrid() override;
 	void updateLevelSet() override;
 	void configureHashTables() override;
 	bool getSDFvalue(int i, int j, int k, float& sdf) const override;
-	
+
+	Real mRadii;
+	std::unordered_map<int, Real> denominators;
+	std::unordered_map<int, Real> dAvg;
+	std::unordered_map<int, Vector3R> xAvg;
+
+private:
 	void updateDenominators();
-	
 	void updateAvgs();
 
 };
