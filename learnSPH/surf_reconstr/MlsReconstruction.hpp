@@ -89,7 +89,7 @@ private:
 		std::unordered_map<size_t, float> levelSet = mLevelSet;
 		const std::unordered_map<size_t, size_t>* surfaceCells;
 		if(mSurfaceCellsOnly)
-			surfaceCells = new std::unordered_map<size_t, size_t>(MarchingCubes::computeIntersectionCellVertices(mKernelSize * mKernelOffset));
+			surfaceCells = new std::unordered_map<size_t, size_t>(MarchingCubes::computeIntersectionCellVertices(mKernelSize * mKernelOffset * 4));
 		else
 			surfaceCells = &(MarchingCubes::mSurfaceCells);
 
