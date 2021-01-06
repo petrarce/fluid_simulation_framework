@@ -95,43 +95,44 @@ private:
 
 #ifdef DBG
 		float averageNeighbors;
+		float averageKernelSize;
+		float averageKernelOffset;
 #endif
 		for(auto cellItem : *surfaceCells)
 		{
 			Real curvature; bool res = BaseClass::getCurvature(cellItem.first, curvature);
+			assert(res);
 			int kernelOffset = mKernelOffset;
 			int kernelSize = mKernelSize;
-			if(std::fabs(curvature) < 0.5)
+			if(std::fabs(curvature) < 1. / (2 * 50 * BaseClass::mFluid->getDiameter()))
 			{
 				kernelOffset *= 2;
 				kernelSize *= 2;
 			}
-			else if(std::fabs(curvature) < 1.5)
-			{
+			else if(std::fabs(curvature) < 1. / (50. * BaseClass::mFluid->getDiameter()))
 				kernelSize *= 2;
-			}
-
-			int maxNeighborNodes = mMaxNeighborNodes;
-			//empirically determined, that half of the nores is enough to build smooth surface
-			if(mMaxNeighborNodes < 0)
-				maxNeighborNodes = std::pow(kernelSize * 2 + 1, 3) / 2;
-
 
 			Eigen::Vector3i c = MarchingCubes::cell(cellItem.first);
 			std::vector<Eigen::Vector3i> nbs = getNeighbourCells(c,
 																 kernelSize,
 																 kernelOffset,
-																 maxNeighborNodes);
+																 mMaxNeighborNodes);
 #ifdef DBG
 			averageNeighbors += nbs.size();
+			averageKernelSize += kernelSize;
+			averageKernelOffset += kernelOffset;
 #endif
 			float newLevenSetValue = getMlsCorrectedSdf(c, nbs, kernelSize, kernelOffset);
 			levelSet[cellItem.first] = newLevenSetValue;
 
 		}
 #ifdef DBG
-		averageNeighbors /= mLevelSet.size();
-		std::cout << "average mls neighbors: " << averageNeighbors << std::endl;
+		averageNeighbors /= surfaceCells->size();
+		averageKernelOffset /= surfaceCells->size();
+		averageKernelSize /= surfaceCells->size();
+		std::cout << "average mls samples: " << averageNeighbors << std::endl;
+		std::cout << "average mls KernelSize: " << averageKernelSize << std::endl;
+		std::cout << "average mls KernelOffset: " << averageKernelOffset << std::endl;
 #endif
 		if(mSurfaceCellsOnly)
 			delete surfaceCells;
