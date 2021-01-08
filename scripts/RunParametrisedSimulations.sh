@@ -1,21 +1,189 @@
 #!/bin/bash
-domain=${1}
-init_val=${2}
-sim_directory=${3}
-sim_name=${4}
-grid_resolution=${5}
-support_radius=${6}
-method=${7}
-sdf_smoothing_factor=${8}
-blur_kernel_size=${9}
-blur_kernel_offset=${10}
-blur_kernel_depth=${11}
-blur_surface_cells_only=${12}
-blur_iterations=${13}
-cff=${14}
-mls_similarity_threshold=${15}
-mls_max_samples=${16}
-app=${17}
+
+domain="_3,_3,_3,3,3,3"
+init_val="0.5"
+sim_directory="./"
+sim_name="new_sim"
+grid_resolution="0.02"
+support_radius="0.08"
+method="ZhuBridson"
+sdf_smoothing_factor="1"
+blur_kernel_size="1"
+blur_kernel_offset="1"
+blur_kernel_depth="0.5"
+blur_surface_cells_only="true"
+blur_iterations="1"
+cff="1"
+mls_similarity_threshold="0.1"
+mls_max_samples="1000"
+app="_empty_command_"
+
+function printHelp()
+{
+	echo '-h|--help'
+	echo '-d|--domain'
+	echo '-i|--init-val'
+	echo '-s|--sim-dir'
+	echo '-n|--sim-name'
+	echo '-g|--grid-res'
+	echo '-r|--support-radius'
+	echo '-m|--method'
+	echo '-f|--sdf-smoothing-factor'
+	echo '-ks|--blur-kernel-size'
+	echo '-ko|--blur-kernel-offset'
+	echo '-kd|--blur-kernel-depth'
+	echo '-sco|--blur-surface-cells-only'
+	echo '-bi|--blur-iterations'
+	echo '--cff'
+	echo '-st|--mls-similarity-threshold'
+	echo '-ms|--mls-max-samples'
+	echo '--app'
+}
+
+
+while [ $# -gt 0 ]; do
+	key=$1
+	case ${key} in
+		-h|--help)
+		printHelp
+		exit 1
+		;;
+
+		-d|--domain)
+		if [ $# -lt 2 ]; then exit; fi
+		domain=${2}
+		shift
+		shift
+		;;
+
+		-i|--init-val)
+		if [ $# -lt 2 ]; then exit; fi
+		init_val=${2}
+		shift
+		shift
+		;;
+
+		-s|--sim-dir)
+		if [ $# -lt 2 ]; then exit; fi
+		sim_directory=${2}
+		shift
+		shift
+		;;
+
+		-n|--sim-name)
+		if [ $# -lt 2 ]; then exit; fi
+		sim_name=${2}
+		shift
+		shift
+		;;
+
+		-g|--grid-res)
+		if [ $# -lt 2 ]; then exit; fi
+		grid_resolution=${2}
+		shift
+		shift
+		;;
+
+		-r|--support-radius)
+		if [ $# -lt 2 ]; then exit; fi
+		support_radius=${2}
+		shift
+		shift
+		;;
+
+		-m|--method)
+		if [ $# -lt 2 ]; then exit; fi
+		method=${2}
+		shift
+		shift
+		;;
+
+		-f|--sdf-smoothing-factor)
+		if [ $# -lt 2 ]; then exit; fi
+		sdf_smoothing_factor=${2}
+		shift
+		shift
+		;;
+
+		-ks|--blur-kernel-size)
+		if [ $# -lt 2 ]; then exit; fi
+		blur_kernel_size=${2}
+		shift
+		shift
+		;;
+
+		-ko|--blur-kernel-offset)
+		if [ $# -lt 2 ]; then exit; fi
+		blur_kernel_offset=${2}
+		shift
+		shift
+		;;
+
+		-kd|--blur-kernel-depth)
+		if [ $# -lt 2 ]; then exit; fi
+		blur_kernel_depth=${2}
+		shift
+		shift
+		;;
+
+		-sco|--blur-surface-cells-only)
+		if [ $# -lt 2 ]; then exit; fi
+		blur_surface_cells_only=${2}
+		shift
+		shift
+		;;
+
+		-bi|--blur-iterations)
+		if [ $# -lt 2 ]; then exit; fi
+		blur_iterations=${2}
+		shift
+		shift
+		;;
+
+		--cff)
+		if [ $# -lt 2 ]; then exit; fi
+		cff=${2}
+		shift
+		shift
+		;;
+
+		-st|--mls-similarity-threshold)
+		if [ $# -lt 2 ]; then exit; fi
+		mls_similarity_threshold=${2}
+		shift
+		shift
+		;;
+
+		-ms|--mls-max-samples)
+		if [ $# -lt 2 ]; then exit; fi
+		mls_max_samples=${2}
+		shift
+		shift
+		;;
+
+		--app)
+		if [ $# -lt 2 ]; then exit; fi
+		app=${2}
+		shift
+		shift
+		;;
+
+		*)
+		echo "UNKNOWN PARAMETER ${key}"
+		printHelp
+		exit
+		;;
+
+	esac
+done
+
+echo domain=${domain} init_val=${init_val} sim_directory=${sim_directory}\
+	  sim_name=${sim_name} grid_resolution=${grid_resolution} support_radius=${support_radius}\
+	  method=${method} sdf_smoothing_factor=${sdf_smoothing_factor}\
+	  blur_kernel_size=${blur_kernel_size} blur_kernel_offset=${blur_kernel_offset}\
+	  blur_kernel_depth=${blur_kernel_depth} blur_surface_cells_only=${blur_surface_cells_only}\
+	  blur_iterations=${blur_iterations} cff=${cff} mls_similarity_threshold=${mls_similarity_threshold}\
+	  mls_max_samples=${mls_max_samples} app=${app} 
 
 for mt in ${method}; do
 
