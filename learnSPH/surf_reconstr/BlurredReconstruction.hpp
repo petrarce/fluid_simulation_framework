@@ -108,10 +108,23 @@ private:
 		Real maxRadii = BaseClass::mResolution(0) * offset * kernelSize * 1.1;
 		typedef decltype(BaseClass::mSurfaceCells) CellsContainer;
 		const CellsContainer* cellVertices = &this->mSurfaceCells;
+#ifdef DBG
+		static std::mt19937 generator(1);
+		static std::uniform_real_distribution<float> distr {0, 1};
+		static auto dice = std::bind(distr, generator);
+		float probability = std::min(1., 1000. / BaseClass::mSurfaceCells.size());
+		int cellsProcessed = 0;
+		std::vector<Real> smoothFactors;
+		std::vector<Real> curvatures;
+		std::vector<Vector3R> points;
+#endif
 		if(mBlurrSurfaceCellsOnly)
 			cellVertices = new CellsContainer(BaseClass::computeIntersectionCellVertices(mKernelSize));
 		for(const auto& cellItem : *cellVertices)
 		{
+#ifdef DBG
+			std::vector<Vector3R> nbCoords;
+#endif
 			auto cI = cellItem.first;
 			auto c =BaseClass::cell(cI);
 			auto cC = BaseClass::cellCoord(c);
@@ -127,13 +140,27 @@ private:
 					sdfVal = cellSdf;
 				wSum += 1.;
 				dfValue += sdfVal;
+#ifdef DBG
+				nbCoords.push_back(BaseClass::cellCoord(nb));
+#endif
 
 			}
+
 			dfValue /= (wSum + 1e-6);
 			Real smoothFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
 			smoothFactor = -1 * std::pow(1 - smoothFactor*smoothFactor, 10.) + 1;
 			newLevelSet[cI] = mLevelSetValues[cI] * (1 - smoothFactor) + smoothFactor * dfValue;
 #ifdef DBG
+			if(dice() < probability)
+			{
+				nbCoords.push_back(cC);
+				std::vector<Real> dencities(nbCoords.size() - 1, 0);
+				dencities.push_back(1);
+				learnSPH::saveParticlesToVTK("/tmp/GradNeighbours" + string("_") + BaseClass::mFrameNumber + "_" + to_string(cellsProcessed) + ".vtk",
+											 nbCoords,
+											 std::vector<Vector3R>(nbCoords.size(), getSDFGrad(c)));
+				cellsProcessed++;
+			}
 			smoothFactors.push_back(smoothFactor);
 			points.push_back(cC);
 			curvatures.push_back(getCurvature(c));
@@ -143,7 +170,7 @@ private:
 		if(mBlurrSurfaceCellsOnly)
 			delete cellVertices;
 #ifdef DBG
-		learnSPH::saveParticlesToVTK("/tmp/ParticleCountSmoothFactor" + BaseClass::mFrameNumber + ".vtk", points, smoothFactors);
+		learnSPH::saveParticlesToVTK("/tmp/ParticleCountSmoothFactor_" + BaseClass::mFrameNumber + ".vtk", points, smoothFactors);
 		learnSPH::saveParticlesToVTK("/tmp/Curvature" + BaseClass::mFrameNumber + ".vtk", points, curvatures);
 #endif
 	}
@@ -275,14 +302,9 @@ private:
 	
 	std::vector<Eigen::Vector3i> getNeighbourCells(Eigen::Vector3i baseCell, int kernelSize, int offset, Real depth)
 	{
-#ifdef DBG
-		static std::mt19937 generator(1);
-		static std::uniform_real_distribution<float> distr {0, 1};
-		static auto dice = std::bind(distr, generator);
-		std::vector<Vector3R> cells;
-		float probability = std::min(1., 1000. / BaseClass::mSurfaceCells.size());
-#endif
 		std::vector<Eigen::Vector3i> neighbors;
+		neighbors.reserve(kernelSize * kernelSize * kernelSize);
+		neighbors.push_back(baseCell);
 		Eigen::Vector3d grad = getSDFGrad(baseCell);
 		if(grad.dot(grad) < 1e-6)
 			return neighbors;
@@ -294,7 +316,7 @@ private:
 				for(int k = -kernelSize * offset; k <= kernelSize * offset; k += offset)
 				{
 					if(i == 0 && j == 0 && k == 0)
-						neighbors.push_back(baseCell);
+						continue;
 					
 					//if projection of the point offset to gradient in the point is larger, that half of the kernel - dont take the point for bluering while 
 					Eigen::Vector3d offsetVector = Eigen::Vector3d(-i * BaseClass::mResolution(0),
@@ -304,20 +326,8 @@ private:
 						continue;
 					
 					neighbors.push_back(Eigen::Vector3i(baseCell(0) + i, baseCell(1) + j, baseCell(2) + k));
-#ifdef DBG
-					cells.push_back(BaseClass::cellCoord(baseCell + Eigen::Vector3i(i,j,k)));
-#endif
 				}
 		
-#ifdef DBG
-		if(dice() < probability)
-		{
-			cells.push_back(BaseClass::cellCoord(baseCell));
-			std::vector<Real> dencities(cells.size() - 1, 0);
-			dencities.push_back(1);
-			learnSPH::saveParticlesToVTK("/tmp/GradNeighbours" + BaseClass::mFrameNumber + ".vtk", cells, dencities, std::vector<Vector3R>(cells.size(), grad));
-		}
-#endif
 		return neighbors;
 	}
 	

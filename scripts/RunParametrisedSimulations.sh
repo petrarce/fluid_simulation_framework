@@ -1,7 +1,7 @@
 #!/bin/bash
 
-domain="_3,_3,_3,3,3,3"
-init_val="0.5"
+domain="-3,-3,-3,3,3,3"
+init_val="-0.5"
 sim_directory="./"
 sim_name="new_sim"
 grid_resolution="0.02"
