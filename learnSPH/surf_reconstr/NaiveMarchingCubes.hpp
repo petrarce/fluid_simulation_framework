@@ -26,6 +26,7 @@ protected:
 	string mFrameNumber {"UNDEFINED"};
 	vector<Real> mCurvature;
 	std::unordered_map<size_t, Real> mSurfaceCellsCurvature;
+	std::string mSimName;
 
 public:
 	MarchingCubes() = delete;
@@ -48,6 +49,7 @@ public:
 		float initValue);
 	std::vector<Eigen::Vector3d> generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid) override;
 	void setColorFieldFactor(Real factor) { mColorFieldSurfaceFactor = factor; }
+	void setSimName(const std::string& name) { mSimName = name; }
 	
 protected:
 	void setFluidSystem(std::shared_ptr<learnSPH::FluidSystem> fluid) { mFluid = fluid; }

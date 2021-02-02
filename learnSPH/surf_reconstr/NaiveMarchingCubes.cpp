@@ -3,13 +3,14 @@
 #include <learnSPH/core/storage.h>
 #include <learnSPH/core/kernel.h>
 #include <learnSPH/core/vtk_writer.h>
+#include <learnSPH/core/PerfStats.hpp>
 #include <learnSPH/simulation/solver.h>
 #include "look_up_tables.hpp"
 #include "NaiveMarchingCubes.hpp"
 
 #if 0
-#ifndef DEBUG
-#define DEBUG
+#ifndef DBG
+#define DBG
 #endif
 #endif
 using namespace learnSPH;
@@ -46,10 +47,21 @@ void NaiveMarchingCubes::configureHashTables()
 std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid)
 {
 	setFluidSystem(fluid);
+	globalPerfStats.startTimer("updateSurfaceParticles");
 	updateSurfaceParticles();
+	globalPerfStats.stopTimer("updateSurfaceParticles");
+
+	globalPerfStats.startTimer("configureHashTables");
 	configureHashTables();
+	globalPerfStats.stopTimer("configureHashTables");
+
+	globalPerfStats.startTimer("updateGrid");
 	updateGrid();
+	globalPerfStats.stopTimer("updateGrid");
+
+	globalPerfStats.startTimer("updateLevelSet");
 	updateLevelSet();
+	globalPerfStats.stopTimer("updateLevelSet");
 #ifdef DBG
 	vector<Real> sdf;
 	vector<Vector3R> vertices;
@@ -68,9 +80,9 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 		cellCurvature.push_back(curvature);
 		particleConcentration.push_back(static_cast<Real>(vert.second) / mPartPerSupportArea);
 	}
-	saveParticlesToVTK("/tmp/SDF" + mFrameNumber + ".vtk", vertices, sdf);
-	saveParticlesToVTK("/tmp/CellsCurvature" + mFrameNumber + ".vtk", vertices, cellCurvature);
-	saveParticlesToVTK("/tmp/ParticleConcentrationPerSupportVolume" + mFrameNumber + ".vtk", vertices, particleConcentration);
+	saveParticlesToVTK("/tmp/" + mSimName + "SDF_" + mFrameNumber + ".vtk", vertices, sdf);
+	saveParticlesToVTK("/tmp/" + mSimName + "CellsCurvature_" + mFrameNumber + ".vtk", vertices, cellCurvature);
+	saveParticlesToVTK("/tmp/" + mSimName + "ParticleConcentrationPerSupportVolume_" + mFrameNumber + ".vtk", vertices, particleConcentration);
 
 	auto intersectionCellVertices = computeIntersectionCellVertices();
 	vector<Vector3R> intersectionCellVerticePoints;
@@ -82,10 +94,12 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 		Real curvature; getCurvature(c.first, curvature);
 		intersectionCellCurvature.push_back(curvature);
 	}
-	saveParticlesToVTK("/tmp/IntersectionCellsCurvature" + mFrameNumber + ".vtk", intersectionCellVerticePoints, intersectionCellCurvature);
+	saveParticlesToVTK("/tmp/" + mSimName + "IntersectionCellsCurvature_" + mFrameNumber + ".vtk", intersectionCellVerticePoints, intersectionCellCurvature);
 
 #endif
+	globalPerfStats.startTimer("getTriangles");
 	auto mesh = getTriangles();
+	globalPerfStats.stopTimer("getTriangles");
 	return mesh;
 }
 	
@@ -314,7 +328,7 @@ void MarchingCubes::updateSurfaceParticles()
 	const auto& neighbors = mFluid->getNeighbors();
 	mCurvature = learnSPH::compute_curvature(mFluid.get());
 #ifdef DBG
-	saveParticlesToVTK("/tmp/ParticleCurvature" + mFrameNumber + ".vtk", particles, mCurvature);
+	saveParticlesToVTK("/tmp/" + mSimName + "ParticleCurvature" + mFrameNumber + ".vtk", particles, mCurvature);
 #endif
 
 	if(mColorFieldSurfaceFactor > 0.95)

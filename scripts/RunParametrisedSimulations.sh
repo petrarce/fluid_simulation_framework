@@ -17,6 +17,7 @@ cff="1"
 mls_similarity_threshold="0.1"
 mls_max_samples="1000"
 app="_empty_command_"
+num_threads=8
 
 function printHelp()
 {
@@ -38,6 +39,7 @@ function printHelp()
 	echo '-st|--mls-similarity-threshold'
 	echo '-ms|--mls-max-samples'
 	echo '--app'
+	echo '-nt|--num-threads'
 }
 
 
@@ -168,6 +170,13 @@ while [ $# -gt 0 ]; do
 		shift
 		;;
 
+		-nt|--num-threads)
+		if [ $# -lt 2 ]; then exit; fi
+		num_threads=${2}
+		shift
+		shift
+		;;
+
 		*)
 		echo "UNKNOWN PARAMETER ${key}"
 		printHelp
@@ -235,7 +244,8 @@ for mt in ${method}; do
 		else
 			lsfco=""
 		fi
-		parallel -j 8  \
+		
+		OMP_NUM_THREADS=${num_threads} parallel -j ${num_threads}  \
 				./${app} \
 					--domain {1} \
 					--init-val {2} \

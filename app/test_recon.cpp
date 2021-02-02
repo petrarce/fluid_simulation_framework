@@ -18,6 +18,7 @@
 #include <learnSPH/surf_reconstr/MlsReconstruction.hpp>
 #include <learnSPH/core/storage.h>
 
+#include <learnSPH/core/PerfStats.hpp>
 //cereal
 #include <cereal/types/memory.hpp>
 #include <cereal/archives/binary.hpp>
@@ -25,9 +26,14 @@
 //boost
 #include <boost/program_options.hpp>
 
+//omp
+#include <omp.h>
+
 using namespace learnSPH;
 using namespace std;
 using namespace boost::program_options;
+
+PerfStats globalPerfStats;
 
 static void load_vectors(const std::string &path, std::vector<Vector3R> &data)
 {
@@ -298,7 +304,7 @@ private:
 
 int main(int argc, char** argv)
 {
-
+	globalPerfStats.startTimer("total execution time");
 	options_description options;
 	options.add_options()
 			("help", "print this message")
@@ -338,9 +344,10 @@ int main(int argc, char** argv)
 	if(paramFiles.size() != positionFiles.size() || paramFiles.size() != densitiesFiles.size())
 		throw runtime_error("lack of input files");
 
+	pr_info("Max omp threads: %d", omp_get_max_threads());
     std::unique_ptr<MarchingCubes> mcbNew;
 	string simtype;
-	#pragma omp parallel for schedule(static, 1) private(mcbNew, simtype)
+	#pragma omp parallel for schedule(static, 1) private(mcbNew)
 	for (size_t t = 0; t < paramFiles.size(); t++) {
 		if(!mcbNew)
 		{
@@ -459,6 +466,7 @@ int main(int argc, char** argv)
 			default:
 				assert(0);
 			}
+			mcbNew->setSimName(simtype);
 		}
 		vector<Real> params;
 		vector<Vector3R> positions;
@@ -498,4 +506,6 @@ int main(int argc, char** argv)
 
 		cout << "\nframe [" << integerMatch.str() << "] rendered" << endl;
 	}
+	globalPerfStats.stopTimer("total execution time");
+	globalPerfStats.PrintStatistics(simtype);
 }
