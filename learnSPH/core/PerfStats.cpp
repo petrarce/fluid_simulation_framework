@@ -1,4 +1,5 @@
 #include "PerfStats.hpp"
+#include <omp.h>
 
 boost::timer::cpu_times operator+(const boost::timer::cpu_times& left, const boost::timer::cpu_times& right)
 {
@@ -11,6 +12,13 @@ boost::timer::cpu_times operator+(const boost::timer::cpu_times& left, const boo
 
 void PerfStats::startTimer(const std::string& stats)
 {
+	std::lock_guard<std::mutex> lock(mMutex);
+	if(omp_get_num_threads() > 1)
+	{
+		pr_warn("performance statistics collection doesn't work yet for multiple threads");
+		return;
+	}
+
 	auto timer = mTimers.find(stats);
 	if(timer == mTimers.end())
 	{
@@ -27,10 +35,14 @@ void PerfStats::startTimer(const std::string& stats)
 }
 void PerfStats::stopTimer(const std::string& stats)
 {
+	std::lock_guard<std::mutex> lock(mMutex);
 	auto timer = mTimers.find(stats);
 
 	if(timer == mTimers.end())
-		std::runtime_error("timer for " + stats + "was not started before stopping");
+	{
+		pr_warn("timer for %s was not started before stopping", stats.c_str());
+		return;
+	}
 
 	timer->second.stop();
 	boost::timer::cpu_times elapsed = timer->second.elapsed();
@@ -47,6 +59,8 @@ void PerfStats::stopTimer(const std::string& stats)
 }
 void PerfStats::PrintStatistics(const std::string& metadata)
 {
+	std::lock_guard<std::mutex> lock(mMutex);
+
 	std::cout << "=====PERFORMANCE STATISTICS=====\n";
 	std::cout << "METADATA: " << metadata << "\n";
 	for(const auto& sd : mTimers)
