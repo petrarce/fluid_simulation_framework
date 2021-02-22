@@ -21,15 +21,19 @@ public:
 	explicit MlsReconstruction(Args... args,
 							   size_t kernelSize,
 							   size_t kernelOffset,
+							   float kernelDepth,
 							   float similarityThreshold,
-							   int maxNeighborNodes,
-							   bool surfaceCellsOnly):
+							   float smoothingFactor,
+							   bool surfaceCellsOnly,
+							   int iterations):
 		BaseClass(args...),
 		mKernelSize(kernelSize),
 		mKernelOffset(kernelOffset),
 		mSdfSimilarityThreshold(similarityThreshold),
 		mSurfaceCellsOnly(surfaceCellsOnly),
-		mMaxNeighborNodes(maxNeighborNodes)
+		mSmoothingFactor(smoothingFactor),
+		mKernelDepth(kernelDepth),
+		mIterations(iterations)
 	{
 		assert(similarityThreshold > 0);
 	}
@@ -40,7 +44,9 @@ public:
 		mKernelOffset(other.mKernelOffset),
 		mSdfSimilarityThreshold(other.mSdfSimilarityThreshold),
 		mSurfaceCellsOnly(other.mSurfaceCellsOnly),
-		mMaxNeighborNodes(other.mMaxNeighborNodes)
+		mSmoothingFactor(other.mSmoothingFactor),
+		mKernelDepth(other.mKernelDepth),
+		mIterations(other.mIterations)
 	{}
 private:
 
@@ -71,15 +77,17 @@ private:
 			levelSetBeforeMls.push_back(ptItem.second);
 		}
 #endif
-		correctLevelSet();
+		for(int i = 0; i < mIterations; i++)
+			correctLevelSet();
 #ifdef DBG
 		for(const auto& ptItem : mLevelSet)
 			levelSetAfterMls.push_back(ptItem.second);
 
-		learnSPH::saveParticlesToVTK("/tmp/LevelSetBeforeMls" + MarchingCubes::mFrameNumber + ".vtk",
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "LevelSetBeforeMls" + MarchingCubes::mFrameNumber + ".vtk",
 									 points, levelSetBeforeMls);
-		learnSPH::saveParticlesToVTK("/tmp/LevelSetAfterMls" + MarchingCubes::mFrameNumber + ".vtk",
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "LevelSetAfterMls" + MarchingCubes::mFrameNumber + ".vtk",
 									 points, levelSetAfterMls);
+
 
 #endif
 	}
@@ -89,14 +97,17 @@ private:
 		std::unordered_map<size_t, float> levelSet = mLevelSet;
 		const std::unordered_map<size_t, size_t>* surfaceCells;
 		if(mSurfaceCellsOnly)
-			surfaceCells = new std::unordered_map<size_t, size_t>(MarchingCubes::computeIntersectionCellVertices(mKernelSize * mKernelOffset * 4));
+			surfaceCells = new std::unordered_map<size_t, size_t>(MarchingCubes::computeIntersectionCellVertices(mKernelSize * mKernelOffset));
 		else
 			surfaceCells = &(MarchingCubes::mSurfaceCells);
 
 #ifdef DBG
-		float averageNeighbors;
-		float averageKernelSize;
-		float averageKernelOffset;
+		float averageNeighbors = 0;
+		float averageKernelSize = 0;
+		float averageKernelOffset = 0;
+		std::vector<double> mlsMaxSamplesPerCell;
+		std::vector<double> mlsCurvature;
+		std::vector<Eigen::Vector3d> points;
 #endif
 		for(auto cellItem : *surfaceCells)
 		{
@@ -104,26 +115,31 @@ private:
 			assert(res);
 			int kernelOffset = mKernelOffset;
 			int kernelSize = mKernelSize;
-			if(std::fabs(curvature) < 1. / (2 * 50 * BaseClass::mFluid->getDiameter()))
-			{
-				kernelOffset *= 2;
-				kernelSize *= 2;
-			}
-			else if(std::fabs(curvature) < 1. / (50. * BaseClass::mFluid->getDiameter()))
-				kernelSize *= 2;
+			float kernelDepth = mKernelDepth;
+			size_t maxSamples = std::max(1, static_cast<int>(std::pow(2*kernelSize + 1, 3) *
+					std::min(1/curvature, BaseClass::mFluid->getDiameter() * 50) /
+					(BaseClass::mFluid->getDiameter() * 50)));
 
 			Eigen::Vector3i c = MarchingCubes::cell(cellItem.first);
 			std::vector<Eigen::Vector3i> nbs = getNeighbourCells(c,
 																 kernelSize,
 																 kernelOffset,
-																 mMaxNeighborNodes);
+																 maxSamples,
+																 kernelDepth);
 #ifdef DBG
 			averageNeighbors += nbs.size();
 			averageKernelSize += kernelSize;
 			averageKernelOffset += kernelOffset;
+			mlsMaxSamplesPerCell.push_back(maxSamples);
+			mlsCurvature.push_back(curvature);
+			points.push_back(BaseClass::cellCoord(c));
+
 #endif
 			float newLevenSetValue = getMlsCorrectedSdf(c, nbs, kernelSize, kernelOffset);
-			levelSet[cellItem.first] = newLevenSetValue;
+
+			Real smoothFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
+			smoothFactor = -1 * std::pow(1 - smoothFactor*smoothFactor, 10.) + 1;
+			levelSet[cellItem.first] =  levelSet[cellItem.first] * (1 - smoothFactor) + smoothFactor * newLevenSetValue;
 
 		}
 #ifdef DBG
@@ -133,43 +149,264 @@ private:
 		std::cout << "average mls samples: " << averageNeighbors << std::endl;
 		std::cout << "average mls KernelSize: " << averageKernelSize << std::endl;
 		std::cout << "average mls KernelOffset: " << averageKernelOffset << std::endl;
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "mlsMaxSamplesPerCell" + MarchingCubes::mFrameNumber + ".vtk",
+									 points, mlsMaxSamplesPerCell);
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "mlsCurvature" + MarchingCubes::mFrameNumber + ".vtk",
+									 points, mlsCurvature);
+
 #endif
 		if(mSurfaceCellsOnly)
 			delete surfaceCells;
 		mLevelSet.swap(levelSet);
 	}
 
+	Eigen::Vector3d getSDFGrad(const Vector3i& c) const
+	{
+		float cellSDFval;
+		bool res = MarchingCubes::getSDFvalue(c, cellSDFval);
+		assert(res);
+		float sdfValX = 0.f;
+		float sdfValY = 0.f;
+		float sdfValZ = 0.f;
+		if(!MarchingCubes::getSDFvalue(c - Vector3i(1, 0, 0), sdfValX))
+			sdfValX = cellSDFval;
+		if(!MarchingCubes::getSDFvalue(c - Vector3i(0, 1, 0), sdfValY))
+			sdfValY = cellSDFval;
+		if(!MarchingCubes::getSDFvalue(c - Vector3i(0, 0, 1), sdfValZ))
+			sdfValZ = cellSDFval;
+		float dx = (cellSDFval - sdfValX) / BaseClass::mResolution(0);
+		float dy = (cellSDFval - sdfValY) / BaseClass::mResolution(1);
+		float dz = (cellSDFval - sdfValZ) / BaseClass::mResolution(2);
+
+		return Eigen::Vector3d(dx, dy, dz);
+	}
+
 	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3i& baseCell,
 												   int kernelSize,
 												   int kernelOffset,
-												   int maxSamples) const
+												   int maxSamples,
+												   float depth) const
 	{
+		assert(depth >= 0 && depth <= 1);
 		std::vector<Eigen::Vector3i> neighbors;
 		neighbors.reserve(pow(kernelSize, 3));
 		float baseSdf; bool res = MarchingCubes::getSDFvalue(baseCell, baseSdf);
 		assert(res);
-		for(int i = -kernelSize; i <= kernelSize; i++)
+		Eigen::Vector3d grad = getSDFGrad(baseCell);
+		neighbors.push_back(baseCell);
+		if(grad.dot(grad) < 1e-6)
+			return neighbors;
+		int cnt = 1;
+
+		auto pushNeighbor = [
+				&cnt,
+				&grad,
+				&baseCell,
+				depth,
+				kernelSize,
+				kernelOffset,
+				this,
+				baseSdf,
+				&neighbors](const Eigen::Vector3i& newNb)
 		{
-			for(int j = -kernelSize; j <= kernelSize; j++)
+			cnt++;
+			int i = newNb(0);
+			int j = newNb(1);
+			int k = newNb(2);
+
+			if(i == 0 && j == 0 && k == 0)
+				return;
+
+			//if projection of the point offset to gradient in the point is larger, that half of the kernel - dont take the point for bluering while
+			Eigen::Vector3d offsetVector = Eigen::Vector3d(-i * BaseClass::mResolution(0),
+														   -j * BaseClass::mResolution(1),
+														   -k * BaseClass::mResolution(2));
+			if(std::fabs(offsetVector(0) * grad(0) + offsetVector(1) * grad(1) + offsetVector(2) * grad(2)) > (depth * kernelSize * BaseClass::mResolution(0)))
+				return;
+
+
+			Eigen::Vector3i c = baseCell + Eigen::Vector3i(i * kernelOffset, j * kernelOffset, k * kernelOffset);
+			float sdf; bool res = MarchingCubes::getSDFvalue(c, sdf);
+			if(!res || std::fabs(sdf - baseSdf) > mSdfSimilarityThreshold)
+				return;
+			neighbors.push_back(c);
+		};
+
+		int level = 1;
+		//traverce levels
+		while(
+#ifndef DBG
+			  neighbors.size() < maxSamples &&
+#endif
+			  level <= kernelSize)
+		{
+			pushNeighbor({0, 0, level});
+			pushNeighbor({0, 0, -level});
+			pushNeighbor({0, level, 0});
+			pushNeighbor({0, -level, 0});
+			pushNeighbor({level, 0, 0});
+			pushNeighbor({-level, 0, 0});
+
+			//traverce faces
+			for(int i = 1; i <= level-1; i++)
 			{
-				for(int k = -kernelSize; k <= kernelSize; k++)
+				pushNeighbor({0, i, level});
+				pushNeighbor({0, -i, level});
+				pushNeighbor({i, 0, level});
+				pushNeighbor({-i, 0, level});
+
+				pushNeighbor({0, i, -level});
+				pushNeighbor({0, -i, -level});
+				pushNeighbor({i, 0, -level});
+				pushNeighbor({-i, 0, -level});
+
+				pushNeighbor({0,  level, i});
+				pushNeighbor({0,  level, -i});
+				pushNeighbor({i,  level, 0});
+				pushNeighbor({-i,  level, 0});
+
+				pushNeighbor({0,  -level, i});
+				pushNeighbor({0,  -level, -i});
+				pushNeighbor({i,  -level, 0});
+				pushNeighbor({-i,  -level, 0});
+
+				pushNeighbor({level, 0, i});
+				pushNeighbor({level, 0, -i});
+				pushNeighbor({level, i, 0});
+				pushNeighbor({level, -i, 0});
+
+				pushNeighbor({-level, 0, i});
+				pushNeighbor({-level, 0, -i});
+				pushNeighbor({-level, i, 0});
+				pushNeighbor({-level, -i, 0});
+				//traverse face edges
+				for(int j = 1; j <= i - 1; j++)
 				{
-					Eigen::Vector3i c = baseCell + Eigen::Vector3i(i * kernelOffset, j * kernelOffset, k * kernelOffset);
-					size_t cI = MarchingCubes::cellIndex(c);
-					float sdf; res = MarchingCubes::getSDFvalue(c, sdf);
-					if(!res || std::fabs(sdf - baseSdf) > mSdfSimilarityThreshold)
-						continue;
-					neighbors.push_back(c);
+					pushNeighbor({j, i, level});
+					pushNeighbor({j, -i, level});
+					pushNeighbor({i, -j, level});
+					pushNeighbor({-i, -j, level});
+
+					pushNeighbor({j, i, -level});
+					pushNeighbor({j, -i, -level});
+					pushNeighbor({i, -j, -level});
+					pushNeighbor({-i, -j, -level});
+
+					pushNeighbor({j,  level, i});
+					pushNeighbor({j,  level, -i});
+					pushNeighbor({i,  level, -j});
+					pushNeighbor({-i,  level, -j});
+
+					pushNeighbor({j,  -level, i});
+					pushNeighbor({j,  -level, -i});
+					pushNeighbor({i,  -level, -j});
+					pushNeighbor({-i,  -level, -j});
+
+					pushNeighbor({level, j, i});
+					pushNeighbor({level, j, -i});
+					pushNeighbor({level, i, -j});
+					pushNeighbor({level, -i, -j});
+
+					pushNeighbor({-level, j, i});
+					pushNeighbor({-level, j, -i});
+					pushNeighbor({-level, i, -j});
+					pushNeighbor({-level, -i, -j});
 				}
+				//traverce face corners
+				pushNeighbor({i, i, level});
+				pushNeighbor({-i, -i, level});
+				pushNeighbor({i, -i, level});
+				pushNeighbor({-i, i, level});
+
+				pushNeighbor({i, i, -level});
+				pushNeighbor({-i, -i, -level});
+				pushNeighbor({i, -i, -level});
+				pushNeighbor({-i, i, -level});
+
+				pushNeighbor({i,  level, i});
+				pushNeighbor({-i,  level, -i});
+				pushNeighbor({i,  level, -i});
+				pushNeighbor({-i,  level, i});
+
+				pushNeighbor({i,  -level, i});
+				pushNeighbor({-i,  -level, -i});
+				pushNeighbor({i,  -level, -i});
+				pushNeighbor({-i,  -level, i});
+
+				pushNeighbor({level, i, i});
+				pushNeighbor({level, -i, -i});
+				pushNeighbor({level, i, -i});
+				pushNeighbor({level, -i, i});
+
+				pushNeighbor({-level, i, i});
+				pushNeighbor({-level, -i, -i});
+				pushNeighbor({-level, i, -i});
+				pushNeighbor({-level, -i, i});
+
 			}
+
+
+			//traverse cube edges
+			for(int j = 1; j <= level - 1; j++)
+			{
+				pushNeighbor({j, level, level});
+				pushNeighbor({-j, level, level});
+				pushNeighbor({j, -level, level});
+				pushNeighbor({-j, -level, level});
+				pushNeighbor({j, level, -level});
+				pushNeighbor({-j, level, -level});
+				pushNeighbor({j, -level, -level});
+				pushNeighbor({-j, -level, -level});
+
+				pushNeighbor({level, -j, level});
+				pushNeighbor({level, j, level});
+				pushNeighbor({level, -j, -level});
+				pushNeighbor({level, j, -level});
+				pushNeighbor({level, -j, level});
+				pushNeighbor({level, j, level});
+				pushNeighbor({level, -j, -level});
+				pushNeighbor({level, j, -level});
+
+				pushNeighbor({-level, -j, level});
+				pushNeighbor({-level, j, level});
+				pushNeighbor({-level, -j, -level});
+				pushNeighbor({-level, j, -level});
+				pushNeighbor({-level, -j, level});
+				pushNeighbor({-level, j, level});
+				pushNeighbor({-level, -j, -level});
+				pushNeighbor({-level, j, -level});
+			}
+			//add Corner Centers
+			pushNeighbor({0, level, level});
+			pushNeighbor({0, level, -level});
+			pushNeighbor({0, -level, level});
+			pushNeighbor({0, -level, -level});
+			pushNeighbor({-level, 0, level});
+			pushNeighbor({-level, 0, -level});
+			pushNeighbor({level, 0, level});
+			pushNeighbor({level, 0, -level});
+			pushNeighbor({level, level, 0});
+			pushNeighbor({level, -level, 0});
+			pushNeighbor({-level, level, 0});
+			pushNeighbor({-level, -level, 0});
+
+			//traverse corners
+			pushNeighbor({level, level, level});
+			pushNeighbor({level, level, -level});
+			pushNeighbor({level, -level, level});
+			pushNeighbor({level, -level, -level});
+			pushNeighbor({-level, level, level});
+			pushNeighbor({-level, level, -level});
+			pushNeighbor({-level, -level, level});
+			pushNeighbor({-level, -level, -level});
+
+			level++;
 		}
 
-		if(maxSamples  >= 0)
-		{
-			//pick randomly up to mMaxNeighbor from the given neighborhood
-			std::random_shuffle(neighbors.begin(), neighbors.end());
-			neighbors.resize(std::min(neighbors.size(), static_cast<size_t>(maxSamples)));
-		}
+#ifdef DBG
+		assert(cnt == pow(2 * kernelSize + 1, 3));
+#endif
+		neighbors.resize(std::min(static_cast<int>(neighbors.size()), maxSamples));
 		return neighbors;
 	}
 
@@ -177,6 +414,12 @@ private:
 							 int kernelSize,
 							 int kernelOffset)
 	{
+		if(cellNeighbors.size() == 1)
+		{
+			float sdf; bool res = MarchingCubes::getSDFvalue(baseCell, sdf);
+			assert(res);
+			return sdf;
+		}
 
 		//compute matrix B
 		Eigen::MatrixXd B(cellNeighbors.size(), 5);
@@ -255,7 +498,10 @@ private:
 	int mKernelOffset {1};
 	float mSdfSimilarityThreshold {0.5};
 	bool mSurfaceCellsOnly {false};
-	int mMaxNeighborNodes {-1};
+//	int mMaxNeighborNodes {-1};
+	float mKernelDepth {1};
+	int mIterations {1};
+	float mSmoothingFactor {1};
 };
 
 typedef  MlsReconstruction<ZhuBridsonReconstruction, std::shared_ptr<learnSPH::FluidSystem> , const Eigen::Vector3d ,

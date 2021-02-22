@@ -15,7 +15,6 @@ blur_surface_cells_only="true"
 blur_iterations="1"
 cff="1"
 mls_similarity_threshold="0.1"
-mls_max_samples="1000"
 app="_empty_command_"
 num_threads=8
 
@@ -207,21 +206,18 @@ for mt in ${method}; do
 	else 
 		supportRad=${support_radius}
 	fi
-	if [ ${mt} == "ZhuBridsonBlurred" ] || [ ${mt} == "NaiveMCBlurred" ]; then
+
+	if [ ${mt} == "ZhuBridsonBlurred" ] || [ ${mt} == "NaiveMCBlurred" ] || [ ${mt} == "ZhuBridsonMls" ] || [ ${mt} == "NaiveMCMls" ]; then
+		bks=${blur_kernel_size}
+		bit=${blur_iterations}
+		bko=${blur_kernel_offset}
+		bsfco=${blur_surface_cells_only}
 		sdfsf=${sdf_smoothing_factor}
 		bkd=${blur_kernel_depth}
-		bit=${blur_iterations}
 	else
 		sdfsf="1"
 		bkd="1"
 		bit="1"
-	fi
-
-	if [ ${mt} == "ZhuBridsonBlurred" ] || [ ${mt} == "NaiveMCBlurred" ] || [ ${mt} == "ZhuBridsonMls" ] || [ ${mt} == "NaiveMCMls" ]; then
-		bks=${blur_kernel_size}
-		bko=${blur_kernel_offset}
-		bsfco=${blur_surface_cells_only}
-	else
 		bks="1"
 		bko="1"
 		bsfco="true"
@@ -230,11 +226,6 @@ for mt in ${method}; do
 		msst=${mls_similarity_threshold}
 	else
 		msst="1"
-	fi
-	if [ ${mt} == "ZhuBridsonMls" ] || [ ${mt} == "NaiveMCMls" ]; then
-		mlsms=${mls_max_samples}
-	else
-		mlsms="100"
 	fi
 
 	for sfco in ${bsfco}; do
@@ -262,12 +253,10 @@ for mt in ${method}; do
 					--blur-iterations {12} \
 					--cff {13} \
 					--mls-similarity-threshold {14} \
-					--mls-max-neighbors {15} \
 						::: ${domain} ::: ${initVal} ::: ${sim_name}\
 						::: ${sim_directory} ::: ${grid_resolution} ::: ${supportRad}\
 						::: ${mt} ::: ${sdfsf} ::: ${bks} ::: ${bko}\
-						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${msst}\
-						::: ${mlsms}
+						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${msst}
 	done
 done
 
