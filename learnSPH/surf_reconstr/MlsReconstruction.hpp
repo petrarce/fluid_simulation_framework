@@ -7,46 +7,47 @@
 #include <Eigen/Dense>
 #include <Eigen/Eigen>
 #include <vector>
+#include <unordered_set>
+#include <list>
+#include <set>
+#include <random>
+#include <cassert>
 
 #if 0
 #ifndef DBG
 #define DBG
+#include <random>
 #endif
 #endif
+
+//unkomment one of the variants
+//#define MLSV1
+//#define MLSV2
+#define MLSV3
 
 template<class BaseClass, class... Args>
 class MlsReconstruction : public BaseClass
 {
 public:
 	explicit MlsReconstruction(Args... args,
-							   size_t kernelSize,
-							   size_t kernelOffset,
-							   float kernelDepth,
-							   float similarityThreshold,
 							   float smoothingFactor,
-							   bool surfaceCellsOnly,
-							   int iterations):
+							   int iterations,
+							   size_t maxSamples,
+							   size_t curvatureParticles):
 		BaseClass(args...),
-		mKernelSize(kernelSize),
-		mKernelOffset(kernelOffset),
-		mSdfSimilarityThreshold(similarityThreshold),
-		mSurfaceCellsOnly(surfaceCellsOnly),
 		mSmoothingFactor(smoothingFactor),
-		mKernelDepth(kernelDepth),
-		mIterations(iterations)
+		mIterations(iterations),
+		mMaxSamples(maxSamples),
+		mCurvatureParticles(curvatureParticles)
 	{
-		assert(similarityThreshold > 0);
 	}
 	MlsReconstruction(const MlsReconstruction& other):
 		BaseClass(other),
 		mLevelSet(other.mLevelSet),
-		mKernelSize(other.mKernelSize),
-		mKernelOffset(other.mKernelOffset),
-		mSdfSimilarityThreshold(other.mSdfSimilarityThreshold),
-		mSurfaceCellsOnly(other.mSurfaceCellsOnly),
 		mSmoothingFactor(other.mSmoothingFactor),
-		mKernelDepth(other.mKernelDepth),
-		mIterations(other.mIterations)
+		mIterations(other.mIterations),
+		mMaxSamples(other.mMaxSamples),
+		mCurvatureParticles(other.mCurvatureParticles)
 	{}
 private:
 
@@ -83,82 +84,208 @@ private:
 		for(const auto& ptItem : mLevelSet)
 			levelSetAfterMls.push_back(ptItem.second);
 
-		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "LevelSetBeforeMls" + MarchingCubes::mFrameNumber + ".vtk",
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "LevelSetBeforeMls_" + MarchingCubes::mFrameNumber + ".vtk",
 									 points, levelSetBeforeMls);
-		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "LevelSetAfterMls" + MarchingCubes::mFrameNumber + ".vtk",
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "LevelSetAfterMls_" + MarchingCubes::mFrameNumber + ".vtk",
 									 points, levelSetAfterMls);
 
 
 #endif
 	}
+#ifndef MLSV1
+	void correctLevelSet()
+	{
+		//find intersection cells
+		std::unordered_map<size_t, size_t> intersectionCells = MarchingCubes::computeIntersectionVertices(0);
+		std::unordered_map<size_t /*cell*/, size_t /*cnt*/> cellsAppearence;
+		std::vector<std::vector<Eigen::Vector3i>> clusters;
+		auto newLevelSet = mLevelSet;
+#ifdef DBG
+		std::vector<Real> intersCellsSmoothingFactor;
+		std::vector<Vector3R> intersectionCellsPts;
+#endif
+		auto computeClusters = [this](const std::unordered_map<size_t, size_t>& intersectionCells)
+		{
+#ifdef MLSV2
+			std::set<size_t> keys;
+			for(const auto& item : intersectionCells)
+				keys.insert(item.first);
+#endif
+			std::vector<std::vector<Eigen::Vector3i>> clusters;
+#ifdef MLSV2
+			while(!keys.empty())
+#else
+			for(auto item : intersectionCells)
+#endif
+			{
 
+				std::vector<Eigen::Vector3i> cluster;
+#ifdef MLSV2
+				auto key = *keys.begin();
+#else
+				auto key = item.first;
+#endif
+				Real curvature; bool res = BaseClass::getCurvature(key, curvature);
+				assert(res);
+
+				auto c = BaseClass::cell(key);
+				float levelSetFactor = std::min(1/std::fabs(curvature), BaseClass::mFluid->getDiameter() * mCurvatureParticles) /
+														  (BaseClass::mFluid->getDiameter() * mCurvatureParticles);
+				levelSetFactor *= levelSetFactor;
+				assert(levelSetFactor >= 0 && levelSetFactor <= 1);
+				size_t maxSamples = std::max(1.f, mMaxSamples * levelSetFactor);
+
+				cluster = getNeighbourCells(intersectionCells, c, maxSamples);
+				assert(cluster.size() != 0);
+#ifdef MLSV2
+				size_t removeParticles = cluster.size()/2;//std::max(1ul, std::min(cluster.size(), cluster.size()/2));
+				if(!removeParticles)
+					removeParticles = 1;
+				for(size_t i = 0; i < removeParticles; i++)
+				{
+					size_t nbI = BaseClass::cellIndex(cluster[i]);
+					keys.erase(nbI);
+				}
+#endif
+				clusters.push_back(std::move(cluster));
+			}
+#ifdef MLSV2
+			assert(keys.empty() && "keys not empty");
+#endif
+			return clusters;
+		};
+
+
+		//compute clusters from intersection cells
+		clusters = computeClusters(intersectionCells);
+
+		//compute mls surface within cluster
+		for(const auto& cluster : clusters)
+		{
+			auto solution = getMlsSurface(cluster.front(), cluster);
+			//smooth all cluster points within the generated surface
+			for(const auto& item : cluster)
+			{
+				auto itemI = BaseClass::cellIndex(item);
+				if(!cellsAppearence.count(itemI))
+				{
+					newLevelSet.at(itemI) = correctSdf(solution, BaseClass::cellCoord(item));
+					cellsAppearence[itemI] = 1;
+				}
+				else
+				{
+					newLevelSet.at(itemI) += correctSdf(solution, BaseClass::cellCoord(item));
+					cellsAppearence.at(itemI)++;
+				}
+			}
+		}
+		assert(cellsAppearence.size() == intersectionCells.size());
+		for(const auto& item : cellsAppearence)
+		{
+
+			//compute levelSetFactor
+			float levelSetFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(BaseClass::mSurfaceCells.at(item.first)) / BaseClass::mPartPerSupportArea);
+			assert(levelSetFactor >= 0 && levelSetFactor <= 1);
+			levelSetFactor *= levelSetFactor;
+#ifdef DBG
+			intersectionCellsPts.push_back(BaseClass::cellCoord(BaseClass::cell(item.first)));
+			intersCellsSmoothingFactor.push_back(levelSetFactor);
+#endif
+
+			//compute new level set value as weighted sum of old oone and new one
+			newLevelSet.at(item.first) /= item.second;
+			newLevelSet.at(item.first) = newLevelSet.at(item.first) * levelSetFactor+ mLevelSet.at(item.first) * (1 - levelSetFactor);
+		}
+#ifdef DBG
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsSdfIntersectionVertices+SmoothingFactors_" + BaseClass::mFrameNumber + ".vtk",
+									 intersectionCellsPts, intersCellsSmoothingFactor);
+#endif
+		mLevelSet.swap(newLevelSet);
+	}
+#else
 	void correctLevelSet()
 	{
 		std::unordered_map<size_t, float> levelSet = mLevelSet;
-		const std::unordered_map<size_t, size_t>* surfaceCells;
-		if(mSurfaceCellsOnly)
-			surfaceCells = new std::unordered_map<size_t, size_t>(MarchingCubes::computeIntersectionCellVertices(mKernelSize * mKernelOffset));
-		else
-			surfaceCells = &(MarchingCubes::mSurfaceCells);
+		const std::unordered_map<size_t, size_t> surfaceCells = MarchingCubes::computeIntersectionVertices();
 
 #ifdef DBG
 		float averageNeighbors = 0;
-		float averageKernelSize = 0;
-		float averageKernelOffset = 0;
 		std::vector<double> mlsMaxSamplesPerCell;
 		std::vector<double> mlsCurvature;
 		std::vector<Eigen::Vector3d> points;
+		static std::mt19937 generator(1);
+		static std::uniform_real_distribution<float> distr {0, 1};
+		static auto dice = std::bind(distr, generator);
+		float probability = std::min(1., 1000. / BaseClass::mSurfaceCells.size());
+		int nbCount = 0;
+		std::vector<Vector3R> intersectionCells;
+
 #endif
-		for(auto cellItem : *surfaceCells)
+		for(auto cellItem : surfaceCells)
 		{
 			Real curvature; bool res = BaseClass::getCurvature(cellItem.first, curvature);
 			assert(res);
-			int kernelOffset = mKernelOffset;
-			int kernelSize = mKernelSize;
-			float kernelDepth = mKernelDepth;
-			size_t maxSamples = std::max(1, static_cast<int>(std::pow(2*kernelSize + 1, 3) *
+			size_t maxSamples = std::max(static_cast<int>(1), static_cast<int>(mMaxSamples *
 					std::min(1/curvature, BaseClass::mFluid->getDiameter() * 50) /
 					(BaseClass::mFluid->getDiameter() * 50)));
 
 			Eigen::Vector3i c = MarchingCubes::cell(cellItem.first);
+#if 0
 			std::vector<Eigen::Vector3i> nbs = getNeighbourCells(c,
 																 kernelSize,
 																 kernelOffset,
 																 maxSamples,
 																 kernelDepth);
+#else
+			std::vector<Eigen::Vector3i> nbs = getNeighbourCells(surfaceCells,
+																 c,
+																 maxSamples);
+#endif
 #ifdef DBG
+			if(dice() < probability)
+			{
+				std::vector<Vector3R> nbsPts;
+				nbsPts.reserve(nbs.size());
+				for(auto p : nbs)
+					nbsPts.push_back(BaseClass::cellCoord(p));
+				learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsNeighbors_" + BaseClass::mFrameNumber + "_" + to_string(nbCount) + ".vtk",
+											 nbsPts);
+				nbCount++;
+			}
+			intersectionCells.push_back(BaseClass::cellCoord(c));
 			averageNeighbors += nbs.size();
-			averageKernelSize += kernelSize;
-			averageKernelOffset += kernelOffset;
 			mlsMaxSamplesPerCell.push_back(maxSamples);
 			mlsCurvature.push_back(curvature);
 			points.push_back(BaseClass::cellCoord(c));
 
 #endif
-			float newLevenSetValue = getMlsCorrectedSdf(c, nbs, kernelSize, kernelOffset);
+			float newLevenSetValue = levelSet[cellItem.first];
+			if(nbs.size() != 1)
+			{
+				auto mlsSurface = getMlsSurface(c, nbs);
+				newLevenSetValue = correctSdf(mlsSurface, BaseClass::cellCoord(c));
+			}
+
 
 			Real smoothFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
 			smoothFactor = -1 * std::pow(1 - smoothFactor*smoothFactor, 10.) + 1;
 			levelSet[cellItem.first] =  levelSet[cellItem.first] * (1 - smoothFactor) + smoothFactor * newLevenSetValue;
-
 		}
 #ifdef DBG
-		averageNeighbors /= surfaceCells->size();
-		averageKernelOffset /= surfaceCells->size();
-		averageKernelSize /= surfaceCells->size();
+		averageNeighbors /= surfaceCells.size();
 		std::cout << "average mls samples: " << averageNeighbors << std::endl;
-		std::cout << "average mls KernelSize: " << averageKernelSize << std::endl;
-		std::cout << "average mls KernelOffset: " << averageKernelOffset << std::endl;
-		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "mlsMaxSamplesPerCell" + MarchingCubes::mFrameNumber + ".vtk",
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "mlsMaxSamplesPerCell_" + MarchingCubes::mFrameNumber + ".vtk",
 									 points, mlsMaxSamplesPerCell);
-		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "mlsCurvature" + MarchingCubes::mFrameNumber + ".vtk",
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "mlsCurvature_" + MarchingCubes::mFrameNumber + ".vtk",
 									 points, mlsCurvature);
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsSdfIntersectionVertices_" + BaseClass::mFrameNumber + ".vtk",
+									 intersectionCells);
+
 
 #endif
-		if(mSurfaceCellsOnly)
-			delete surfaceCells;
 		mLevelSet.swap(levelSet);
 	}
+#endif
 
 	Eigen::Vector3d getSDFGrad(const Vector3i& c) const
 	{
@@ -180,7 +307,7 @@ private:
 
 		return Eigen::Vector3d(dx, dy, dz);
 	}
-
+#if 0
 	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3i& baseCell,
 												   int kernelSize,
 												   int kernelOffset,
@@ -409,20 +536,60 @@ private:
 		neighbors.resize(std::min(static_cast<int>(neighbors.size()), maxSamples));
 		return neighbors;
 	}
+#endif
 
-	float getMlsCorrectedSdf(const Eigen::Vector3i& baseCell, const std::vector<Eigen::Vector3i>& cellNeighbors,
-							 int kernelSize,
-							 int kernelOffset)
+	std::vector<Eigen::Vector3i> getNeighbourCells(const std::unordered_map<size_t, size_t>& cellSet,
+												   const Eigen::Vector3i& baseCell,
+												   int maxSamples)
 	{
-		if(cellNeighbors.size() == 1)
+		std::list<size_t> todoCells;
+		std::unordered_set<size_t> ngbCells;
+		std::vector<Eigen::Vector3i> ngbCellsVector;
+
+		ngbCells.rehash(maxSamples);
+		todoCells.push_back(BaseClass::cellIndex(baseCell));
+
+		while(ngbCells.size() < maxSamples && !todoCells.empty())
 		{
-			float sdf; bool res = MarchingCubes::getSDFvalue(baseCell, sdf);
-			assert(res);
-			return sdf;
+			size_t currentCell = todoCells.front();
+			todoCells.pop_front();
+			ngbCells.insert(currentCell);
+			ngbCellsVector.push_back(BaseClass::cell(currentCell));
+			Eigen::Vector3i c = BaseClass::cell(currentCell);
+			for(int i = -1; i <= 1; i++)
+			{
+				for(int j = -1; j <= 1; j++)
+				{
+					for(int k = -1; k <= 1; k++)
+					{
+						auto cI = BaseClass::cellIndex(c + Eigen::Vector3i(i,j,k));
+						if(cellSet.find(cI) != cellSet.end() &&
+								ngbCells.find(cI) == ngbCells.end() &&
+								std::find(todoCells.begin(), todoCells.end(), cI) == todoCells.end())
+							todoCells.push_back(cI);
+					}
+				}
+			}
 		}
+
+		return ngbCellsVector;
+
+	}
+
+
+	Eigen::VectorXd getMlsSurface(const Eigen::Vector3i& baseCell, const std::vector<Eigen::Vector3i>& cellNeighbors)
+	{
+//		if(cellNeighbors.size() == 1)
+//		{
+//			float sdf; bool res = MarchingCubes::getSDFvalue(baseCell, sdf);
+//			assert(res);
+//			return sdf;
+//		}
 
 		//compute matrix B
 		Eigen::MatrixXd B(cellNeighbors.size(), 5);
+		float maxCellDistSqr = 0;
+		auto bcC = BaseClass::cellCoord(baseCell);
 		for(int i = 0; i < cellNeighbors.size(); i++)
 		{
 			auto cC = BaseClass::cellCoord(cellNeighbors[i]);
@@ -431,16 +598,24 @@ private:
 			B(i, 2) = cC(1);
 			B(i, 3) = cC(2);
 			B(i, 4) = cC.dot(cC);
+			float newSquaredNorm = (cC - bcC).squaredNorm();
+			if(newSquaredNorm > maxCellDistSqr)
+				maxCellDistSqr = newSquaredNorm;
+
 		}
 
 		//compute matrix W
 		Eigen::MatrixXd W = Eigen::MatrixXd::Identity(cellNeighbors.size(), cellNeighbors.size());
 		auto cC = BaseClass::cellCoord(baseCell);
-		for(int i = 0; i < cellNeighbors.size(); i++)
-		{
-			auto nC = BaseClass::cellCoord(cellNeighbors[i]);
-			W(i, i) = learnSPH::kernel::kernelFunction(cC, nC, 1.5 * BaseClass::mResolution(0) * (kernelSize * kernelOffset) + 1e-6);
-		}
+//		auto weight = [maxCellDistSqr, &bcC](const Vector3R& cC)
+//		{
+//			return -(bcC - cC).squaredNorm() / maxCellDistSqr + 1;
+//		};
+//		for(int i = 0; i < cellNeighbors.size(); i++)
+//		{
+//			auto nC = BaseClass::cellCoord(cellNeighbors[i]);
+//			W(i, i) = weight(nC);
+//		}
 
 		//compute vector u from existing SDF values
 		Eigen::VectorXd u(cellNeighbors.size());
@@ -460,6 +635,12 @@ private:
 		Eigen::VectorXd solution = A.colPivHouseholderQr().solve(b);
 		assert(solution.rows() == 5);
 
+		return solution;
+
+	}
+	float correctSdf(const Eigen::VectorXd& solution, const Eigen::Vector3d& cC)
+	{
+		assert(solution.size() == 5);
 		Eigen::VectorXd indecis(5);
 		indecis(0) = 1;
 		indecis(1) = cC(0);
@@ -468,6 +649,7 @@ private:
 		indecis(4) = cC.dot(cC);
 
 		return indecis.dot(solution);
+
 	}
 
 	void saveLevelSet()
@@ -494,14 +676,10 @@ private:
 
 private:
 	unordered_map<size_t, float> mLevelSet;
-	int mKernelSize {1};
-	int mKernelOffset {1};
-	float mSdfSimilarityThreshold {0.5};
-	bool mSurfaceCellsOnly {false};
-//	int mMaxNeighborNodes {-1};
-	float mKernelDepth {1};
+	size_t mMaxSamples {10};
 	int mIterations {1};
 	float mSmoothingFactor {1};
+	size_t mCurvatureParticles {20};
 };
 
 typedef  MlsReconstruction<ZhuBridsonReconstruction, std::shared_ptr<learnSPH::FluidSystem> , const Eigen::Vector3d ,

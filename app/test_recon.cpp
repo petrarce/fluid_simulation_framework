@@ -16,6 +16,7 @@
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
 #include <learnSPH/surf_reconstr/BlurredReconstruction.hpp>
 #include <learnSPH/surf_reconstr/MlsReconstruction.hpp>
+#include <learnSPH/surf_reconstr/MinDistReconstruction.hpp>
 #include <learnSPH/core/storage.h>
 
 #include <learnSPH/core/PerfStats.hpp>
@@ -130,7 +131,8 @@ enum ReconstructionMethods
 	ZBBlur,
 	NMCBlur,
 	ZBMls,
-	NMCMLS
+	NMCMLS,
+	MinDist,
 };
 
 struct 
@@ -153,7 +155,8 @@ struct
 	size_t blurIterations {1};
 	float colorFieldFactor;
 	float similarityThreshold {0.5};
-//	int mlsMaxSamples {-1};
+	size_t mlsMaxSamples {20};
+	size_t mlsCurvatureParticles {20};
 	
 	void parse(const variables_map& vm)
 	{
@@ -248,6 +251,8 @@ struct
 				method = ReconstructionMethods::ZBMls;
 			else if(lmethod == "NaiveMCMls")
 				method = ReconstructionMethods::NMCMLS;
+			else if(lmethod == "MinDist")
+				method = ReconstructionMethods::MinDist;
 			else
 				throw invalid_argument("unknown reconstruction method specified in  --method: " + lmethod);
 		} else
@@ -266,15 +271,16 @@ struct
 		else
 			throw invalid_argument("required option: --cff");
 
-		if(vm.count("mls-similarity-threshold"))
-			similarityThreshold= vm["mls-similarity-threshold"].as<float>();
+		if(vm.count("mls-max-samples"))
+			mlsMaxSamples= vm["mls-max-samples"].as<size_t>();
 		else
-			throw invalid_argument("required option: --mls-similarity-threshold");
+			throw invalid_argument("required option: --mls-max-samples");
 
-//		if(vm.count("mls-max-neighbors"))
-//			mlsMaxSamples= vm["mls-max-neighbors"].as<int>();
-//		else
-//			throw invalid_argument("required option: --mls-max-neighbors");
+		if(vm.count("mls-curvature-particles"))
+			mlsCurvatureParticles= vm["mls-curvature-particles"].as<size_t>();
+		else
+			throw invalid_argument("required option: --mls-curvature-particles");
+
 
 	}
 private:
@@ -313,7 +319,7 @@ int main(int argc, char** argv)
 			("sim-name", value<string>(), "simulation name")
 			("sim-directory", value<string>()->default_value("./"), "path to the simulation vtk files")
 			("grid-resolution", value<Real>(), "uniform grid resolution for matching cubes")
-			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC, ZhuBridson, Solenthiler, ZhuBridsonBlurred, NaiveMCBlurred")
+			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC[Blurred/Mls], ZhuBridson[Blurred/Mls], MinDist, Solenthiler")
 			("support-radius", value<Real>()->default_value(2), "Support radius for position-based scalar fields")
 			("tmin", value<Real>()->default_value(1), "lower bound for Solentiler evalue treshold")
 			("tmax", value<Real>()->default_value(2), "upper bound for Solentiler evalue treshold")
@@ -324,8 +330,9 @@ int main(int argc, char** argv)
 			("blur-surface-cells-only", "if flag is selected blurr will be applyed only on surface cells")
 			("blur-iterations", value<size_t>()->default_value(1), "number of iterations blur is applied to the grid")
 			("cff", value<float>()->default_value(1), "color field factor ( > 0.95 color field particles detection is not applied)")
-			("mls-similarity-threshold", value<float>()->default_value(0.5), "how far avay two similar sdf values should be when computing mls neighbourhood")
-//			("mls-max-neighbors", value<int>()->default_value(-1), "maximum number of sample points")
+			("mls-max-samples", value<size_t>()->default_value(20), "maximum number of sample points")
+			("mls-curvature-particles", value<size_t>()->default_value(20), "radius of flat surface in terms of fluid particles (diameter)")
+
 			;
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
@@ -429,21 +436,26 @@ int main(int argc, char** argv)
 														 programInput.upperCorner,
 														 Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
 														 programInput.supportRad,
-														 programInput.kernelSize,
-														 programInput.kernelOffset,
-														 programInput.kernelDepth,
-														 programInput.similarityThreshold,
 														 programInput.sdfSmoothingFactor,
-														 programInput.blurSurfaceCellsOnly,
-														 programInput.blurIterations);
-				simtype = string("ZhuBridsonMls") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad)
-						+ "_ks-" + to_string(programInput.kernelSize)
-						+ "_ko-" + to_string(programInput.kernelOffset)
-						+ "_kd-" + to_string(programInput.kernelDepth)
+														 programInput.blurIterations,
+														 programInput.mlsMaxSamples,
+														 programInput.mlsCurvatureParticles);
+#ifdef MLSV1
+				simtype = string("ZhuBridsonMlsV1")
+#else
+#ifdef MLSV2
+				simtype = string("ZhuBridsonMlsV2")
+#else
+				simtype = string("ZhuBridsonMlsV3")
+#endif
+#endif
+						+ "_cff-" + to_string(programInput.colorFieldFactor)
+						+ "_gr-" + to_string(programInput.gridResolution)
+						+ "_sr-" + to_string(programInput.supportRad)
 						+ "_sf-" + to_string(programInput.sdfSmoothingFactor)
-						+ "_st-" + to_string(programInput.similarityThreshold)
-						+ "_sfco-" + (programInput.blurSurfaceCellsOnly?"true":"false")
-						+ "_bi-" + to_string(programInput.blurIterations);
+						+ "_bi-" + to_string(programInput.blurIterations)
+						+ "_ms-" + to_string(programInput.mlsMaxSamples)
+						+ "_cp-" + to_string(programInput.mlsCurvatureParticles);
 
 				break;
 			case ReconstructionMethods::NMCMLS:
@@ -452,29 +464,31 @@ int main(int argc, char** argv)
 													programInput.upperCorner,
 													Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
 													programInput.initValue,
-													programInput.kernelSize,
-													programInput.kernelOffset,
-													programInput.kernelDepth,
-													programInput.similarityThreshold,
 													programInput.sdfSmoothingFactor,
-													programInput.blurSurfaceCellsOnly,
-													programInput.blurIterations);
+													programInput.blurIterations,
+													programInput.mlsMaxSamples,
+													programInput.mlsCurvatureParticles);
 				simtype = string("NaiveMls")
 						+ "_cff-" + to_string(programInput.colorFieldFactor)
 						+ "_gr-" + to_string(programInput.gridResolution)
 						+ "_iv-" + to_string(programInput.initValue)
-						+ "_ks-" + to_string(programInput.kernelSize)
-						+ "_ko-" + to_string(programInput.kernelOffset)
-						+ "_kd-" + to_string(programInput.kernelDepth)
 						+ "_sf-" + to_string(programInput.sdfSmoothingFactor)
-						+ "_st-" + to_string(programInput.similarityThreshold)
-						+ "_sfco-" + (programInput.blurSurfaceCellsOnly?"true":"false")
-						+ "_bi-" + to_string(programInput.blurIterations);
+						+ "_bi-" + to_string(programInput.blurIterations)
+						+ "_ms-" + to_string(programInput.mlsMaxSamples)
+						+ "_cp-" + to_string(programInput.mlsCurvatureParticles);
+
 
 				break;
 
+			case ReconstructionMethods::MinDist:
+				mcbNew = std::make_unique<MinDistReconstruction>(nullptr,
+												   programInput.lowerCorner,
+												   programInput.upperCorner,
+												   Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
+												   programInput.supportRad);
+				break;
 			default:
-				assert(0);
+				throw std::runtime_error("unknown simulation type...");
 			}
 			mcbNew->setSimName(simtype);
 		}

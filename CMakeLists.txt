@@ -17,6 +17,12 @@ if (MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP") # Parallel compilation in Visual Studio
 endif()
 
+#remove nodebug for assertions to work out
+string( REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}" )
+string( REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL}" )
+string( REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}" )
+
+
 include_directories("${CMAKE_SOURCE_DIR}/include/"
 					"${CMAKE_SOURCE_DIR}/extern/Eigen/"
 					"${CMAKE_SOURCE_DIR}"

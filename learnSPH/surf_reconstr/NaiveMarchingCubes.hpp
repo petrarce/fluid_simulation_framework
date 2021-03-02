@@ -73,6 +73,7 @@ protected:
 	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3d& position, float radius, bool existing = true) const;
 	std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> computeIntersectionCells() const;
 	std::unordered_map<size_t, size_t> computeIntersectionCellVertices(int neighborsCnt = 0) const;
+	std::unordered_map<size_t, size_t> computeIntersectionVertices(int neighbors = 0) const;
 	///linear interpolation between two vectors given 2 float values and target value
 	inline Eigen::Vector3d lerp(const Eigen::Vector3d& a,
 		const Eigen::Vector3d& b, 

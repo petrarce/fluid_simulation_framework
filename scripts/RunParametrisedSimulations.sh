@@ -14,9 +14,11 @@ blur_kernel_depth="0.5"
 blur_surface_cells_only="true"
 blur_iterations="1"
 cff="1"
-mls_similarity_threshold="0.1"
+mls_max_samples="20"
+mls_curvature_particles="20"
 app="_empty_command_"
 num_threads=8
+
 
 function printHelp()
 {
@@ -37,6 +39,7 @@ function printHelp()
 	echo '--cff'
 	echo '-st|--mls-similarity-threshold'
 	echo '-ms|--mls-max-samples'
+	echo '-cp | --mls-curvature-particles'
 	echo '--app'
 	echo '-nt|--num-threads'
 }
@@ -162,6 +165,13 @@ while [ $# -gt 0 ]; do
 		shift
 		;;
 
+		-cp | --mls-curvature-particles)
+		if [ $# -lt 2 ]; then exit; fi
+		mls_curvature_particles=${2}
+		shift
+		shift
+		;;
+
 		--app)
 		if [ $# -lt 2 ]; then exit; fi
 		app=${2}
@@ -207,25 +217,32 @@ for mt in ${method}; do
 		supportRad=${support_radius}
 	fi
 
-	if [ ${mt} == "ZhuBridsonBlurred" ] || [ ${mt} == "NaiveMCBlurred" ] || [ ${mt} == "ZhuBridsonMls" ] || [ ${mt} == "NaiveMCMls" ]; then
+	if [ ${mt} == "ZhuBridsonBlurred" ] || [ ${mt} == "NaiveMCBlurred" ] ; then
 		bks=${blur_kernel_size}
-		bit=${blur_iterations}
 		bko=${blur_kernel_offset}
 		bsfco=${blur_surface_cells_only}
-		sdfsf=${sdf_smoothing_factor}
 		bkd=${blur_kernel_depth}
 	else
-		sdfsf="1"
-		bkd="1"
-		bit="1"
 		bks="1"
+		bkd="1"
 		bko="1"
 		bsfco="true"
 	fi
-	if [ ${mt} == "ZhuBridsonMls" ] || [ ${mt} == "NaiveMCMls" ]; then
-		msst=${mls_similarity_threshold}
+
+
+	if [ ${mt} == "ZhuBridsonBlurred" ] || [ ${mt} == "NaiveMCBlurred" ] || [ ${mt} == "ZhuBridsonMls" ] || [ ${mt} == "NaiveMCMls" ]; then
+		bit=${blur_iterations}
+		sdfsf=${sdf_smoothing_factor}
 	else
-		msst="1"
+		sdfsf="1"
+		bit="1"
+	fi
+	if [ ${mt} == "ZhuBridsonMls" ] || [ ${mt} == "NaiveMCMls" ]; then
+		ms=${mls_max_samples}
+		cp=${mls_curvature_particles}
+	else
+		ms="1"
+		cp="1"
 	fi
 
 	for sfco in ${bsfco}; do
@@ -252,11 +269,12 @@ for mt in ${method}; do
 					"${lsfco}" \
 					--blur-iterations {12} \
 					--cff {13} \
-					--mls-similarity-threshold {14} \
+					--mls-max-samples {14} \
+					--mls-curvature-particles {15}\
 						::: ${domain} ::: ${initVal} ::: ${sim_name}\
 						::: ${sim_directory} ::: ${grid_resolution} ::: ${supportRad}\
 						::: ${mt} ::: ${sdfsf} ::: ${bks} ::: ${bko}\
-						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${msst}
+						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${ms} ::: ${cp}
 	done
 done
 

@@ -33,7 +33,7 @@ MarchingCubes::MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 void MarchingCubes::configureHashTables()
 {
 	if(mSurfaceParticlesCount)
-	mSurfaceCells.max_load_factor(2);
+		mSurfaceCells.max_load_factor(2);
 	mSurfaceCells.rehash(mFluid->size() * 2);
 }
 
@@ -141,7 +141,7 @@ void NaiveMarchingCubes::updateLevelSet()
 	const vector<Vector3R>& positions = mFluid->getPositions();
 	const vector<Real>& densities = mFluid->getDensities();
 	
-	for(int i = 0; i < mFluid->size(); i++)
+	for(size_t i = 0; i < mFluid->size(); i++)
 	{
 		double fluidDensity = densities[i];
 		const Eigen::Vector3d& particle = positions[i];
@@ -248,6 +248,46 @@ std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionCellVertice
 	return intersectionCellVertices;
 }
 
+std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionVertices(int neighbors) const
+{
+	auto allVertices = mSurfaceCells;
+	std::unordered_map<size_t, size_t> intersectionVertices;
+	for(auto vert : mSurfaceCells)
+	{
+		float sdf; bool res = getSDFvalue(vert.first, sdf);
+		assert(res);
+		auto c = cell(vert.first);
+		for(int i = -1; i <= 1; i++)
+			for(int j = -1; j <= 1; j++)
+				for(int k = -1; k <= 1; k++)
+				{
+					size_t ncI = cellIndex(c + Eigen::Vector3i(i,j,k));
+					float nbSdf; res = getSDFvalue(ncI, nbSdf);
+					if(!res)
+						continue;
+					if(nbSdf * sdf < 0)
+					{
+						intersectionVertices[vert.first] = vert.second;
+						intersectionVertices[ncI] = mSurfaceCells.at(ncI);
+						if(neighbors > 0)
+						{
+							for(int l = -neighbors; l <= neighbors; l++)
+								for(int m = -neighbors; m <= neighbors; m++)
+									for(int n = -neighbors; n <= neighbors; n++)
+									{
+										auto nbI = cellIndex(c + Eigen::Vector3i(l, m, n));
+										auto element = mSurfaceCells.find(nbI);
+										if(element != mSurfaceCells.end())
+											intersectionVertices.insert(*element);
+									}
+						}
+					}
+				}
+
+	}
+	return intersectionVertices;
+}
+
 //return indecis of neighbouring vertices
 std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vector3d &position, float radius, bool existing) const
 {
@@ -340,7 +380,7 @@ void MarchingCubes::updateSurfaceParticles()
 	
 	vector<Real> colorField;
 	#pragma omp parallel for schedule(static)
-	for(int i = 0; i < particles.size(); i++)
+	for(size_t i = 0; i < particles.size(); i++)
 	{
 		Real cf = 0;
 		for(size_t j : neighbors[i][0])
@@ -350,7 +390,7 @@ void MarchingCubes::updateSurfaceParticles()
 	}
 	
 	//relocate all surface particles at the beginning of the array
-	for(int i = 0; i < particles.size(); i++)
+	for(size_t i = 0; i < particles.size(); i++)
 	{
 		if(colorField[i] < mColorFieldSurfaceFactor)
 		{
