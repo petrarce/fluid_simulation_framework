@@ -157,6 +157,7 @@ struct
 	float similarityThreshold {0.5};
 	size_t mlsMaxSamples {20};
 	size_t mlsCurvatureParticles {20};
+	float mlsSampleOverlapFactor {0.5};
 	
 	void parse(const variables_map& vm)
 	{
@@ -281,6 +282,11 @@ struct
 		else
 			throw invalid_argument("required option: --mls-curvature-particles");
 
+		if(vm.count("mls-sample-overlap-factor"))
+			mlsSampleOverlapFactor= vm["mls-sample-overlap-factor"].as<float>();
+		else
+			throw invalid_argument("required option: --mls-sample-overlap-factor");
+
 
 	}
 private:
@@ -332,7 +338,7 @@ int main(int argc, char** argv)
 			("cff", value<float>()->default_value(1), "color field factor ( > 0.95 color field particles detection is not applied)")
 			("mls-max-samples", value<size_t>()->default_value(20), "maximum number of sample points")
 			("mls-curvature-particles", value<size_t>()->default_value(20), "radius of flat surface in terms of fluid particles (diameter)")
-
+			("mls-sample-overlap-factor", value<float>()->default_value(0.5), "factor of cluster size, a number of nearest neighbor samples in cluster that should be removed")
 			;
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
@@ -439,7 +445,8 @@ int main(int argc, char** argv)
 														 programInput.sdfSmoothingFactor,
 														 programInput.blurIterations,
 														 programInput.mlsMaxSamples,
-														 programInput.mlsCurvatureParticles);
+														 programInput.mlsCurvatureParticles,
+														 programInput.mlsSampleOverlapFactor);
 #ifdef MLSV1
 				simtype = string("ZhuBridsonMlsV1")
 #else
@@ -455,7 +462,9 @@ int main(int argc, char** argv)
 						+ "_sf-" + to_string(programInput.sdfSmoothingFactor)
 						+ "_bi-" + to_string(programInput.blurIterations)
 						+ "_ms-" + to_string(programInput.mlsMaxSamples)
-						+ "_cp-" + to_string(programInput.mlsCurvatureParticles);
+						+ "_cp-" + to_string(programInput.mlsCurvatureParticles)
+						+ "_of-" + to_string(programInput.mlsSampleOverlapFactor);
+
 
 				break;
 			case ReconstructionMethods::NMCMLS:
@@ -467,7 +476,8 @@ int main(int argc, char** argv)
 													programInput.sdfSmoothingFactor,
 													programInput.blurIterations,
 													programInput.mlsMaxSamples,
-													programInput.mlsCurvatureParticles);
+													programInput.mlsCurvatureParticles,
+													programInput.mlsSampleOverlapFactor);
 				simtype = string("NaiveMls")
 						+ "_cff-" + to_string(programInput.colorFieldFactor)
 						+ "_gr-" + to_string(programInput.gridResolution)
@@ -475,7 +485,8 @@ int main(int argc, char** argv)
 						+ "_sf-" + to_string(programInput.sdfSmoothingFactor)
 						+ "_bi-" + to_string(programInput.blurIterations)
 						+ "_ms-" + to_string(programInput.mlsMaxSamples)
-						+ "_cp-" + to_string(programInput.mlsCurvatureParticles);
+						+ "_cp-" + to_string(programInput.mlsCurvatureParticles)
+						+ "_of-" + to_string(programInput.mlsSampleOverlapFactor);
 
 
 				break;

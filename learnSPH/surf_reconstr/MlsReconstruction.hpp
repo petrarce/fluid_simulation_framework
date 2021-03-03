@@ -22,8 +22,8 @@
 
 //unkomment one of the variants
 //#define MLSV1
-//#define MLSV2
-#define MLSV3
+#define MLSV2
+//#define MLSV3
 
 template<class BaseClass, class... Args>
 class MlsReconstruction : public BaseClass
@@ -33,13 +33,18 @@ public:
 							   float smoothingFactor,
 							   int iterations,
 							   size_t maxSamples,
-							   size_t curvatureParticles):
+							   size_t curvatureParticles,
+							   float sampleOverlapFactor):
 		BaseClass(args...),
 		mSmoothingFactor(smoothingFactor),
 		mIterations(iterations),
 		mMaxSamples(maxSamples),
-		mCurvatureParticles(curvatureParticles)
+		mCurvatureParticles(curvatureParticles),
+		mSampleOverlapFactor(sampleOverlapFactor)
 	{
+		assert(smoothingFactor >= 0);
+		assert(sampleOverlapFactor >= 0 && sampleOverlapFactor <= 1);
+
 	}
 	MlsReconstruction(const MlsReconstruction& other):
 		BaseClass(other),
@@ -47,7 +52,8 @@ public:
 		mSmoothingFactor(other.mSmoothingFactor),
 		mIterations(other.mIterations),
 		mMaxSamples(other.mMaxSamples),
-		mCurvatureParticles(other.mCurvatureParticles)
+		mCurvatureParticles(other.mCurvatureParticles),
+		mSampleOverlapFactor(other.mSampleOverlapFactor)
 	{}
 private:
 
@@ -138,7 +144,7 @@ private:
 				cluster = getNeighbourCells(intersectionCells, c, maxSamples);
 				assert(cluster.size() != 0);
 #ifdef MLSV2
-				size_t removeParticles = cluster.size()/2;//std::max(1ul, std::min(cluster.size(), cluster.size()/2));
+				size_t removeParticles = cluster.size() * mSampleOverlapFactor;
 				if(!removeParticles)
 					removeParticles = 1;
 				for(size_t i = 0; i < removeParticles; i++)
@@ -680,6 +686,7 @@ private:
 	int mIterations {1};
 	float mSmoothingFactor {1};
 	size_t mCurvatureParticles {20};
+	float mSampleOverlapFactor {0.5};
 };
 
 typedef  MlsReconstruction<ZhuBridsonReconstruction, std::shared_ptr<learnSPH::FluidSystem> , const Eigen::Vector3d ,
