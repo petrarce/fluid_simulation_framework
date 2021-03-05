@@ -22,8 +22,8 @@
 
 //unkomment one of the variants
 //#define MLSV1
-#define MLSV2
-//#define MLSV3
+//#define MLSV2
+#define MLSV3
 
 template<class BaseClass, class... Args>
 class MlsReconstruction : public BaseClass
@@ -103,7 +103,7 @@ private:
 	{
 		//find intersection cells
 		std::unordered_map<size_t, size_t> intersectionCells = MarchingCubes::computeIntersectionVertices(0);
-		std::unordered_map<size_t /*cell*/, size_t /*cnt*/> cellsAppearence;
+		std::unordered_map<size_t /*cell*/, float /*cnt*/> cellsAppearence;
 		std::vector<std::vector<Eigen::Vector3i>> clusters;
 		auto newLevelSet = mLevelSet;
 #ifdef DBG
@@ -113,15 +113,22 @@ private:
 		auto computeClusters = [this](const std::unordered_map<size_t, size_t>& intersectionCells)
 		{
 #ifdef MLSV2
-			std::set<size_t> keys;
+			std::unordered_set<size_t> keys;
+			keys.rehash(intersectionCells.size());
 			for(const auto& item : intersectionCells)
 				keys.insert(item.first);
+#else
+			std::vector<size_t> keys;
+			keys.reserve(intersectionCells.size());
+			for(const auto& item : intersectionCells)
+				keys.push_back(item.first);
 #endif
 			std::vector<std::vector<Eigen::Vector3i>> clusters;
 #ifdef MLSV2
 			while(!keys.empty())
 #else
-			for(auto item : intersectionCells)
+			#pragma omp parallel for schedule(static)
+			for(int i = 0; i < keys.size(); i++)
 #endif
 			{
 
@@ -129,7 +136,7 @@ private:
 #ifdef MLSV2
 				auto key = *keys.begin();
 #else
-				auto key = item.first;
+				auto key = keys[i];
 #endif
 				Real curvature; bool res = BaseClass::getCurvature(key, curvature);
 				assert(res);
@@ -139,7 +146,7 @@ private:
 														  (BaseClass::mFluid->getDiameter() * mCurvatureParticles);
 				levelSetFactor *= levelSetFactor;
 				assert(levelSetFactor >= 0 && levelSetFactor <= 1);
-				size_t maxSamples = std::max(1.f, mMaxSamples * levelSetFactor);
+				size_t maxSamples = std::max(1, static_cast<int>(mMaxSamples * levelSetFactor));
 
 				cluster = getNeighbourCells(intersectionCells, c, maxSamples);
 				assert(cluster.size() != 0);
@@ -153,7 +160,10 @@ private:
 					keys.erase(nbI);
 				}
 #endif
+#pragma omp critical(UpdateClusters)
+{
 				clusters.push_back(std::move(cluster));
+}
 			}
 #ifdef MLSV2
 			assert(keys.empty() && "keys not empty");
@@ -181,7 +191,7 @@ private:
 				else
 				{
 					newLevelSet.at(itemI) += correctSdf(solution, BaseClass::cellCoord(item));
-					cellsAppearence.at(itemI)++;
+					cellsAppearence.at(itemI) += 1;
 				}
 			}
 		}
@@ -548,17 +558,28 @@ private:
 												   const Eigen::Vector3i& baseCell,
 												   int maxSamples)
 	{
-		std::list<size_t> todoCells;
+		std::vector<size_t> todoCells;
+		size_t currentTodoCell = 0;
+		std::unordered_set<size_t> todoCellsHashmap;
 		std::unordered_set<size_t> ngbCells;
 		std::vector<Eigen::Vector3i> ngbCellsVector;
 
+		todoCells.reserve(maxSamples);
+		todoCellsHashmap.rehash(maxSamples);
+		todoCellsHashmap.max_load_factor(2);
 		ngbCells.rehash(maxSamples);
-		todoCells.push_back(BaseClass::cellIndex(baseCell));
+		ngbCells.max_load_factor(2);
+		ngbCellsVector.reserve(maxSamples);
 
-		while(ngbCells.size() < maxSamples && !todoCells.empty())
+		auto baseCellI = BaseClass::cellIndex(baseCell);
+		todoCells.push_back(baseCellI);
+		todoCellsHashmap.insert(baseCellI);
+
+		while(ngbCells.size() < maxSamples && currentTodoCell < todoCells.size())
 		{
-			size_t currentCell = todoCells.front();
-			todoCells.pop_front();
+			size_t currentCell = todoCells[currentTodoCell];
+			currentTodoCell++;
+			todoCellsHashmap.erase(currentCell);
 			ngbCells.insert(currentCell);
 			ngbCellsVector.push_back(BaseClass::cell(currentCell));
 			Eigen::Vector3i c = BaseClass::cell(currentCell);
@@ -569,10 +590,11 @@ private:
 					for(int k = -1; k <= 1; k++)
 					{
 						auto cI = BaseClass::cellIndex(c + Eigen::Vector3i(i,j,k));
-						if(cellSet.find(cI) != cellSet.end() &&
-								ngbCells.find(cI) == ngbCells.end() &&
-								std::find(todoCells.begin(), todoCells.end(), cI) == todoCells.end())
+						if(cellSet.count(cI) && !ngbCells.count(cI) && todoCellsHashmap.count(cI) == 0)
+						{
 							todoCells.push_back(cI);
+							todoCellsHashmap.insert(cI);
+						}
 					}
 				}
 			}

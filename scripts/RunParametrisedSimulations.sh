@@ -263,7 +263,7 @@ for mt in ${method}; do
 			lsfco=""
 		fi
 		
-		OMP_NUM_THREADS=${num_threads} parallel -j ${num_threads}  \
+		OMP_NUM_THREADS=${num_threads} OMP_NESTED=TRUE parallel -j ${num_threads}  \
 				./${app} \
 					--domain {1} \
 					--init-val {2} \
