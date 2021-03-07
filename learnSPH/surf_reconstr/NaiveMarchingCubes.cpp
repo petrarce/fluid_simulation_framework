@@ -172,8 +172,10 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 
 	auto intersectionCells = computeIntersectionCells();
 
-	for(const auto& cellVert : intersectionCells)
+#pragma omp parallel for schedule(static)
+	for(int i = 0; i < intersectionCells.size(); i++)
 	{
+		const auto& cellVert = intersectionCells[i];
 		Vector3i cellInd = cell(cellVert.first);
 		size_t i = cellInd(0);
 		size_t j = cellInd(1);
@@ -182,7 +184,7 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 		const std::array<std::array<int, 3>, 5>& triangle_type = cellVert.second;
 
 		for(size_t l = 0; l < 5; l++) {
-			
+			std::array<Eigen::Vector3d, 3> triangle;
 			for(size_t m = 0; m < 3; m++) {
 				if(triangle_type[l][m] == -1) break;
 				
@@ -209,8 +211,12 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 
 				Eigen::Vector3d p1 = cellCoord(Eigen::Vector3i(c1Xind, c1Yind, c1Zind));
 				Eigen::Vector3d p2 = cellCoord(Eigen::Vector3i(c2Xind, c2Yind, c2Zind));
-				triangleMesh.push_back(lerp(p1, p2, v1, v2, 0));
+				triangle[m] = lerp(p1, p2, v1, v2, 0);
 			}
+#pragma omp critical(UpdateTriangleMesh)
+{
+			triangleMesh.insert(triangleMesh.end(), triangle.begin(), triangle.end());
+}
 		}
 	}
 	return triangleMesh;
