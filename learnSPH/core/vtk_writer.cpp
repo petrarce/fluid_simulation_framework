@@ -1,6 +1,6 @@
 #include "vtk_writer.h"
 
-void learnSPH::saveTriMeshToVTK(std::string path, const std::vector<Eigen::Vector3d>& vertices, const std::vector<std::array<int, 3>>& triangles)
+void learnSPH::saveTriMeshToVTK(std::string path, const std::vector<Eigen::Vector3d>& vertices, const std::vector<std::array<size_t, 3>>& triangles)
 {
 	// Open the file
 	std::ofstream outfile(path, std::ios::binary);
@@ -10,8 +10,8 @@ void learnSPH::saveTriMeshToVTK(std::string path, const std::vector<Eigen::Vecto
 	}
 
 	// Parameters
-	int n_particles = (int)vertices.size();
-	int n_triangles = (int)triangles.size();
+	size_t n_particles = vertices.size();
+	size_t n_triangles = triangles.size();
 
 	// Header
 	outfile << "# vtk DataFile Version 4.2\n";
@@ -39,7 +39,7 @@ void learnSPH::saveTriMeshToVTK(std::string path, const std::vector<Eigen::Vecto
 		outfile << "CELLS " << n_triangles << " " << 4 * n_triangles << "\n";
 		std::vector<int> connectivity_to_write;
 		connectivity_to_write.reserve(4 * n_triangles);
-		for (int tri_i = 0; tri_i < n_triangles; tri_i++) {
+		for (size_t tri_i = 0; tri_i < n_triangles; tri_i++) {
 			connectivity_to_write.push_back(3);
 			connectivity_to_write.push_back(triangles[tri_i][0]);
 			connectivity_to_write.push_back(triangles[tri_i][1]);

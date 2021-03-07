@@ -46,9 +46,9 @@ void ZhuBridsonReconstruction::configureHashTables()
 	denominators.rehash(mSurfaceCells.bucket_count());
 }
 
-bool ZhuBridsonReconstruction::getSDFvalue(int i, int j, int k, float& sdf) const
+bool ZhuBridsonReconstruction::getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const
 {
-	auto cell = Eigen::Vector3i(i,j,k);
+	auto cell = Eigen::Vector3li(i,j,k);
 	auto cI = cellIndex(cell);
 	auto cC = cellCoord(cell);
 	auto xAvgI = xAvg.find(cI);
@@ -69,7 +69,7 @@ void ZhuBridsonReconstruction::updateDenominators()
 
 	for(size_t i = 0; i < particles.size(); i++)
 	{
-		std::vector<Vector3i> neighbours = getNeighbourCells(particles[i], mRadii);
+		std::vector<Vector3li> neighbours = getNeighbourCells(particles[i], mRadii);
 		for(const auto& cell : neighbours){
 			auto cI = cellIndex(cell);
 			auto cC = cellCoord(cell);
@@ -86,7 +86,7 @@ void ZhuBridsonReconstruction::updateAvgs()
 
 	for(size_t i = 0; i < particles.size(); i++)
 	{
-		std::vector<Vector3i> neighbours = getNeighbourCells(particles[i], mRadii);
+		std::vector<Vector3li> neighbours = getNeighbourCells(particles[i], mRadii);
 		Real minDist = std::numeric_limits<Real>::max();
 		for(const auto& cell : neighbours)
 		{

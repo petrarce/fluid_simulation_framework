@@ -8,15 +8,18 @@
 #include "SurfaceReconstructor.hpp"
 #include <learnSPH/core/storage.h>
 
-
-
+namespace Eigen
+{
+typedef Matrix<int64_t, 3, 1> Vector3li;
+}
 class MarchingCubes : public SurfaceReconstructor
 {
 protected:
+
 	std::shared_ptr<learnSPH::FluidSystem> mFluid;
 	Eigen::Vector3d mLowerCorner;
 	Eigen::Vector3d mUpperCorner;
-	Eigen::Vector3i mDimentions;
+	Eigen::Vector3li mDimentions;
 	Eigen::Vector3d mResolution;
 	size_t mSurfaceParticlesCount {0};
 	Real mColorFieldSurfaceFactor {0.8};
@@ -27,6 +30,7 @@ protected:
 	vector<Real> mCurvature;
 	std::unordered_map<size_t, Real> mSurfaceCellsCurvature;
 	std::string mSimName;
+
 
 public:
 	MarchingCubes() = delete;
@@ -56,10 +60,10 @@ protected:
 	virtual void updateGrid() = 0;
 	virtual void updateLevelSet() = 0;
 	virtual void configureHashTables();
-	virtual bool getSDFvalue(int i, int j, int k, float& sdf) const = 0;
+	virtual bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const = 0;
 	void updateSurfaceParticles();
 
-	inline bool getSDFvalue(const Vector3i& c, float& sdf) const
+	inline bool getSDFvalue(const Eigen::Vector3li& c, float& sdf) const
 	{
 		return getSDFvalue(c(0), c(1), c(2), sdf);
 	}
@@ -70,7 +74,7 @@ protected:
 
 	std::vector<Eigen::Vector3d> getTriangles() const;
 	///Calculate cell indeces of neighbour cells
-	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3d& position, float radius, bool existing = true) const;
+	std::vector<Eigen::Vector3li> getNeighbourCells(const Eigen::Vector3d& position, float radius, bool existing = true) const;
 	std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> computeIntersectionCells() const;
 	std::unordered_map<size_t, size_t> computeIntersectionCellVertices(int neighborsCnt = 0) const;
 	std::unordered_map<size_t, size_t> computeIntersectionVertices(int neighbors = 0) const;
@@ -87,27 +91,27 @@ protected:
 	
 	
 	///get nearest cell indeces given coordinate in space
-	inline Eigen::Vector3i cell(const Eigen::Vector3d& vec) const
+	inline Eigen::Vector3li cell(const Eigen::Vector3d& vec) const
 	{
 		float xf = (vec(0) - mLowerCorner(0)) / (mUpperCorner(0) - mLowerCorner(0));
 		float yf = (vec(1) - mLowerCorner(1)) / (mUpperCorner(1) - mLowerCorner(1));
 		float zf = (vec(2) - mLowerCorner(2)) / (mUpperCorner(2) - mLowerCorner(2));
-		return Eigen::Vector3i(std::floor(mDimentions(0) * xf),
+		return Eigen::Vector3li(std::floor(mDimentions(0) * xf),
 							   std::floor(mDimentions(1) * yf),
 							   std::floor(mDimentions(2) * zf));
 	
 	}
 	
-	inline Eigen::Vector3i cell(size_t index) const
+	inline Eigen::Vector3li cell(size_t index) const
 	{
-		int k = index % mDimentions(2);
-		int j = (index / mDimentions(2)) % mDimentions(1);
-		int i = ((index / mDimentions(2)) / mDimentions(1));
-		return Vector3i(i, j, k);
+		size_t k = index % mDimentions(2);
+		size_t j = (index / mDimentions(2)) % mDimentions(1);
+		size_t i = ((index / mDimentions(2)) / mDimentions(1));
+		return Eigen::Vector3li(i, j, k);
 	}
 	
 	///Calculate cell vertice coordinate given cell indecis
-	inline Eigen::Vector3d cellCoord(const Eigen::Vector3i& vec) const
+	inline Eigen::Vector3d cellCoord(const Eigen::Vector3li& vec) const
 	{
 		float xf = static_cast<double>(vec(0)) / mDimentions(0);
 		float yf = static_cast<double>(vec(1)) / mDimentions(1);
@@ -121,7 +125,7 @@ protected:
 	}
 	
 	///get array index from cell indeces
-	inline int cellIndex(const Eigen::Vector3i& ind) const
+	inline size_t cellIndex(const Eigen::Vector3li& ind) const
 	{
 		return ind(0) * mDimentions(1) * mDimentions(2) + 
 				ind(1) * mDimentions(2) + 
@@ -165,9 +169,9 @@ protected:
 	void updateLevelSet() override;
 	void configureHashTables() override;
 	
-	bool getSDFvalue(int i, int j, int k, float& sdf) const override
+	bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const override
 	{
-		auto val = mLevelSetFunction.find(cellIndex(Eigen::Vector3i(i, j, k)));
+		auto val = mLevelSetFunction.find(cellIndex(Eigen::Vector3li(i, j, k)));
 		if(val  == mLevelSetFunction.end())
 			return false;
 		sdf = val->second;

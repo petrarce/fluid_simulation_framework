@@ -532,14 +532,17 @@ int main(int argc, char** argv)
 		mcbNew->setColorFieldFactor(programInput.colorFieldFactor);
 		mcbNew->setFrameNumber(integerMatch.str());
         vector<Vector3R> new_triangle_mesh((mcbNew->generateMesh(fluidSystem)));
-
+		assert((new_triangle_mesh.size() % 3) == 0);
 		//generate and save triangular mesh
-		vector<array<int, 3>> triangles;
-        for(int i = 0; i < new_triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
+		vector<array<size_t, 3>> triangles;
+		triangles.reserve(new_triangle_mesh.size() / 3);
+		for(size_t i = 0; i < new_triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
 		std::string surface_filename = programInput.simDir + programInput.simName + simtype + "_surface_" + integerMatch.str() + ".vtk";
+
 		learnSPH::saveTriMeshToVTK(surface_filename, new_triangle_mesh, triangles);
 
 		cout << "\nframe [" << integerMatch.str() << "] rendered" << endl;
+		cout << "points in mesh: " << triangles.size() << std::endl;
 	}
 	globalPerfStats.stopTimer("total execution time");
 	globalPerfStats.PrintStatistics(simtype);

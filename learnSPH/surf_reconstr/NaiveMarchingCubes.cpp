@@ -146,7 +146,7 @@ void NaiveMarchingCubes::updateLevelSet()
 	{
 		double fluidDensity = densities[i];
 		const Eigen::Vector3d& particle = positions[i];
-		std::vector<Eigen::Vector3i> neighbourCells = 
+		std::vector<Eigen::Vector3li> neighbourCells =
 				getNeighbourCells(particle, mFluid->getCompactSupport());
 		for(const auto& cell : neighbourCells)
 		{
@@ -173,10 +173,10 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 	auto intersectionCells = computeIntersectionCells();
 
 #pragma omp parallel for schedule(static)
-	for(int i = 0; i < intersectionCells.size(); i++)
+	for(size_t g = 0; g < intersectionCells.size(); g++)
 	{
-		const auto& cellVert = intersectionCells[i];
-		Vector3i cellInd = cell(cellVert.first);
+		const auto& cellVert = intersectionCells[g];
+		Eigen::Vector3li cellInd = cell(cellVert.first);
 		size_t i = cellInd(0);
 		size_t j = cellInd(1);
 		size_t k = cellInd(2);
@@ -209,8 +209,8 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 					assert(res);
 				}
 
-				Eigen::Vector3d p1 = cellCoord(Eigen::Vector3i(c1Xind, c1Yind, c1Zind));
-				Eigen::Vector3d p2 = cellCoord(Eigen::Vector3i(c2Xind, c2Yind, c2Zind));
+				Eigen::Vector3d p1 = cellCoord(Eigen::Vector3li(c1Xind, c1Yind, c1Zind));
+				Eigen::Vector3d p2 = cellCoord(Eigen::Vector3li(c2Xind, c2Yind, c2Zind));
 				triangle[m] = lerp(p1, p2, v1, v2, 0);
 			}
 #pragma omp critical(UpdateTriangleMesh)
@@ -229,10 +229,10 @@ std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionCellVertice
 	intersectionCellVertices.reserve(intersectionCells.size());
 	for(const auto& iCell : intersectionCells)
 	{
-		Eigen::Vector3i c = cell(iCell.first);
+		Eigen::Vector3li c = cell(iCell.first);
 		for(int i = 0; i < 8; i++)
 		{
-			Eigen::Vector3i nc = c + Eigen::Vector3i(1<<i & 0x4, 1 << i & 0x2, 1 << i & 0x1);
+			Eigen::Vector3li nc = c + Eigen::Vector3li(1<<i & 0x4, 1 << i & 0x2, 1 << i & 0x1);
 			for(int i = -neighborsCnt; i <= neighborsCnt; i++)
 			{
 				for(int j = -neighborsCnt; j <= neighborsCnt; j++)
@@ -240,7 +240,7 @@ std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionCellVertice
 					for(int k = -neighborsCnt; k <= neighborsCnt; k++)
 					{
 
-						size_t ncI = cellIndex(nc + Eigen::Vector3i(i, j, k));
+						size_t ncI = cellIndex(nc + Eigen::Vector3li(i, j, k));
 						if(intersectionCellVertices.find(ncI) != intersectionCellVertices.end())
 							continue;
 						auto fluidCell = mSurfaceCells.find(ncI);
@@ -268,7 +268,7 @@ std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionVertices(in
 			for(int j = -1; j <= 1; j++)
 				for(int k = -1; k <= 1; k++)
 				{
-					size_t ncI = cellIndex(c + Eigen::Vector3i(i,j,k));
+					size_t ncI = cellIndex(c + Eigen::Vector3li(i,j,k));
 					float nbSdf; res = getSDFvalue(ncI, nbSdf);
 					if(!res)
 						continue;
@@ -282,7 +282,7 @@ std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionVertices(in
 								for(int m = -neighbors; m <= neighbors; m++)
 									for(int n = -neighbors; n <= neighbors; n++)
 									{
-										auto nbI = cellIndex(c + Eigen::Vector3i(l, m, n));
+										auto nbI = cellIndex(c + Eigen::Vector3li(l, m, n));
 										auto element = mSurfaceCells.find(nbI);
 										if(element != mSurfaceCells.end())
 											intersectionVertices.insert(*element);
@@ -296,15 +296,15 @@ std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionVertices(in
 }
 
 //return indecis of neighbouring vertices
-std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vector3d &position, float radius, bool existing) const
+std::vector<Eigen::Vector3li> MarchingCubes::getNeighbourCells(const Eigen::Vector3d &position, float radius, bool existing) const
 {
 	int xDirPositions = static_cast<size_t>(radius / mResolution(0)) + 1;
 	int yDirPositions = static_cast<size_t>(radius / mResolution(1)) + 1;
 	int zDirPositions = static_cast<size_t>(radius / mResolution(2)) + 1;
 	
-	std::vector<Eigen::Vector3i> neighbours;
-	Eigen::Vector3i baseCell = cell(position);
-	Eigen::Vector3i neighbourCell;
+	std::vector<Eigen::Vector3li> neighbours;
+	Eigen::Vector3li baseCell = cell(position);
+	Eigen::Vector3li neighbourCell;
 	for(int i = -xDirPositions; i <= xDirPositions+1; i++)
 	{
 		for(int j = -yDirPositions; j <= yDirPositions+1; j++)
@@ -314,7 +314,7 @@ std::vector<Eigen::Vector3i> MarchingCubes::getNeighbourCells(const Eigen::Vecto
 				
 				if(((i*i + j*j + k*k) * mResolution(0) * mResolution(0)) > radius * radius)
 					continue;
-				neighbourCell = Vector3i(baseCell(0) + i,baseCell(1) + j, baseCell(2) +  k);
+				neighbourCell = Vector3li(baseCell(0) + i,baseCell(1) + j, baseCell(2) +  k);
 				if(existing && mSurfaceCells.find(cellIndex(neighbourCell)) == mSurfaceCells.end())
 					continue;
 				neighbours.push_back(neighbourCell);
@@ -331,7 +331,7 @@ std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> MarchingCubes:
 	intersectionCells.reserve(mSurfaceCells.size());
 	for(const auto& c : mSurfaceCells)
 	{
-		Vector3i cellInd = cell(c.first);
+		Vector3li cellInd = cell(c.first);
 		size_t i = cellInd(0);
 		size_t j = cellInd(1);
 		size_t k = cellInd(2);

@@ -35,7 +35,7 @@ protected:
 	void updateGrid() override;
 	void updateLevelSet() override;
 	void configureHashTables() override;
-	bool getSDFvalue(int i, int j, int k, float& sdf) const override;
+	bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const override;
 
 	Real mRadii;
 	std::unordered_map<int, Real> denominators;

@@ -104,7 +104,7 @@ private:
 		//find intersection cells
 		std::unordered_map<size_t, size_t> intersectionCells = MarchingCubes::computeIntersectionVertices(0);
 		std::unordered_map<size_t /*cell*/, float /*cnt*/> cellsAppearence;
-		std::vector<std::vector<Eigen::Vector3i>> clusters;
+		std::vector<std::vector<Eigen::Vector3li>> clusters;
 		auto newLevelSet = mLevelSet;
 #ifdef DBG
 		std::vector<Real> intersCellsSmoothingFactor;
@@ -129,7 +129,7 @@ private:
 			for(const auto& item : intersectionCells)
 				keys.push_back(item.first);
 #endif
-			std::vector<std::vector<Eigen::Vector3i>> clusters;
+			std::vector<std::vector<Eigen::Vector3li>> clusters;
 #ifdef MLSV2
 			while(!keys.empty())
 #else
@@ -138,7 +138,7 @@ private:
 #endif
 			{
 
-				std::vector<Eigen::Vector3i> cluster;
+				std::vector<Eigen::Vector3li> cluster;
 #ifdef MLSV2
 				auto key = *keys.begin();
 #else
@@ -304,15 +304,15 @@ private:
 					std::min(1/curvature, BaseClass::mFluid->getDiameter() * 50) /
 					(BaseClass::mFluid->getDiameter() * 50)));
 
-			Eigen::Vector3i c = MarchingCubes::cell(cellItem.first);
+			Eigen::Vector3li c = MarchingCubes::cell(cellItem.first);
 #if 0
-			std::vector<Eigen::Vector3i> nbs = getNeighbourCells(c,
+			std::vector<Eigen::Vector3li> nbs = getNeighbourCells(c,
 																 kernelSize,
 																 kernelOffset,
 																 maxSamples,
 																 kernelDepth);
 #else
-			std::vector<Eigen::Vector3i> nbs = getNeighbourCells(surfaceCells,
+			std::vector<Eigen::Vector3li> nbs = getNeighbourCells(surfaceCells,
 																 c,
 																 maxSamples);
 #endif
@@ -362,7 +362,7 @@ private:
 	}
 #endif
 
-	Eigen::Vector3d getSDFGrad(const Vector3i& c) const
+	Eigen::Vector3d getSDFGrad(const Vector3li& c) const
 	{
 		float cellSDFval;
 		bool res = MarchingCubes::getSDFvalue(c, cellSDFval);
@@ -370,11 +370,11 @@ private:
 		float sdfValX = 0.f;
 		float sdfValY = 0.f;
 		float sdfValZ = 0.f;
-		if(!MarchingCubes::getSDFvalue(c - Vector3i(1, 0, 0), sdfValX))
+		if(!MarchingCubes::getSDFvalue(c - Vector3li(1, 0, 0), sdfValX))
 			sdfValX = cellSDFval;
-		if(!MarchingCubes::getSDFvalue(c - Vector3i(0, 1, 0), sdfValY))
+		if(!MarchingCubes::getSDFvalue(c - Vector3li(0, 1, 0), sdfValY))
 			sdfValY = cellSDFval;
-		if(!MarchingCubes::getSDFvalue(c - Vector3i(0, 0, 1), sdfValZ))
+		if(!MarchingCubes::getSDFvalue(c - Vector3li(0, 0, 1), sdfValZ))
 			sdfValZ = cellSDFval;
 		float dx = (cellSDFval - sdfValX) / BaseClass::mResolution(0);
 		float dy = (cellSDFval - sdfValY) / BaseClass::mResolution(1);
@@ -383,14 +383,14 @@ private:
 		return Eigen::Vector3d(dx, dy, dz);
 	}
 #if 0
-	std::vector<Eigen::Vector3i> getNeighbourCells(const Eigen::Vector3i& baseCell,
+	std::vector<Eigen::Vector3li> getNeighbourCells(const Eigen::Vector3li& baseCell,
 												   int kernelSize,
 												   int kernelOffset,
 												   int maxSamples,
 												   float depth) const
 	{
 		assert(depth >= 0 && depth <= 1);
-		std::vector<Eigen::Vector3i> neighbors;
+		std::vector<Eigen::Vector3li> neighbors;
 		neighbors.reserve(pow(kernelSize, 3));
 		float baseSdf; bool res = MarchingCubes::getSDFvalue(baseCell, baseSdf);
 		assert(res);
@@ -409,7 +409,7 @@ private:
 				kernelOffset,
 				this,
 				baseSdf,
-				&neighbors](const Eigen::Vector3i& newNb)
+				&neighbors](const Eigen::Vector3li& newNb)
 		{
 			cnt++;
 			int i = newNb(0);
@@ -427,7 +427,7 @@ private:
 				return;
 
 
-			Eigen::Vector3i c = baseCell + Eigen::Vector3i(i * kernelOffset, j * kernelOffset, k * kernelOffset);
+			Eigen::Vector3li c = baseCell + Eigen::Vector3li(i * kernelOffset, j * kernelOffset, k * kernelOffset);
 			float sdf; bool res = MarchingCubes::getSDFvalue(c, sdf);
 			if(!res || std::fabs(sdf - baseSdf) > mSdfSimilarityThreshold)
 				return;
@@ -613,15 +613,15 @@ private:
 	}
 #endif
 
-	std::vector<Eigen::Vector3i> getNeighbourCells(const std::unordered_map<size_t, size_t>& cellSet,
-												   const Eigen::Vector3i& baseCell,
+	std::vector<Eigen::Vector3li> getNeighbourCells(const std::unordered_map<size_t, size_t>& cellSet,
+												   const Eigen::Vector3li& baseCell,
 												   int maxSamples)
 	{
 		std::vector<size_t> todoCells;
 		size_t currentTodoCell = 0;
 		std::unordered_set<size_t> todoCellsHashmap;
 		std::unordered_set<size_t> ngbCells;
-		std::vector<Eigen::Vector3i> ngbCellsVector;
+		std::vector<Eigen::Vector3li> ngbCellsVector;
 
 		todoCells.reserve(maxSamples);
 		todoCellsHashmap.rehash(maxSamples);
@@ -641,14 +641,14 @@ private:
 			todoCellsHashmap.erase(currentCell);
 			ngbCells.insert(currentCell);
 			ngbCellsVector.push_back(BaseClass::cell(currentCell));
-			Eigen::Vector3i c = BaseClass::cell(currentCell);
+			Eigen::Vector3li c = BaseClass::cell(currentCell);
 			for(int i = -1; i <= 1; i++)
 			{
 				for(int j = -1; j <= 1; j++)
 				{
 					for(int k = -1; k <= 1; k++)
 					{
-						auto cI = BaseClass::cellIndex(c + Eigen::Vector3i(i,j,k));
+						auto cI = BaseClass::cellIndex(c + Eigen::Vector3li(i,j,k));
 						if(cellSet.count(cI) && !ngbCells.count(cI) && todoCellsHashmap.count(cI) == 0)
 						{
 							todoCells.push_back(cI);
@@ -664,7 +664,7 @@ private:
 	}
 
 
-	Eigen::VectorXd getMlsSurface(const Eigen::Vector3i& baseCell, const std::vector<Eigen::Vector3i>& cellNeighbors)
+	Eigen::VectorXd getMlsSurface(const Eigen::Vector3li& baseCell, const std::vector<Eigen::Vector3li>& cellNeighbors)
 	{
 //		if(cellNeighbors.size() == 1)
 //		{
@@ -751,9 +751,9 @@ private:
 		}
 	}
 
-	bool getSDFvalue(int i, int j, int k, float& sdf) const override
+	bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const override
 	{
-		auto cI = MarchingCubes::cellIndex(Eigen::Vector3i(i, j, k));
+		auto cI = MarchingCubes::cellIndex(Eigen::Vector3li(i, j, k));
 		auto item = mLevelSet.find(cI);
 		if( item == mLevelSet.end())
 			return false;

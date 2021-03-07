@@ -24,7 +24,7 @@ namespace learnSPH
 							const std::vector<Eigen::Vector3d>& particles, 
 							const std::vector<Eigen::Vector3d>& particle_vector_data);
 
-	void saveTriMeshToVTK(std::string path, const std::vector<Eigen::Vector3d>& vertices, const std::vector<std::array<int, 3>>& triangles);
+	void saveTriMeshToVTK(std::string path, const std::vector<Eigen::Vector3d>& vertices, const std::vector<std::array<size_t, 3>>& triangles);
 
 	template<class T>
 	void swapBytesInplace(T* arr, const int size)

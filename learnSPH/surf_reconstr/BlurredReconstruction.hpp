@@ -85,9 +85,9 @@ private:
 		learnSPH::saveParticlesToVTK("/tmp/SdfAfterBlur" + BaseClass::mFrameNumber + ".vtk", points, sdf);
 #endif
 	}
-	bool getSDFvalue(int i, int j, int k, float& sdf) const override
+	bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const override
 	{
-		auto cI = BaseClass::cellIndex(Eigen::Vector3i(i,j,k));
+		auto cI = BaseClass::cellIndex(Eigen::Vector3li(i,j,k));
 		auto sdfItem = mLevelSetValues.find(cI);
 		if(sdfItem == mLevelSetValues.end())
 			return false;
@@ -181,7 +181,7 @@ private:
 #endif
 	}
 	
-	Eigen::Vector3d getSDFGrad(const Vector3i& c) const
+	Eigen::Vector3d getSDFGrad(const Vector3li& c) const
 	{
 		float cellSDFval;
 		bool res = MarchingCubes::getSDFvalue(c, cellSDFval);
@@ -189,11 +189,11 @@ private:
 		float sdfValX = 0.f;
 		float sdfValY = 0.f;
 		float sdfValZ = 0.f;
-		if(!MarchingCubes::getSDFvalue(c - Vector3i(1, 0, 0), sdfValX))
+		if(!MarchingCubes::getSDFvalue(c - Vector3li(1, 0, 0), sdfValX))
 			sdfValX = cellSDFval;
-		if(!MarchingCubes::getSDFvalue(c - Vector3i(0, 1, 0), sdfValY))
+		if(!MarchingCubes::getSDFvalue(c - Vector3li(0, 1, 0), sdfValY))
 			sdfValY = cellSDFval;
-		if(!MarchingCubes::getSDFvalue(c - Vector3i(0, 0, 1), sdfValZ))
+		if(!MarchingCubes::getSDFvalue(c - Vector3li(0, 0, 1), sdfValZ))
 			sdfValZ = cellSDFval;
 		float dx = (cellSDFval - sdfValX) / BaseClass::mResolution(0);
 		float dy = (cellSDFval - sdfValY) / BaseClass::mResolution(1);
@@ -202,7 +202,7 @@ private:
 		return Eigen::Vector3d(dx, dy, dz);
 	}
 
-	inline bool getSDFderivX(const Vector3i& c, float& deriv) const
+	inline bool getSDFderivX(const Vector3li& c, float& deriv) const
 	{
 		float sdf1;
 		if(!getSDFvalue(c(0), c(1), c(2), sdf1))
@@ -215,7 +215,7 @@ private:
 		return true;
 	}
 
-	inline bool getSDFderivY(const Vector3i& c, float& deriv) const
+	inline bool getSDFderivY(const Vector3li& c, float& deriv) const
 	{
 		float sdf1;
 		if(!getSDFvalue(c(0), c(1), c(2), sdf1))
@@ -228,7 +228,7 @@ private:
 		return true;
 	}
 
-	inline bool getSDFderivZ(const Vector3i& c, float& deriv) const
+	inline bool getSDFderivZ(const Vector3li& c, float& deriv) const
 	{
 		float sdf1;
 		if(!getSDFvalue(c(0), c(1), c(2), sdf1))
@@ -241,7 +241,7 @@ private:
 		return true;
 	}
 
-	float getCurvature(const Vector3i& c) const
+	float getCurvature(const Vector3li& c) const
 	{
 		float sdfC;
 		bool res = MarchingCubes::getSDFvalue(c, sdfC);
@@ -256,11 +256,11 @@ private:
 		assert(res);
 
 		float phiX_, phiY_, phiZ_;
-		if(!getSDFderivX(c + Eigen::Vector3i(1,0,0), phiX_))
+		if(!getSDFderivX(c + Eigen::Vector3li(1,0,0), phiX_))
 			phiX_ = phiX;
-		if(!getSDFderivY(c + Eigen::Vector3i(0,1,0), phiY_))
+		if(!getSDFderivY(c + Eigen::Vector3li(0,1,0), phiY_))
 			phiY_ = phiY;
-		if(!getSDFderivZ(c + Eigen::Vector3i(0,0,1), phiZ_))
+		if(!getSDFderivZ(c + Eigen::Vector3li(0,0,1), phiZ_))
 			phiZ_ = phiZ;
 
 		float phiXX = (phiX_ - phiX) / BaseClass::mResolution(0);
@@ -269,17 +269,17 @@ private:
 
 		//compute second derivitives of different arguments (XY, XZ, YZ)
 		float sdfXY_, sdfYZ_, sdfXZ_, sdfX_, sdfY_, sdfZ_;
-		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(0,1,1), sdfYZ_))
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3li(0,1,1), sdfYZ_))
 			sdfYZ_ = sdfC;
-		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(1,0,1), sdfXZ_))
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3li(1,0,1), sdfXZ_))
 			sdfXZ_ = sdfC;
-		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(1,1,0), sdfXY_))
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3li(1,1,0), sdfXY_))
 			sdfXY_ = sdfC;
-		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(0,0,1), sdfZ_))
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3li(0,0,1), sdfZ_))
 			sdfZ_ = sdfC;
-		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(0,1,0), sdfY_))
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3li(0,1,0), sdfY_))
 			sdfY_ = sdfC;
-		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3i(1,0,0), sdfX_))
+		if(!MarchingCubes::getSDFvalue(c - Eigen::Vector3li(1,0,0), sdfX_))
 			sdfX_ = sdfC;
 
 		float phiXY, phiXZ, phiYZ;
@@ -306,9 +306,9 @@ private:
 
 
 	
-	std::vector<Eigen::Vector3i> getNeighbourCells(Eigen::Vector3i baseCell, int kernelSize, int offset, Real depth)
+	std::vector<Eigen::Vector3li> getNeighbourCells(Eigen::Vector3li baseCell, int kernelSize, int offset, Real depth)
 	{
-		std::vector<Eigen::Vector3i> neighbors;
+		std::vector<Eigen::Vector3li> neighbors;
 		neighbors.reserve(kernelSize * kernelSize * kernelSize);
 		neighbors.push_back(baseCell);
 		Eigen::Vector3d grad = getSDFGrad(baseCell);
@@ -331,7 +331,7 @@ private:
 					if(std::fabs(offsetVector(0) * grad(0) + offsetVector(1) * grad(1) + offsetVector(2) * grad(2)) > (depth * kernelSize * BaseClass::mResolution(0)))
 						continue;
 					
-					neighbors.push_back(Eigen::Vector3i(baseCell(0) + i, baseCell(1) + j, baseCell(2) + k));
+					neighbors.push_back(Eigen::Vector3li(baseCell(0) + i, baseCell(1) + j, baseCell(2) + k));
 				}
 		
 		return neighbors;

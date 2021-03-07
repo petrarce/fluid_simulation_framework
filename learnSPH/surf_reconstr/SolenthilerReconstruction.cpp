@@ -123,9 +123,9 @@ void SolenthilerReconstruction::updateFFunction()
 #endif
 	
 }
-bool SolenthilerReconstruction::getSDFvalue(int i, int j, int k, float& sdf) const
+bool SolenthilerReconstruction::getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const
 {
-	auto cell = Eigen::Vector3i(i,j,k);
+	auto cell = Eigen::Vector3li(i,j,k);
 	auto cI = cellIndex(cell);
 	auto cC = cellCoord(cell);
 	auto xAvgI = xAvg.find(cI);

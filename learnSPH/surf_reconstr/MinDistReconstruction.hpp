@@ -66,9 +66,9 @@ protected:
 		mSDF.max_load_factor(mSurfaceCells.max_load_factor());
 		mSDF.rehash(mSurfaceCells.bucket_count());
 	}
-	bool getSDFvalue(int i, int j, int k, float& sdf) const override
+	bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const override
 	{
-		auto cI = cellIndex(Eigen::Vector3i(i, j, k));
+		auto cI = cellIndex(Eigen::Vector3li(i, j, k));
 		auto sdfPtr = mSDF.find(cI);
 		if(sdfPtr == mSDF.end())
 			return false;

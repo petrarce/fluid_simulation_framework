@@ -32,7 +32,7 @@ private:
 	void updateGradientSums();
 	void updateJakobians();
 
-	bool getSDFvalue(int i, int j, int k, float& sdf) const override;
+	bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const override;
 	struct CellGradient {
 		Matrix3d jakobian;
 		Real fVal;
