@@ -153,7 +153,7 @@ struct
 	Real kernelDepth;
 	bool blurSurfaceCellsOnly {false};
 	size_t blurIterations {1};
-	float colorFieldFactor;
+	float colorFieldFactor {0};
 	float similarityThreshold {0.5};
 	size_t mlsMaxSamples {20};
 	size_t mlsCurvatureParticles {20};
@@ -335,7 +335,7 @@ int main(int argc, char** argv)
 			("blur-kernel-depth", value<Real>()->default_value(0.5), "depth of the bluring kernel in the direction normal to the gradient")
 			("blur-surface-cells-only", "if flag is selected blurr will be applyed only on surface cells")
 			("blur-iterations", value<size_t>()->default_value(1), "number of iterations blur is applied to the grid")
-			("cff", value<float>()->default_value(1), "color field factor ( > 0.95 color field particles detection is not applied)")
+			("cff", value<float>()->default_value(0), "color field factor (for cff<0.05 color field particles detection is not applied)")
 			("mls-max-samples", value<size_t>()->default_value(20), "maximum number of sample points")
 			("mls-curvature-particles", value<size_t>()->default_value(20), "radius of flat surface in terms of fluid particles (diameter)")
 			("mls-sample-overlap-factor", value<float>()->default_value(0.5), "factor of cluster size, a number of nearest neighbor samples in cluster that should be removed")

@@ -13,7 +13,7 @@ blur_kernel_offset="1"
 blur_kernel_depth="0.5"
 blur_surface_cells_only="true"
 blur_iterations="1"
-cff="1"
+cff="0"
 mls_max_samples="20"
 mls_curvature_particles="20"
 mls_overlap_factor="0.5"
@@ -264,7 +264,7 @@ for mt in ${method}; do
 		fi
 		
 		OMP_NUM_THREADS=${num_threads} OMP_NESTED=TRUE parallel -j ${num_threads}  \
-				./${app} \
+				${app} \
 					--domain {1} \
 					--init-val {2} \
 					--sim-name {3} \

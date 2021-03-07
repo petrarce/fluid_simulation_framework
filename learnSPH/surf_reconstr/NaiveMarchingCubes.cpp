@@ -1,5 +1,6 @@
 #include <memory>
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
 #include <learnSPH/core/storage.h>
 #include <learnSPH/core/kernel.h>
 #include <learnSPH/core/vtk_writer.h>
@@ -356,7 +357,6 @@ std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> MarchingCubes:
 
 void MarchingCubes::updateSurfaceParticles()
 {
-#if 1
 	mSurfaceParticlesCount = 0;
 	auto& particles = mFluid->getPositions();
 	auto& densities = mFluid->getDensities();
@@ -370,29 +370,83 @@ void MarchingCubes::updateSurfaceParticles()
 #ifdef DBG
 	saveParticlesToVTK("/tmp/" + mSimName + "ParticleCurvature" + mFrameNumber + ".vtk", particles, mCurvature);
 #endif
+	auto samplePoints = [](float radius)
+	{
+		const size_t numSamples = 100;
+		std::vector<Eigen::Vector3d> samples;
+		samples.reserve(numSamples);
+		for(size_t i = 0; i < numSamples; i++)
+		{
+			Eigen::Vector3d sample(radius, 0, 0);
+			Eigen::AngleAxisd transform(Eigen::Quaterniond::UnitRandom());
+			sample = transform * sample;
+			samples.push_back(sample);
+		}
+		return samples;
+	};
 
-	if(mColorFieldSurfaceFactor > 0.95)
+#ifdef DBG
+	saveParticlesToVTK("/tmp/"  + string("RandomSphereSampling") + ".vtk", samplePoints(1));
+#endif
+
+	if(mColorFieldSurfaceFactor < 0.05)
 	{
 		mSurfaceParticlesCount = mFluid->size();
 		return;
 	}
 	
 	
-	vector<Real> colorField;
+	vector<Real> colorField(particles.size(), 0);
+	Real r1 = mFluid->getSmoothingLength();
+	Real r2 = r1 / 2;
+	const auto samples = samplePoints(r1);
 	#pragma omp parallel for schedule(static)
 	for(size_t i = 0; i < particles.size(); i++)
 	{
-		Real cf = 0;
+		auto leftSamples = samples;
 		for(size_t j : neighbors[i][0])
-			cf += (learnSPH::kernel::kernelFunction(particles[i], particles[j], mFluid->getSmoothingLength()) / densities[j]);
-		cf *= mFluid->getMass();
-		colorField.push_back(cf);
+		{
+			for(int currentSample = leftSamples.size() - 1; currentSample >= 0; currentSample--)
+			{
+				if((particles[i] + samples[currentSample] - particles[j]).squaredNorm() < r2 * r2)
+				{
+					//remove samples from sample
+					auto tmp = leftSamples.back();
+					leftSamples.back() = leftSamples[currentSample];
+					leftSamples[currentSample] = tmp;
+					leftSamples.pop_back();
+				}
+			}
+		}
+		colorField[i] = static_cast<Real>(leftSamples.size()) / samples.size();
 	}
+	//smooth out color field
+	auto smoothedColorField = colorField;
+	#pragma omp parallel for schedule(static)
+	for(size_t i = 0; i < particles.size(); i++)
+	{
+		Real totalWeights = learnSPH::kernel::kernelFunction(particles[i], particles[i], r1);
+		smoothedColorField[i] = totalWeights * colorField[i];
+		for(size_t j : neighbors[i][0])
+		{
+			auto weight = learnSPH::kernel::kernelFunction(particles[i], particles[j], r1);
+			smoothedColorField[i] += weight * colorField[j];
+			totalWeights += weight;
+		}
+		smoothedColorField[i] /= totalWeights;
+	}
+	colorField.swap(smoothedColorField);
+#ifdef DBG
+	saveParticlesToVTK("/tmp/" + mSimName +
+						"MarchingCubesColorField_" + mFrameNumber + ".vtk",
+					   particles, colorField);
+
+#endif
 	
 	//relocate all surface particles at the beginning of the array
 	for(size_t i = 0; i < particles.size(); i++)
 	{
-		if(colorField[i] < mColorFieldSurfaceFactor)
+		if(colorField[i] > mColorFieldSurfaceFactor)
 		{
 			particles[i].swap(particles[mSurfaceParticlesCount]);
 			auto tmp = densities[i];
@@ -405,7 +459,11 @@ void MarchingCubes::updateSurfaceParticles()
 		} 
 	}
 	mCurvature.resize(mSurfaceParticlesCount);
-#else
-	mSurfaceParticlesCount = mFluid->size();
+#ifdef DBG
+	std::vector<Eigen::Vector3d> surfaceParticles(particles.begin(), particles.begin() + mSurfaceParticlesCount);
+	saveParticlesToVTK("/tmp/" + mSimName +
+						"MarchingCubesSPHSurfacePrticles_" + mFrameNumber + ".vtk",
+					   surfaceParticles);
+
 #endif
 }

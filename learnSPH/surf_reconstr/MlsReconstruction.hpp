@@ -112,6 +112,12 @@ private:
 #endif
 		auto computeClusters = [this](const std::unordered_map<size_t, size_t>& intersectionCells)
 		{
+
+#ifdef DBG
+			std::vector<Vector3R> intPts;
+			std::vector<Real> maxFluidPartFactor;
+			std::vector<Real> curvaturePts;
+#endif
 #ifdef MLSV2
 			std::unordered_set<size_t> keys;
 			keys.rehash(intersectionCells.size());
@@ -142,7 +148,7 @@ private:
 				assert(res);
 
 				auto c = BaseClass::cell(key);
-				float levelSetFactor = std::min(1/std::fabs(curvature), BaseClass::mFluid->getDiameter() * mCurvatureParticles) /
+				float levelSetFactor = std::min(1.f/std::fabs(curvature), BaseClass::mFluid->getDiameter() * mCurvatureParticles) /
 														  (BaseClass::mFluid->getDiameter() * mCurvatureParticles);
 				levelSetFactor *= levelSetFactor;
 				assert(levelSetFactor >= 0 && levelSetFactor <= 1);
@@ -163,21 +169,45 @@ private:
 #pragma omp critical(UpdateClusters)
 {
 				clusters.push_back(std::move(cluster));
+#ifdef DBG
+				intPts.push_back(BaseClass::cellCoord(BaseClass::cell(key)));
+				maxFluidPartFactor.push_back(levelSetFactor);
+				curvaturePts.push_back(curvature);
+#endif
 }
 			}
 #ifdef MLSV2
 			assert(keys.empty() && "keys not empty");
 #endif
+#ifdef DBG
+			learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsMaxSamplesFactor_" + BaseClass::mFrameNumber + ".vtk",
+										 intPts, maxFluidPartFactor);
+			learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsIntersectionCellsSCurvature_" + BaseClass::mFrameNumber + ".vtk",
+										 intPts, curvaturePts);
+
+#endif
 			return clusters;
 		};
 
+#ifdef DBG
+		std::vector<Real> mlsIntersectionCellsSdfBefore;
+		std::vector<Real> mlsIntersectionCellsSdfAfter;
+
+#endif
 
 		//compute clusters from intersection cells
 		clusters = computeClusters(intersectionCells);
-
+#ifdef DBG
+		int clusterCnt = 0;
+		int printEveryCluster = clusters.size() / 100;
+#endif
 		//compute mls surface within cluster
 		for(const auto& cluster : clusters)
 		{
+#ifdef DBG
+			std::vector<Vector3R> clusterPts;
+
+#endif
 			auto solution = getMlsSurface(cluster.front(), cluster);
 			//smooth all cluster points within the generated surface
 			for(const auto& item : cluster)
@@ -193,7 +223,24 @@ private:
 					newLevelSet.at(itemI) += correctSdf(solution, BaseClass::cellCoord(item));
 					cellsAppearence.at(itemI) += 1;
 				}
+#ifdef DBG
+				clusterPts.push_back(BaseClass::cellCoord(item));
+
+#endif
 			}
+#ifdef DBG
+			if((clusterCnt % printEveryCluster) == 0)
+			{
+				std::vector<Real> ids(clusterPts.size(), -1);
+				ids[0] = 1;
+				learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsCluster" + BaseClass::mFrameNumber
+											 + "_" + to_string(clusterCnt) + ".vtk",
+											 clusterPts, ids);
+
+			}
+			clusterCnt++;
+#endif
+
 		}
 		assert(cellsAppearence.size() == intersectionCells.size());
 		for(const auto& item : cellsAppearence)
@@ -211,10 +258,22 @@ private:
 			//compute new level set value as weighted sum of old oone and new one
 			newLevelSet.at(item.first) /= item.second;
 			newLevelSet.at(item.first) = newLevelSet.at(item.first) * levelSetFactor+ mLevelSet.at(item.first) * (1 - levelSetFactor);
+
+#ifdef DBG
+			mlsIntersectionCellsSdfBefore.push_back(mLevelSet.at(item.first));
+			mlsIntersectionCellsSdfAfter.push_back(newLevelSet.at(item.first));
+#endif
 		}
 #ifdef DBG
 		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsSdfIntersectionVertices+SmoothingFactors_" + BaseClass::mFrameNumber + ".vtk",
 									 intersectionCellsPts, intersCellsSmoothingFactor);
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsIntersectionVellsSdfBefore_" + BaseClass::mFrameNumber + ".vtk",
+									 intersectionCellsPts, mlsIntersectionCellsSdfBefore);
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsIntersectionVellsSdfAfter_" + BaseClass::mFrameNumber + ".vtk",
+									 intersectionCellsPts, mlsIntersectionCellsSdfAfter);
+
+
+
 #endif
 		mLevelSet.swap(newLevelSet);
 	}
