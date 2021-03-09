@@ -35,8 +35,8 @@ int main(int argc, char** argv)
 	mcb.setObject(&sphr);
 	mcb.getTriangleMesh(triangle_mesh);
 
-	vector<array<int, 3>> triangles;
-	for(int i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
+	vector<array<size_t, 3>> triangles;
+	for(size_t i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
 
 	std::string filename = "res/marching_cube_sphere_mesh.vtk";
 	learnSPH::saveTriMeshToVTK(filename, triangle_mesh, triangles);
@@ -46,7 +46,7 @@ int main(int argc, char** argv)
 	mcb.getTriangleMesh(triangle_mesh);
 
 	triangles.clear();
-	for(int i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
+	for(size_t i = 0; i < triangle_mesh.size(); i += 3) triangles.push_back({i, i + 1, i + 2});
 
 	filename = "res/marching_cube_thorus_mesh.vtk";
 	learnSPH::saveTriMeshToVTK(filename, triangle_mesh, triangles);

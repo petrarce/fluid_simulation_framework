@@ -1,12 +1,16 @@
-#pragma once
+﻿#pragma once
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
+#include <mutex>
 
 #include <Eigen/Dense>
 
 #include "SurfaceReconstructor.hpp"
 #include <learnSPH/core/storage.h>
+
+const size_t InvPrt = static_cast<size_t>(-1);
 
 namespace Eigen
 {
@@ -24,11 +28,14 @@ protected:
 	size_t mSurfaceParticlesCount {0};
 	Real mColorFieldSurfaceFactor {0.8};
 	float mInitialValue {-0.5};
-	std::unordered_map<size_t/*index*/, size_t/*number of particles in the neighbourhood*/> mSurfaceCells;
+	std::unordered_map<size_t/*index*/, size_t/*number of particles in the neighbourhood*/> mDataToCellIndex;
+	std::unordered_map<size_t/*index*/, size_t/*number of particles in the neighbourhood*/> mCellToDataIndex;
+	std::vector<Real> mMcVertexCurvature;
+	std::vector<Real> mMcVertexSdf;
+	std::vector<Real> mCurvature;
+	std::vector<size_t> mMcVertexSphParticles;
 	int mPartPerSupportArea {0};
 	string mFrameNumber {"UNDEFINED"};
-	vector<Real> mCurvature;
-	std::unordered_map<size_t, Real> mSurfaceCellsCurvature;
 	std::string mSimName;
 
 
@@ -40,7 +47,17 @@ public:
 		mDimentions(other.mDimentions),
 		mResolution(other.mResolution),
 		mColorFieldSurfaceFactor(other.mColorFieldSurfaceFactor),
-		mInitialValue(other.mInitialValue)
+		mInitialValue(other.mInitialValue),
+		mDataToCellIndex(other.mDataToCellIndex),
+		mCellToDataIndex(other.mCellToDataIndex),
+		mMcVertexCurvature(other.mMcVertexCurvature),
+		mMcVertexSdf(other.mMcVertexSdf),
+		mCurvature(other.mCurvature),
+		mMcVertexSphParticles(other.mMcVertexSphParticles),
+		mPartPerSupportArea(other.mPartPerSupportArea),
+		mFrameNumber(other.mFrameNumber),
+		mSimName(other.mSimName)
+
 	{
 	}
 	MarchingCubes& operator=(const MarchingCubes&) = delete;
@@ -54,19 +71,109 @@ public:
 	std::vector<Eigen::Vector3d> generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid) override;
 	void setColorFieldFactor(Real factor) { mColorFieldSurfaceFactor = factor; }
 	void setSimName(const std::string& name) { mSimName = name; }
+	virtual void clearBuffers()
+	{
+		mMcVertexCurvature.clear(); mMcVertexCurvature.shrink_to_fit();
+		mMcVertexSdf.clear(); mMcVertexSdf.shrink_to_fit();
+		mMcVertexSphParticles.clear(); mMcVertexSphParticles.shrink_to_fit();
+	}
 	
 protected:
+	class CellIndex{
+	private:
+		const size_t mIndex;
+		const MarchingCubes& mMarchingCubes;
+		mutable bool mDataIndexRequested {false};
+		mutable size_t mDataIndex {InvPrt};
+		mutable std::mutex mLock;
+	public:
+		CellIndex(size_t index, const MarchingCubes& mc):
+			mIndex(index),
+			mMarchingCubes(mc)
+		{}
+		size_t operator*() const
+		{
+			if(!mDataIndexRequested)
+			{
+				std::lock_guard<std::mutex> lock(mLock);
+				auto dataIndex = mMarchingCubes.mCellToDataIndex.find(mIndex);
+				if(dataIndex != mMarchingCubes.mCellToDataIndex.end())
+					mDataIndex = dataIndex->second;
+				mDataIndexRequested = true;
+			}
+			return mDataIndex;
+		}
+		size_t operator()() const
+		{
+			return mIndex;
+		}
+	};
+	class DataIndex{
+		private:
+			size_t mIndex;
+			const MarchingCubes& mMarchingCubes;
+			mutable size_t mCellIndexRequested {false};
+			mutable size_t mCellIndex {InvPrt};
+			mutable std::mutex mLock;
+
+		public:
+			DataIndex(size_t index, const MarchingCubes& mc):
+				mIndex(index),
+				mMarchingCubes(mc)
+			{}
+
+			size_t operator*() const
+			{
+				if(!mCellIndexRequested)
+				{
+					std::lock_guard<std::mutex> lock(mLock);
+					auto cellIndex = mMarchingCubes.mDataToCellIndex.find(mIndex);
+					if(cellIndex != mMarchingCubes.mDataToCellIndex.end())
+						mCellIndex = cellIndex->second;
+					mCellIndexRequested = true;
+				}
+				return mCellIndex;
+			}
+
+			size_t operator()() const
+			{
+				return mIndex;
+			}
+	};
+
+	friend class CellIndex;
+	friend class DataIndex;
+
 	void setFluidSystem(std::shared_ptr<learnSPH::FluidSystem> fluid) { mFluid = fluid; }
 	virtual void updateGrid() = 0;
 	virtual void updateLevelSet() = 0;
-	virtual void configureHashTables();
-	virtual bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const = 0;
+	void configureHashTables();
+	bool getSDFvalue(const CellIndex& cI, float& sdf) const
+	{
+		size_t dataIndex = *cI;
+		if(dataIndex == static_cast<size_t>(-1))
+			return false;
+		assert(dataIndex < mMcVertexSdf.size());
+		sdf = mMcVertexSdf[dataIndex];
+		return true;
+	}
+	float getSDFvalue(const DataIndex& dI, float& sdf) const
+	{
+		assert(dI() < mMcVertexSdf.size());
+		return mMcVertexSdf[dI()];
+	}
+
 	void updateSurfaceParticles();
 
 	inline bool getSDFvalue(const Eigen::Vector3li& c, float& sdf) const
 	{
-		return getSDFvalue(c(0), c(1), c(2), sdf);
+		return getSDFvalue(CellIndex(cellIndex(c), *this), sdf);
 	}
+	inline bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const
+	{
+		return getSDFvalue(Eigen::Vector3li(i, j, k), sdf);
+	}
+
 	inline bool getSDFvalue(size_t cellInd, float& sdf) const
 	{
 		return getSDFvalue(cell(cellInd), sdf);
@@ -76,8 +183,8 @@ protected:
 	///Calculate cell indeces of neighbour cells
 	std::vector<Eigen::Vector3li> getNeighbourCells(const Eigen::Vector3d& position, float radius, bool existing = true) const;
 	std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> computeIntersectionCells() const;
-	std::unordered_map<size_t, size_t> computeIntersectionCellVertices(int neighborsCnt = 0) const;
-	std::unordered_map<size_t, size_t> computeIntersectionVertices(int neighbors = 0) const;
+	std::unordered_set<size_t> computeIntersectionCellVertices(int neighborsCnt = 0) const;
+	std::unordered_set<size_t> computeIntersectionVertices(int neighbors = 0) const;
 	///linear interpolation between two vectors given 2 float values and target value
 	inline Eigen::Vector3d lerp(const Eigen::Vector3d& a,
 		const Eigen::Vector3d& b, 
@@ -132,14 +239,12 @@ protected:
 				ind(2);
 	}
 
-	inline bool getCurvature(size_t index, Real& curvature) const
+	inline bool getCurvature(const CellIndex& cI, Real& curvature) const
 	{
-		auto cellCount = mSurfaceCells.find(index);
-		if(cellCount == mSurfaceCells.end())
+		auto dI = *cI;
+		if(dI == InvPrt)
 			return false;
-		auto nonNormalizedCurvature = mSurfaceCellsCurvature.find(index);
-		assert(nonNormalizedCurvature != mSurfaceCellsCurvature.end());
-		curvature = nonNormalizedCurvature->second / cellCount->second;
+		curvature = mMcVertexCurvature[dI];
 		return true;
 	}
 	
@@ -160,24 +265,19 @@ public:
 	{
 	}
 	explicit NaiveMarchingCubes(const NaiveMarchingCubes& other):
-		MarchingCubes(other),
-		mLevelSetFunction(other.mLevelSetFunction)
+		MarchingCubes(other)
 	{}
 
 protected:
 	void updateGrid() override;
 	void updateLevelSet() override;
-	void configureHashTables() override;
 	
-	bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const override
-	{
-		auto val = mLevelSetFunction.find(cellIndex(Eigen::Vector3li(i, j, k)));
-		if(val  == mLevelSetFunction.end())
-			return false;
-		sdf = val->second;
-		return true;
-	}
-
-
-	std::unordered_map<int, float> mLevelSetFunction;
+//	bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const override
+//	{
+//		auto val = mLevelSetFunction.find(cellIndex(Eigen::Vector3li(i, j, k)));
+//		if(val  == mLevelSetFunction.end())
+//			return false;
+//		sdf = val->second;
+//		return true;
+//	}
 };

@@ -27,20 +27,15 @@ public:
 private:
 	void updateLevelSet() override;
 	void updateGrid() override;
-	void configureHashTables() override;
 	void updateFFunction();
 	void updateGradientSums();
 	void updateJakobians();
 
-	bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const override;
-	struct CellGradient {
-		Matrix3d jakobian;
-		Real fVal;
-		Vector3R gradSum;
-	};
 	Real mTLow;
 	Real mTHigh;
-	std::unordered_map<int, CellGradient> mCellGradComponents;
+	std::vector<Matrix3d> mJacobians;
+	std::vector<Real> mFVal;
+	std::vector<Vector3R> mGradSums;
 	
 
 };

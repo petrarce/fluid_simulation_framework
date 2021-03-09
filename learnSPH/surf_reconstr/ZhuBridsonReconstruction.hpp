@@ -34,15 +34,19 @@ protected:
 
 	void updateGrid() override;
 	void updateLevelSet() override;
-	void configureHashTables() override;
-	bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const override;
+	void clearBuffers() override
+	{
+		denominators.clear(); denominators.shrink_to_fit();
+		dAvg.clear(); dAvg.shrink_to_fit();
+		xAvg.clear(); xAvg.shrink_to_fit();
+	}
 
 	Real mRadii;
-	std::unordered_map<int, Real> denominators;
-	std::unordered_map<int, Real> dAvg;
-	std::unordered_map<int, Vector3R> xAvg;
+	std::vector<Real> denominators;
+	std::vector<Real> dAvg;
+	std::vector<Vector3R> xAvg;
 
-private:
+protected:
 	void updateDenominators();
 	void updateAvgs();
 

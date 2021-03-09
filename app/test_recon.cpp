@@ -16,7 +16,7 @@
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
 #include <learnSPH/surf_reconstr/BlurredReconstruction.hpp>
 #include <learnSPH/surf_reconstr/MlsReconstruction.hpp>
-#include <learnSPH/surf_reconstr/MinDistReconstruction.hpp>
+//#include <learnSPH/surf_reconstr/MinDistReconstruction.hpp>
 #include <learnSPH/core/storage.h>
 
 #include <learnSPH/core/PerfStats.hpp>
@@ -491,13 +491,13 @@ int main(int argc, char** argv)
 
 				break;
 
-			case ReconstructionMethods::MinDist:
-				mcbNew = std::make_unique<MinDistReconstruction>(nullptr,
-												   programInput.lowerCorner,
-												   programInput.upperCorner,
-												   Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
-												   programInput.supportRad);
-				break;
+//			case ReconstructionMethods::MinDist:
+//				mcbNew = std::make_unique<MinDistReconstruction>(nullptr,
+//												   programInput.lowerCorner,
+//												   programInput.upperCorner,
+//												   Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
+//												   programInput.supportRad);
+//				break;
 			default:
 				throw std::runtime_error("unknown simulation type...");
 			}
@@ -532,6 +532,7 @@ int main(int argc, char** argv)
 		mcbNew->setColorFieldFactor(programInput.colorFieldFactor);
 		mcbNew->setFrameNumber(integerMatch.str());
         vector<Vector3R> new_triangle_mesh((mcbNew->generateMesh(fluidSystem)));
+		mcbNew->clearBuffers();
 		assert((new_triangle_mesh.size() % 3) == 0);
 		//generate and save triangular mesh
 		vector<array<size_t, 3>> triangles;

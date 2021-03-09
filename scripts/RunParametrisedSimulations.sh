@@ -19,6 +19,7 @@ mls_curvature_particles="20"
 mls_overlap_factor="0.5"
 app="_empty_command_"
 num_threads=8
+parallel_options=""
 
 
 function printHelp()
@@ -43,6 +44,7 @@ function printHelp()
 	echo '-cp | --mls-curvature-particles'
 	echo '--app'
 	echo '-nt|--num-threads'
+	echo '--parallel-opts'
 }
 
 
@@ -53,6 +55,14 @@ while [ $# -gt 0 ]; do
 		printHelp
 		exit 1
 		;;
+
+		--parallel-opts)
+		if [ $# -lt 2 ]; then exit; fi
+		parallel_options=${2}
+		shift
+		shift
+		;;
+
 
 		-d|--domain)
 		if [ $# -lt 2 ]; then exit; fi
@@ -263,7 +273,7 @@ for mt in ${method}; do
 			lsfco=""
 		fi
 		
-		OMP_NUM_THREADS=${num_threads} OMP_NESTED=TRUE parallel -j ${num_threads}  \
+		OMP_NUM_THREADS=${num_threads} OMP_NESTED=TRUE parallel -j ${num_threads} ${parallel_options} \
 				${app} \
 					--domain {1} \
 					--init-val {2} \

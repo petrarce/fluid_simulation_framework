@@ -47,32 +47,26 @@ public:
 		mBlurIterations(other.mBlurIterations)
 	{}
 private:
-	void configureHashTables() override
-	{
-		BaseClass::configureHashTables();
-		mLevelSetValues.max_load_factor(BaseClass::mSurfaceCells.max_load_factor());
-		mLevelSetValues.rehash(BaseClass::mSurfaceCells.bucket_count());
-	}
 	
 	void updateGrid() override
 	{
 		BaseClass::updateGrid();
-		mLevelSetValues.clear();
 	}
 	
 	void updateLevelSet() override
 	{
 		BaseClass::updateLevelSet();
-		saveLevelSetValues();
 #ifdef DBG
 		std::vector<Vector3R> points;
 		std::vector<Real> sdf;
 		std::vector<Vector3R> sdfGradients;
-		for(const auto& item : BaseClass::mSurfaceCells)
+		for(const auto& item : BaseClass::mCellToDataIndex)
 		{
-			points.push_back(BaseClass::cellCoord(BaseClass::cell(item.first)));
-			sdf.push_back(mLevelSetValues[item.first]);
-			sdfGradients.push_back(getSDFGrad(BaseClass::cell(item.first)));
+			typename BaseClass::CellIndex cI(item.first, *this);
+			assert(*cI != InvPrt);
+			points.push_back(BaseClass::cellCoord(BaseClass::cell(cI())));
+			sdf.push_back(MarchingCubes::mMcVertexSdf[*cI]);
+			sdfGradients.push_back(getSDFGrad(BaseClass::cell(cI())));
 		}
 		learnSPH::saveParticlesToVTK("/tmp/SdfBeforeBlur" + BaseClass::mFrameNumber + ".vtk", points, sdf, sdfGradients);
 #endif
@@ -80,69 +74,49 @@ private:
 			blurLevelSet(mKernelSize, mOffset, mKernelDepth);
 #ifdef DBG
 		sdf.clear();
-		for(const auto& item : BaseClass::mSurfaceCells)
-			sdf.push_back(mLevelSetValues[item.first]);
+		for(const auto& item : BaseClass::mCellToDataIndex)
+		{
+			typename BaseClass::CellIndex cI(item.first, *this);
+			assert(*cI != InvPrt);
+			sdf.push_back(BaseClass::mMcVertexSdf[*cI]);
+		}
 		learnSPH::saveParticlesToVTK("/tmp/SdfAfterBlur" + BaseClass::mFrameNumber + ".vtk", points, sdf);
 #endif
-	}
-	bool getSDFvalue(size_t i, size_t j, size_t k, float& sdf) const override
-	{
-		auto cI = BaseClass::cellIndex(Eigen::Vector3li(i,j,k));
-		auto sdfItem = mLevelSetValues.find(cI);
-		if(sdfItem == mLevelSetValues.end())
-			return false;
-		
-		sdf = sdfItem->second;
-		return true;
-	}
-	
-	void saveLevelSetValues()
-	{
-		for(const auto& item : BaseClass::mSurfaceCells)
-		{
-			auto c = BaseClass::cell(item.first);
-			float sdfVal;
-			bool res = BaseClass::getSDFvalue(c(0), c(1), c(2), sdfVal);
-			assert(res);
-			mLevelSetValues[item.first] = sdfVal;
-		}
 	}
 	
 	void blurLevelSet(int kernelSize, int offset, Real depth)
 	{
-		auto newLevelSet = mLevelSetValues;
+		auto newLevelSet = BaseClass::mMcVertexSdf;
 		Real maxRadii = BaseClass::mResolution(0) * offset * kernelSize * 1.1;
-		typedef decltype(BaseClass::mSurfaceCells) CellsContainer;
-		const CellsContainer* cellVertices = &this->mSurfaceCells;
 #ifdef DBG
 		static std::mt19937 generator(1);
 		static std::uniform_real_distribution<float> distr {0, 1};
 		static auto dice = std::bind(distr, generator);
-		float probability = std::min(1., 1000. / BaseClass::mSurfaceCells.size());
+		float probability = std::min(1., 1000. / MarchingCubes::mCellToDataIndex.size());
 		int cellsProcessed = 0;
 		std::vector<Real> smoothFactors;
 		std::vector<Real> curvatures;
 		std::vector<Vector3R> points;
 #endif
-		if(mBlurrSurfaceCellsOnly)
-			cellVertices = new CellsContainer(BaseClass::computeIntersectionCellVertices(mKernelSize));
-		for(const auto& cellItem : *cellVertices)
+#pragma omp parallel for schedule(static)
+		for(size_t i = 0; i < MarchingCubes::mMcVertexSdf.size(); i++)
 		{
 #ifdef DBG
 			std::vector<Vector3R> nbCoords;
 #endif
-			auto cI = cellItem.first;
-			auto c =BaseClass::cell(cI);
-			auto cC = BaseClass::cellCoord(c);
+			typename MarchingCubes::DataIndex dI(i, *this);
+			assert(*dI != InvPrt);
+			auto c = MarchingCubes::cell(*dI);
+			auto cC = MarchingCubes::cellCoord(MarchingCubes::cell(*dI));
 			Real dfValue = 0;
-			float cellSdf; bool res = MarchingCubes::getSDFvalue(c, cellSdf);
+			float cellSdf; bool res = MarchingCubes::getSDFvalue(MarchingCubes::CellIndex(*dI, *this), cellSdf);
 			assert(res);
 			auto nbs = getNeighbourCells(c, kernelSize, offset, depth);
 			Real wSum = 0;
 			for(const auto& nb : nbs)
 			{
 				float sdfVal = 0;
-				if(!getSDFvalue(nb(0), nb(1), nb(2), sdfVal))
+				if(!MarchingCubes::getSDFvalue(nb(0), nb(1), nb(2), sdfVal))
 					sdfVal = cellSdf;
 				wSum += 1.;
 				dfValue += sdfVal;
@@ -153,9 +127,9 @@ private:
 			}
 
 			dfValue /= (wSum + 1e-6);
-			Real smoothFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(cellItem.second) / BaseClass::mPartPerSupportArea);
+			Real smoothFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(MarchingCubes::mMcVertexSphParticles[dI()]) / BaseClass::mPartPerSupportArea);
 			smoothFactor = -1 * std::pow(1 - smoothFactor*smoothFactor, 10.) + 1;
-			newLevelSet[cI] = mLevelSetValues[cI] * (1 - smoothFactor) + smoothFactor * dfValue;
+			newLevelSet[dI()] = BaseClass::mMcVertexSdf[dI()] * (1 - smoothFactor) + smoothFactor * dfValue;
 #ifdef DBG
 			if(dice() < probability)
 			{
@@ -172,9 +146,7 @@ private:
 			curvatures.push_back(getCurvature(c));
 #endif
 		}
-		mLevelSetValues.swap(newLevelSet);
-		if(mBlurrSurfaceCellsOnly)
-			delete cellVertices;
+		MarchingCubes::mMcVertexSdf.swap(newLevelSet);
 #ifdef DBG
 		learnSPH::saveParticlesToVTK("/tmp/ParticleCountSmoothFactor_" + BaseClass::mFrameNumber + ".vtk", points, smoothFactors);
 		learnSPH::saveParticlesToVTK("/tmp/Curvature" + BaseClass::mFrameNumber + ".vtk", points, curvatures);
@@ -205,10 +177,10 @@ private:
 	inline bool getSDFderivX(const Vector3li& c, float& deriv) const
 	{
 		float sdf1;
-		if(!getSDFvalue(c(0), c(1), c(2), sdf1))
+		if(!MarchingCubes::getSDFvalue(c(0), c(1), c(2), sdf1))
 			return false;
 		float sdf2;
-		if(!getSDFvalue(c(0) - 1, c(1), c(2), sdf2))
+		if(!MarchingCubes::getSDFvalue(c(0) - 1, c(1), c(2), sdf2))
 			sdf2 = sdf1;
 
 		deriv = sdf1 - sdf2 / BaseClass::mResolution(0);
@@ -218,10 +190,10 @@ private:
 	inline bool getSDFderivY(const Vector3li& c, float& deriv) const
 	{
 		float sdf1;
-		if(!getSDFvalue(c(0), c(1), c(2), sdf1))
+		if(!MarchingCubes::getSDFvalue(c(0), c(1), c(2), sdf1))
 			return false;
 		float sdf2;
-		if(!getSDFvalue(c(0), c(1) - 1, c(2), sdf2))
+		if(!MarchingCubes::getSDFvalue(c(0), c(1) - 1, c(2), sdf2))
 			sdf2 = sdf1;
 
 		deriv = sdf1 - sdf2 / BaseClass::mResolution(1);
@@ -231,10 +203,10 @@ private:
 	inline bool getSDFderivZ(const Vector3li& c, float& deriv) const
 	{
 		float sdf1;
-		if(!getSDFvalue(c(0), c(1), c(2), sdf1))
+		if(!MarchingCubes::getSDFvalue(c(0), c(1), c(2), sdf1))
 			return false;
 		float sdf2;
-		if(!getSDFvalue(c(0), c(1), c(2) - 1, sdf2))
+		if(!MarchingCubes::getSDFvalue(c(0), c(1), c(2) - 1, sdf2))
 			sdf2 = sdf1;
 
 		deriv = sdf1 - sdf2 / BaseClass::mResolution(2);
@@ -341,7 +313,6 @@ private:
 	size_t	mKernelSize			{ 1 };
 	size_t	mOffset				{ 1 };
 	float	mKernelDepth		{ 0.5 };
-	std::unordered_map<size_t, Real> mLevelSetValues;
 	bool	mBlurrSurfaceCellsOnly {false};
 	size_t mBlurIterations {1};
 };

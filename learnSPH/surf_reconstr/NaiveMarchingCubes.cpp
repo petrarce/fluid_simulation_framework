@@ -1,4 +1,4 @@
-#include <memory>
+﻿#include <memory>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <learnSPH/core/storage.h>
@@ -8,6 +8,7 @@
 #include <learnSPH/simulation/solver.h>
 #include "look_up_tables.hpp"
 #include "NaiveMarchingCubes.hpp"
+#include <unordered_set>
 
 #if 0
 #ifndef DBG
@@ -34,32 +35,31 @@ MarchingCubes::MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 void MarchingCubes::configureHashTables()
 {
 	if(mSurfaceParticlesCount)
-		mSurfaceCells.max_load_factor(2);
-	mSurfaceCells.rehash(mFluid->size() * 2);
-}
-
-void NaiveMarchingCubes::configureHashTables()
-{
-	MarchingCubes::configureHashTables();
-	mLevelSetFunction.max_load_factor(mSurfaceCells.max_load_factor());
-	mLevelSetFunction.rehash(mSurfaceCells.bucket_count());
+		mDataToCellIndex.max_load_factor(2);
+	mDataToCellIndex.rehash(mSurfaceParticlesCount);
+	mCellToDataIndex.rehash(mSurfaceParticlesCount);
 }
 
 std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid)
 {
 	setFluidSystem(fluid);
+
+	std::cout << "\rstage 1/5"; cout.flush();
 	globalPerfStats.startTimer("updateSurfaceParticles");
 	updateSurfaceParticles();
 	globalPerfStats.stopTimer("updateSurfaceParticles");
 
+	std::cout << "\rstage 2/5"; cout.flush();
 	globalPerfStats.startTimer("configureHashTables");
 	configureHashTables();
 	globalPerfStats.stopTimer("configureHashTables");
 
+	std::cout << "\rstage 3/5"; cout.flush();
 	globalPerfStats.startTimer("updateGrid");
 	updateGrid();
 	globalPerfStats.stopTimer("updateGrid");
 
+	std::cout << "\rstage 4/5"; cout.flush();
 	globalPerfStats.startTimer("updateLevelSet");
 	updateLevelSet();
 	globalPerfStats.stopTimer("updateLevelSet");
@@ -68,16 +68,17 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 	vector<Vector3R> vertices;
 	vector<Real> cellCurvature;
 	vector<Real> particleConcentration;
-	for(const auto& vert : mSurfaceCells)
+	for(const auto& vert : mCellToDataIndex)
 	{
-		auto cI = cell(vert.first);
-		auto cC = cellCoord(cI);
+		auto c = cell(vert.first);
+		CellIndex cI(cellIndex(c), *this);
+		auto cC = cellCoord(c);
 		float sdfV; 
-		bool res = getSDFvalue(cI(0), cI(1), cI(2), sdfV);
+		bool res = getSDFvalue(c(0), c(1), c(2), sdfV);
 		assert(res);
 		vertices.push_back(cC);
 		sdf.push_back(sdfV);
-		Real curvature; getCurvature(cellIndex(cI), curvature);
+		Real curvature; getCurvature(cI, curvature);
 		cellCurvature.push_back(curvature);
 		particleConcentration.push_back(static_cast<Real>(vert.second) / mPartPerSupportArea);
 	}
@@ -91,24 +92,32 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 	vector<Real> intersectionCellCurvature;
 	for(const auto& c : intersectionCellVertices)
 	{
-		intersectionCellVerticePoints.push_back(cellCoord(cell(c.first)));
-		Real curvature; getCurvature(c.first, curvature);
+		CellIndex cI(c, *this);
+		assert(*cI != InvPrt);
+		intersectionCellVerticePoints.push_back(cellCoord(cell(cI())));
+		Real curvature; getCurvature(cI, curvature);
 		intersectionCellCurvature.push_back(curvature);
 	}
 	saveParticlesToVTK("/tmp/" + mSimName + "IntersectionCellsCurvature_" + mFrameNumber + ".vtk", intersectionCellVerticePoints, intersectionCellCurvature);
 
 #endif
+	std::cout << "\rstage 5/5"; cout.flush();
 	globalPerfStats.startTimer("getTriangles");
 	auto mesh = getTriangles();
 	globalPerfStats.stopTimer("getTriangles");
+
+	//cleanup all buffers
 	return mesh;
 }
 	
 	
 void NaiveMarchingCubes::updateGrid()
 {
-	mSurfaceCells.clear();
-	mLevelSetFunction.clear();
+	mDataToCellIndex.clear();
+	mCellToDataIndex.clear();
+	mMcVertexCurvature.clear();
+	mMcVertexCurvature.reserve(mSurfaceParticlesCount);
+	mMcVertexSphParticles.reserve(mSurfaceParticlesCount);
 	mPartPerSupportArea = 8 * (mFluid->getSmoothingLength() * mFluid->getSmoothingLength() * mFluid->getSmoothingLength()) /
 							(mFluid->getDiameter() * mFluid->getDiameter() * mFluid->getDiameter());
 	const auto& particles = mFluid->getPositions();
@@ -117,31 +126,44 @@ void NaiveMarchingCubes::updateGrid()
 		auto nCells = getNeighbourCells(particles[i], mFluid->getCompactSupport(), false);
 		for(const auto& nc : nCells)
 		{
-			auto cI = cellIndex(nc);
-			if(mSurfaceCells.find(cI) == mSurfaceCells.end())
+			CellIndex cI(cellIndex(nc), *this);
+			if(*cI == InvPrt)
 			{
-				mSurfaceCells[cI] = 1;
-				mSurfaceCellsCurvature[cI] = mCurvature[i];
+				mCellToDataIndex[cI()] = mMcVertexSphParticles.size();
+				mDataToCellIndex[mMcVertexSphParticles.size()] = cI();
+				mMcVertexSphParticles.push_back(1);
+				mMcVertexCurvature.push_back(mCurvature[i]);
 			}
 			else
 			{
-				mSurfaceCells[cI]++;
-				mSurfaceCellsCurvature[cI] += mCurvature[i];
+				assert(*cI < mMcVertexCurvature.size()
+					   && mMcVertexCurvature.size() == mMcVertexCurvature.size());
+				mMcVertexSphParticles[*cI]++;
+				mMcVertexCurvature[*cI] += mCurvature[i];
 			}
 		}
 	}
+	assert(mDataToCellIndex.size() == mCellToDataIndex.size());
 	//no need in particle curvature any more. Free space
 	mCurvature.clear();
+	mCurvature.shrink_to_fit();
+	mMcVertexCurvature.shrink_to_fit();
+	mMcVertexSphParticles.shrink_to_fit();
+
 }
 
 void NaiveMarchingCubes::updateLevelSet()
 {
 	if(!mFluid)
 		throw std::runtime_error("fluid was not initialised");
+
+	mMcVertexSdf.clear();
+	mMcVertexSdf.resize(mDataToCellIndex.size(), mInitialValue);
 	
 	const vector<Vector3R>& positions = mFluid->getPositions();
 	const vector<Real>& densities = mFluid->getDensities();
 	
+#pragma omp parallel for schedule(static)
 	for(size_t i = 0; i < mFluid->size(); i++)
 	{
 		double fluidDensity = densities[i];
@@ -150,6 +172,8 @@ void NaiveMarchingCubes::updateLevelSet()
 				getNeighbourCells(particle, mFluid->getCompactSupport());
 		for(const auto& cell : neighbourCells)
 		{
+			CellIndex cI(cellIndex(cell), *this);
+			assert(*cI != static_cast<size_t>(-1));
 			float weight = learnSPH::kernel::kernelFunction(
 				particle, 
 				cellCoord(cell), 
@@ -157,9 +181,11 @@ void NaiveMarchingCubes::updateLevelSet()
 			);
 			float density = std::max(fluidDensity, mFluid->getRestDensity());
 			float total = mFluid->getMass() / density * weight;
-			if(mLevelSetFunction.find(cellIndex(cell)) == mLevelSetFunction.end())
-				mLevelSetFunction[cellIndex(cell)] = mInitialValue;
-			mLevelSetFunction[cellIndex(cell)] += total;
+#pragma omp critical(UpdateSDF)
+			{
+			mMcVertexSdf[*cI] += total;
+			}
+
 		}
 	}
 }
@@ -168,7 +194,7 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 {
 
 	vector<Eigen::Vector3d> triangleMesh;
-	triangleMesh.reserve(mSurfaceCells.size() * 3 * 3);
+	triangleMesh.reserve(mDataToCellIndex.size() * 3 * 3);
 
 	auto intersectionCells = computeIntersectionCells();
 
@@ -222,9 +248,9 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 	return triangleMesh;
 }
 
-std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionCellVertices(int neighborsCnt) const
+std::unordered_set<size_t> MarchingCubes::computeIntersectionCellVertices(int neighborsCnt) const
 {
-	std::unordered_map<size_t, size_t> intersectionCellVertices;
+	std::unordered_set<size_t> intersectionCellVertices;
 	auto intersectionCells = computeIntersectionCells();
 	intersectionCellVertices.reserve(intersectionCells.size());
 	for(const auto& iCell : intersectionCells)
@@ -240,13 +266,12 @@ std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionCellVertice
 					for(int k = -neighborsCnt; k <= neighborsCnt; k++)
 					{
 
-						size_t ncI = cellIndex(nc + Eigen::Vector3li(i, j, k));
-						if(intersectionCellVertices.find(ncI) != intersectionCellVertices.end())
+						CellIndex ncI(cellIndex(nc + Eigen::Vector3li(i, j, k)), *this);
+						if(intersectionCellVertices.find(ncI()) != intersectionCellVertices.end())
 							continue;
-						auto fluidCell = mSurfaceCells.find(ncI);
-						if(fluidCell == mSurfaceCells.end())
+						if(*ncI ==InvPrt)
 							continue;
-						intersectionCellVertices.insert(*fluidCell);
+						intersectionCellVertices.insert(ncI());
 					}
 				}
 			}
@@ -255,37 +280,35 @@ std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionCellVertice
 	return intersectionCellVertices;
 }
 
-std::unordered_map<size_t, size_t> MarchingCubes::computeIntersectionVertices(int neighbors) const
+std::unordered_set<size_t> MarchingCubes::computeIntersectionVertices(int neighbors) const
 {
-	auto allVertices = mSurfaceCells;
-	std::unordered_map<size_t, size_t> intersectionVertices;
-	for(auto vert : mSurfaceCells)
+	std::unordered_set<size_t> intersectionVertices;
+	for(auto vert : mCellToDataIndex)
 	{
-		float sdf; bool res = getSDFvalue(vert.first, sdf);
+		CellIndex cI(vert.first, *this);
+		float sdf; bool res = getSDFvalue(cI, sdf);
 		assert(res);
 		auto c = cell(vert.first);
 		for(int i = -1; i <= 1; i++)
 			for(int j = -1; j <= 1; j++)
 				for(int k = -1; k <= 1; k++)
 				{
-					size_t ncI = cellIndex(c + Eigen::Vector3li(i,j,k));
+					CellIndex ncI(cellIndex(c + Eigen::Vector3li(i,j,k)), *this);
 					float nbSdf; res = getSDFvalue(ncI, nbSdf);
 					if(!res)
 						continue;
 					if(nbSdf * sdf < 0)
 					{
-						intersectionVertices[vert.first] = vert.second;
-						intersectionVertices[ncI] = mSurfaceCells.at(ncI);
+						intersectionVertices.insert(ncI());
 						if(neighbors > 0)
 						{
 							for(int l = -neighbors; l <= neighbors; l++)
 								for(int m = -neighbors; m <= neighbors; m++)
 									for(int n = -neighbors; n <= neighbors; n++)
 									{
-										auto nbI = cellIndex(c + Eigen::Vector3li(l, m, n));
-										auto element = mSurfaceCells.find(nbI);
-										if(element != mSurfaceCells.end())
-											intersectionVertices.insert(*element);
+										CellIndex nbI(cellIndex(c + Eigen::Vector3li(l, m, n)), *this);
+										if(*ncI != static_cast<size_t>(-1))
+											intersectionVertices.insert(nbI());
 									}
 						}
 					}
@@ -315,7 +338,8 @@ std::vector<Eigen::Vector3li> MarchingCubes::getNeighbourCells(const Eigen::Vect
 				if(((i*i + j*j + k*k) * mResolution(0) * mResolution(0)) > radius * radius)
 					continue;
 				neighbourCell = Vector3li(baseCell(0) + i,baseCell(1) + j, baseCell(2) +  k);
-				if(existing && mSurfaceCells.find(cellIndex(neighbourCell)) == mSurfaceCells.end())
+				const CellIndex ncI(cellIndex(neighbourCell), *this);
+				if(existing && *ncI == InvPrt)
 					continue;
 				neighbours.push_back(neighbourCell);
 			}
@@ -328,8 +352,8 @@ std::vector<Eigen::Vector3li> MarchingCubes::getNeighbourCells(const Eigen::Vect
 std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> MarchingCubes::computeIntersectionCells() const
 {
 	std::vector<std::pair<size_t, std::array<std::array<int, 3>, 5>>> intersectionCells;
-	intersectionCells.reserve(mSurfaceCells.size());
-	for(const auto& c : mSurfaceCells)
+	intersectionCells.reserve(mCellToDataIndex.size());
+	for(const auto& c : mCellToDataIndex)
 	{
 		Vector3li cellInd = cell(c.first);
 		size_t i = cellInd(0);
