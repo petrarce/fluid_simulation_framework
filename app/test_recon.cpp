@@ -509,7 +509,7 @@ int main(int argc, char** argv)
 				throw std::runtime_error("unknown simulation type...");
 			}
 			mcbNew->setSimName(simtype);
-			simtype += "_domain-" + vm["domain"].as<string>() + vm["_tag"].as<string>();
+			simtype += "_domain-" + vm["domain"].as<string>() + vm["tag"].as<std::string>();
 		}
 		vector<Real> params;
 		vector<Vector3R> positions;
