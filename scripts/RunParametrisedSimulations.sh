@@ -14,7 +14,8 @@ blur_kernel_depth="0.5"
 blur_surface_cells_only="true"
 blur_iterations="1"
 cff="0"
-mls_max_samples="20"
+mls_max_samples="100"
+mls_samples="100"
 mls_curvature_particles="20"
 mls_overlap_factor="0.5"
 app="_empty_command_"
@@ -41,7 +42,8 @@ function printHelp()
 	echo '-bi|--blur-iterations'
 	echo '--cff'
 	echo '-st|--mls-similarity-threshold'
-	echo '-ms|--mls-max-samples'
+	echo '-ms|--mls-samples'
+	echo '-mms|--mls-max-samples'
 	echo '-cp | --mls-curvature-particles'
 	echo '--app'
 	echo '-nt|--num-threads'
@@ -57,6 +59,14 @@ while [ $# -gt 0 ]; do
 		printHelp
 		exit 1
 		;;
+
+		-ms|--mls-samples)
+		if [ $# -lt 2 ]; then exit; fi
+		mls_samples=${2}
+		shift
+		shift
+		;;
+
 
 		--tag)
 		if [ $# -lt 2 ]; then exit; fi
@@ -179,7 +189,7 @@ while [ $# -gt 0 ]; do
 		shift
 		;;
 
-		-ms|--mls-max-samples)
+		-mms|--mls-max-samples)
 		if [ $# -lt 2 ]; then exit; fi
 		mls_max_samples=${2}
 		shift
@@ -266,13 +276,15 @@ for mt in ${method}; do
 		bit="1"
 	fi
 	if [ ${mt} == "ZhuBridsonMls" ] || [ ${mt} == "NaiveMCMls" ]; then
-		ms=${mls_max_samples}
+		mms=${mls_max_samples}
 		cp=${mls_curvature_particles}
 		of=${mls_overlap_factor}
+		ms=${mls_samples}
 	else
-		ms="1"
+		mms="1"
 		cp="1"
 		of="1"
+		ms="1"
 	fi
 
 	for sfco in ${bsfco}; do
@@ -303,10 +315,11 @@ for mt in ${method}; do
 					--mls-curvature-particles {15}\
 					--mls-sample-overlap-factor {16}\
 					--tag {17}\
+					--mls-samples {18}\
 						::: ${domain} ::: ${initVal} ::: ${sim_name}\
 						::: ${sim_directory} ::: ${grid_resolution} ::: ${supportRad}\
 						::: ${mt} ::: ${sdfsf} ::: ${bks} ::: ${bko}\
-						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${ms} ::: ${cp} ::: ${of} ::: "${tag}"
+						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${mms} ::: ${cp} ::: ${of} ::: "${tag}" ::: ${ms}
 	done
 done
 

@@ -32,12 +32,14 @@ public:
 	explicit MlsReconstruction(Args... args,
 							   float smoothingFactor,
 							   int iterations,
+							   size_t mlsSamples,
 							   size_t maxSamples,
 							   size_t curvatureParticles,
 							   float sampleOverlapFactor):
 		BaseClass(args...),
 		mSmoothingFactor(smoothingFactor),
 		mIterations(iterations),
+		mMlsSamples(mlsSamples),
 		mMaxSamples(maxSamples),
 		mCurvatureParticles(curvatureParticles),
 		mSampleOverlapFactor(sampleOverlapFactor)
@@ -50,6 +52,7 @@ public:
 		BaseClass(other),
 		mSmoothingFactor(other.mSmoothingFactor),
 		mIterations(other.mIterations),
+		mMlsSamples(other.mMlsSamples),
 		mMaxSamples(other.mMaxSamples),
 		mCurvatureParticles(other.mCurvatureParticles),
 		mSampleOverlapFactor(other.mSampleOverlapFactor)
@@ -100,7 +103,56 @@ private:
 			keys.push_back(*todoIntersectionCells.begin());
 			todoIntersectionCells.erase(todoIntersectionCells.begin());
 		}
-#endif
+		std::mt19937 gen(1996);
+		std::unordered_set<size_t> acceptedIndices;
+		const size_t totalSamples = 200;
+		if(mMlsSamples > 2 * mMaxSamples)
+		{
+			acceptedIndices.insert(0);
+			size_t lowerBound = 0;
+			size_t upperBound = (mMlsSamples - 1);
+			for(int i = 0; i < totalSamples; i++)
+			{
+				Real value = static_cast<Real>(gen()) / gen.max();
+				size_t index = lowerBound + value * value * (upperBound - lowerBound);				size_t currentIndex = index;
+				while(acceptedIndices.count(currentIndex)){
+					if(currentIndex == lowerBound)
+						currentIndex = upperBound;
+					else
+						currentIndex--;
+					assert(currentIndex != index);
+				}
+				acceptedIndices.insert(currentIndex);
+				if(currentIndex == lowerBound)
+				{
+					currentIndex++;
+					while(acceptedIndices.count(currentIndex))
+					{
+						currentIndex++;
+						assert(currentIndex < upperBound);
+					}
+					lowerBound = currentIndex;
+				}
+				else if(currentIndex == upperBound)
+				{
+					currentIndex--;
+					while(acceptedIndices.count(currentIndex))
+					{
+						currentIndex--;
+						assert(currentIndex > lowerBound);
+					}
+					upperBound = currentIndex;
+				}
+				assert(upperBound > lowerBound);
+			}
+		}
+		else if(mMlsSamples > mMaxSamples)
+		{
+			assert(mMlsSamples/static_cast<float>(mMaxSamples) > 1);
+			for(float i = 0; i < mMaxSamples; i+= mMlsSamples/static_cast<float>(mMaxSamples))
+				acceptedIndices.insert(static_cast<size_t>(i));
+		}
+
 		std::vector<std::vector<size_t>> clusters;
 		#pragma omp parallel for schedule(static)
 		for(int i = 0; i < keys.size(); i++)
@@ -113,20 +165,21 @@ private:
 			assert(res);
 
 			auto c = BaseClass::cell(cI());
-			float levelSetFactor = std::min(1.f/std::fabs(curvature), BaseClass::mFluid->getDiameter() * mCurvatureParticles) /
-													  (BaseClass::mFluid->getDiameter() * mCurvatureParticles);
-			levelSetFactor *= levelSetFactor;
-			assert(levelSetFactor >= 0 && levelSetFactor <= 1);
-			size_t maxSamples = std::max(1, static_cast<int>(mMaxSamples * levelSetFactor));
+//			float levelSetFactor = std::min(1.f/std::fabs(curvature), BaseClass::mFluid->getDiameter() * mCurvatureParticles) /
+//													  (BaseClass::mFluid->getDiameter() * mCurvatureParticles);
+//			levelSetFactor *= levelSetFactor;
+//			assert(levelSetFactor >= 0 && levelSetFactor <= 1);
+//			size_t maxSamples = std::max(1, static_cast<int>(mMaxSamples * levelSetFactor));
+			size_t maxSamples = mMlsSamples;
 
-			cluster = getNeighbourCells(intersectionCells, c, maxSamples);
+			cluster = getNeighbourCells(intersectionCells, c, maxSamples, acceptedIndices);
 			assert(cluster.size() != 0);
 			#pragma omp critical(UpdateClusters)
 			{
 			clusters.push_back(std::move(cluster));
 #ifdef DBG
 			intPts.push_back(BaseClass::cellCoord(BaseClass::cell(cI())));
-			maxFluidPartFactor.push_back(levelSetFactor);
+//			maxFluidPartFactor.push_back(levelSetFactor);
 			curvaturePts.push_back(curvature);
 #endif
 			}
@@ -170,7 +223,7 @@ private:
 			const int printEveryCluster = clusters.size() / 100;
 #endif
 			//compute mls surface within cluster
-			#pragma omp parallel for shared(printEveryCluster, clusterCnt)
+			#pragma omp parallel for
 			for(const auto& cluster : clusters)
 			{
 	#ifdef DBG
@@ -285,7 +338,8 @@ private:
 
 	std::vector<size_t> getNeighbourCells(const std::unordered_set<size_t>& cellSet,
 												   const Eigen::Vector3li& baseCell,
-												   int maxSamples)
+												   int maxSamples,
+													const std::unordered_set<size_t>& acceptedIndices)
 	{
 		std::vector<size_t> todoCells;
 		size_t currentTodoCell = 0;
@@ -307,10 +361,11 @@ private:
 		while(ngbCells.size() < maxSamples && currentTodoCell < todoCells.size())
 		{
 			size_t currentCell = todoCells[currentTodoCell];
-			currentTodoCell++;
 			todoCellsHashmap.erase(currentCell);
 			ngbCells.insert(currentCell);
-			ngbCellsVector.push_back(currentCell);
+			if(acceptedIndices.count(currentTodoCell) || acceptedIndices.empty())
+				ngbCellsVector.push_back(currentCell);
+			currentTodoCell++;
 			Eigen::Vector3li c = BaseClass::cell(currentCell);
 			for(int64_t i = -1; i <= 1; i++)
 			{
@@ -395,7 +450,8 @@ private:
 	}
 
 private:
-	size_t mMaxSamples {10};
+	size_t mMlsSamples {100};
+	size_t mMaxSamples {100};
 	int mIterations {1};
 	float mSmoothingFactor {1};
 	size_t mCurvatureParticles {20};

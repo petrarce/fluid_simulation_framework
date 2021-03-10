@@ -161,6 +161,7 @@ struct
 	float colorFieldFactor {0};
 	float similarityThreshold {0.5};
 	size_t mlsMaxSamples {20};
+	size_t mlsSamples {20};
 	size_t mlsCurvatureParticles {20};
 	float mlsSampleOverlapFactor {0.5};
 	
@@ -292,6 +293,11 @@ struct
 		else
 			throw invalid_argument("required option: --mls-sample-overlap-factor");
 
+		if(vm.count("mls-samples"))
+			mlsSamples = vm["mls-samples"].as<size_t>();
+		else
+			mlsSamples = mlsMaxSamples;
+
 
 	}
 private:
@@ -341,7 +347,8 @@ int main(int argc, char** argv)
 			("blur-surface-cells-only", "if flag is selected blurr will be applyed only on surface cells")
 			("blur-iterations", value<size_t>()->default_value(1), "number of iterations blur is applied to the grid")
 			("cff", value<float>()->default_value(0), "color field factor (for cff<0.05 color field particles detection is not applied)")
-			("mls-max-samples", value<size_t>()->default_value(20), "maximum number of sample points")
+			("mls-samples", value<size_t>(), "number of mls samples, that should be examined in the neighborhood. Only mls-max-samples will be picked up after all from the investigated set randomly afterall. By default equal to mls-max-samples")
+			("mls-max-samples", value<size_t>()->default_value(20), "maximum number of mls sample points")
 			("mls-curvature-particles", value<size_t>()->default_value(20), "radius of flat surface in terms of fluid particles (diameter)")
 			("mls-sample-overlap-factor", value<float>()->default_value(0.5), "factor of cluster size, a number of nearest neighbor samples in cluster that should be removed")
 			("parallel-frames", value<size_t>()->default_value(omp_get_max_threads()), "number of frames that should run in parallel")
@@ -451,6 +458,7 @@ int main(int argc, char** argv)
 														 programInput.supportRad,
 														 programInput.sdfSmoothingFactor,
 														 programInput.blurIterations,
+														 programInput.mlsSamples,
 														 programInput.mlsMaxSamples,
 														 programInput.mlsCurvatureParticles,
 														 programInput.mlsSampleOverlapFactor);
@@ -468,7 +476,8 @@ int main(int argc, char** argv)
 						+ "_sr-" + to_string(programInput.supportRad)
 						+ "_sf-" + to_string(programInput.sdfSmoothingFactor)
 						+ "_bi-" + to_string(programInput.blurIterations)
-						+ "_ms-" + to_string(programInput.mlsMaxSamples)
+						+ "_maxs-" + to_string(programInput.mlsMaxSamples)
+						+ "_mlss" + to_string(programInput.mlsSamples)
 						+ "_cp-" + to_string(programInput.mlsCurvatureParticles)
 						+ "_of-" + to_string(programInput.mlsSampleOverlapFactor);
 
@@ -482,6 +491,7 @@ int main(int argc, char** argv)
 													programInput.initValue,
 													programInput.sdfSmoothingFactor,
 													programInput.blurIterations,
+													programInput.mlsSamples,
 													programInput.mlsMaxSamples,
 													programInput.mlsCurvatureParticles,
 													programInput.mlsSampleOverlapFactor);
@@ -491,7 +501,8 @@ int main(int argc, char** argv)
 						+ "_iv-" + to_string(programInput.initValue)
 						+ "_sf-" + to_string(programInput.sdfSmoothingFactor)
 						+ "_bi-" + to_string(programInput.blurIterations)
-						+ "_ms-" + to_string(programInput.mlsMaxSamples)
+						+ "_maxs-" + to_string(programInput.mlsMaxSamples)
+						+ "_mlss" + to_string(programInput.mlsSamples)
 						+ "_cp-" + to_string(programInput.mlsCurvatureParticles)
 						+ "_of-" + to_string(programInput.mlsSampleOverlapFactor);
 
