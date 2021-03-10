@@ -85,6 +85,88 @@ private:
 
 #endif
 	}
+	std::vector<std::vector<size_t>> computeClusters(const std::unordered_set<size_t>& intersectionCells, std::unordered_set<size_t>& todoIntersectionCells)
+	{
+
+#ifdef DBG
+		std::vector<Vector3R> intPts;
+		std::vector<Real> maxFluidPartFactor;
+		std::vector<Real> curvaturePts;
+#endif
+#ifdef MLSV2
+		std::unordered_set<size_t> keys;
+		keys.rehash(intersectionCells.size());
+		for(const auto& item : intersectionCells)
+			keys.insert(item.first);
+#else
+		std::vector<size_t> keys;
+		keys.reserve(std::min(20000ul + 1ul, todoIntersectionCells.size()));
+		while(keys.size() < 20000 && !todoIntersectionCells.empty())
+		{
+			keys.push_back(*intersectionCells.begin());
+			todoIntersectionCells.erase(intersectionCells.begin());
+		}
+#endif
+		std::vector<std::vector<size_t>> clusters;
+#ifdef MLSV2
+		while(!keys.empty())
+#else
+		#pragma omp parallel for schedule(static)
+		for(int i = 0; i < keys.size(); i++)
+#endif
+		{
+
+			std::vector<size_t> cluster;
+#ifdef MLSV2
+			auto key = *keys.begin();
+#else
+			auto key = keys[i];
+#endif
+			typename BaseClass::CellIndex cI(key, *this);
+			Real curvature; bool res = BaseClass::getCurvature(cI, curvature);
+			assert(res);
+
+			auto c = BaseClass::cell(cI());
+			float levelSetFactor = std::min(1.f/std::fabs(curvature), BaseClass::mFluid->getDiameter() * mCurvatureParticles) /
+													  (BaseClass::mFluid->getDiameter() * mCurvatureParticles);
+			levelSetFactor *= levelSetFactor;
+			assert(levelSetFactor >= 0 && levelSetFactor <= 1);
+			size_t maxSamples = std::max(1, static_cast<int>(mMaxSamples * levelSetFactor));
+
+			cluster = getNeighbourCells(intersectionCells, c, maxSamples);
+			assert(cluster.size() != 0);
+#ifdef MLSV2
+			size_t removeParticles = cluster.size() * mSampleOverlapFactor;
+			if(!removeParticles)
+				removeParticles = 1;
+			for(size_t i = 0; i < removeParticles; i++)
+			{
+				size_t nbI = typename BaseClass::CellIndex(cluster[i]);
+				keys.erase(nbI);
+			}
+#endif
+#pragma omp critical(UpdateClusters)
+{
+			clusters.push_back(std::move(cluster));
+#ifdef DBG
+			intPts.push_back(BaseClass::cellCoord(BaseClass::cell(cI())));
+			maxFluidPartFactor.push_back(levelSetFactor);
+			curvaturePts.push_back(curvature);
+#endif
+}
+		}
+#ifdef MLSV2
+		assert(keys.empty() && "keys not empty");
+#endif
+#ifdef DBG
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsMaxSamplesFactor_" + BaseClass::mFrameNumber + ".vtk",
+									 intPts, maxFluidPartFactor);
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsIntersectionCellsSCurvature_" + BaseClass::mFrameNumber + ".vtk",
+									 intPts, curvaturePts);
+
+#endif
+		return clusters;
+	};
 #ifndef MLSV1
 	void correctLevelSet()
 	{
@@ -97,85 +179,7 @@ private:
 		std::vector<Real> intersCellsSmoothingFactor;
 		std::vector<Vector3R> intersectionCellsPts;
 #endif
-		auto computeClusters = [this](const std::unordered_set<size_t>& intersectionCells)
-		{
 
-#ifdef DBG
-			std::vector<Vector3R> intPts;
-			std::vector<Real> maxFluidPartFactor;
-			std::vector<Real> curvaturePts;
-#endif
-#ifdef MLSV2
-			std::unordered_set<size_t> keys;
-			keys.rehash(intersectionCells.size());
-			for(const auto& item : intersectionCells)
-				keys.insert(item.first);
-#else
-			std::vector<size_t> keys;
-			keys.reserve(intersectionCells.size());
-			for(const auto& item : intersectionCells)
-				keys.push_back(item);
-#endif
-			std::vector<std::vector<size_t>> clusters;
-#ifdef MLSV2
-			while(!keys.empty())
-#else
-			#pragma omp parallel for schedule(static)
-			for(int i = 0; i < keys.size(); i++)
-#endif
-			{
-
-				std::vector<size_t> cluster;
-#ifdef MLSV2
-				auto key = *keys.begin();
-#else
-				auto key = keys[i];
-#endif
-				typename BaseClass::CellIndex cI(key, *this);
-				Real curvature; bool res = BaseClass::getCurvature(cI, curvature);
-				assert(res);
-
-				auto c = BaseClass::cell(cI());
-				float levelSetFactor = std::min(1.f/std::fabs(curvature), BaseClass::mFluid->getDiameter() * mCurvatureParticles) /
-														  (BaseClass::mFluid->getDiameter() * mCurvatureParticles);
-				levelSetFactor *= levelSetFactor;
-				assert(levelSetFactor >= 0 && levelSetFactor <= 1);
-				size_t maxSamples = std::max(1, static_cast<int>(mMaxSamples * levelSetFactor));
-
-				cluster = getNeighbourCells(intersectionCells, c, maxSamples);
-				assert(cluster.size() != 0);
-#ifdef MLSV2
-				size_t removeParticles = cluster.size() * mSampleOverlapFactor;
-				if(!removeParticles)
-					removeParticles = 1;
-				for(size_t i = 0; i < removeParticles; i++)
-				{
-					size_t nbI = typename BaseClass::CellIndex(cluster[i]);
-					keys.erase(nbI);
-				}
-#endif
-#pragma omp critical(UpdateClusters)
-{
-				clusters.push_back(std::move(cluster));
-#ifdef DBG
-				intPts.push_back(BaseClass::cellCoord(BaseClass::cell(cI())));
-				maxFluidPartFactor.push_back(levelSetFactor);
-				curvaturePts.push_back(curvature);
-#endif
-}
-			}
-#ifdef MLSV2
-			assert(keys.empty() && "keys not empty");
-#endif
-#ifdef DBG
-			learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsMaxSamplesFactor_" + BaseClass::mFrameNumber + ".vtk",
-										 intPts, maxFluidPartFactor);
-			learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsIntersectionCellsSCurvature_" + BaseClass::mFrameNumber + ".vtk",
-										 intPts, curvaturePts);
-
-#endif
-			return clusters;
-		};
 
 #ifdef DBG
 		std::vector<Real> mlsIntersectionCellsSdfBefore;
@@ -184,52 +188,56 @@ private:
 #endif
 
 		//compute clusters from intersection cells
-		clusters = computeClusters(intersectionCells);
+		auto todoIntersectionCells = intersectionCells;
 #ifdef DBG
 		int clusterCnt = 0;
 		int printEveryCluster = clusters.size() / 100;
 #endif
-		//compute mls surface within cluster
-		for(const auto& cluster : clusters)
+		while(!todoIntersectionCells.empty())
 		{
-#ifdef DBG
-			std::vector<Vector3R> clusterPts;
-
-#endif
-			auto solution = getMlsSurface(MarchingCubes::cell(cluster.front()), cluster);
-			//smooth all cluster points within the generated surface
-			for(const auto& item : cluster)
+			clusters = computeClusters(intersectionCells, todoIntersectionCells);
+			//compute mls surface within cluster
+			for(const auto& cluster : clusters)
 			{
-				typename BaseClass::CellIndex cI(item, *this);
-				assert(*cI != InvPrt);
-				if(!cellsAppearence.count(cI()))
+	#ifdef DBG
+				std::vector<Vector3R> clusterPts;
+
+	#endif
+				auto solution = getMlsSurface(MarchingCubes::cell(cluster.front()), cluster);
+				//smooth all cluster points within the generated surface
+				for(const auto& item : cluster)
 				{
-					newLevelSet[*cI] = correctSdf(solution, BaseClass::cellCoord(MarchingCubes::cell(cI())));
-					cellsAppearence[cI()] = 1;
+					typename BaseClass::CellIndex cI(item, *this);
+					assert(*cI != InvPrt);
+					if(!cellsAppearence.count(cI()))
+					{
+						newLevelSet[*cI] = correctSdf(solution, BaseClass::cellCoord(MarchingCubes::cell(cI())));
+						cellsAppearence[cI()] = 1;
+					}
+					else
+					{
+						newLevelSet[*cI] += correctSdf(solution, BaseClass::cellCoord(MarchingCubes::cell(cI())));
+						cellsAppearence.at(cI()) += 1;
+					}
+	#ifdef DBG
+					clusterPts.push_back(BaseClass::cellCoord(MarchingCubes::cell(cI())));
+
+	#endif
 				}
-				else
+	#ifdef DBG
+				if((clusterCnt % printEveryCluster) == 0)
 				{
-					newLevelSet[*cI] += correctSdf(solution, BaseClass::cellCoord(MarchingCubes::cell(cI())));
-					cellsAppearence.at(cI()) += 1;
+					std::vector<Real> ids(clusterPts.size(), -1);
+					ids[0] = 1;
+					learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsCluster" + BaseClass::mFrameNumber
+												 + "_" + to_string(clusterCnt) + ".vtk",
+												 clusterPts, ids);
+
 				}
-#ifdef DBG
-				clusterPts.push_back(BaseClass::cellCoord(MarchingCubes::cell(cI())));
-
-#endif
-			}
-#ifdef DBG
-			if((clusterCnt % printEveryCluster) == 0)
-			{
-				std::vector<Real> ids(clusterPts.size(), -1);
-				ids[0] = 1;
-				learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsCluster" + BaseClass::mFrameNumber
-											 + "_" + to_string(clusterCnt) + ".vtk",
-											 clusterPts, ids);
+				clusterCnt++;
+	#endif
 
 			}
-			clusterCnt++;
-#endif
-
 		}
 		assert(cellsAppearence.size() == intersectionCells.size());
 		for(const auto& item : cellsAppearence)

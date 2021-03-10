@@ -100,9 +100,9 @@ static void removeFugitives(vector<Vector3R>& positions,
 							const Vector3R& lowerCorner, 
 							const Vector3R upperCorner)
 {
-	vector<size_t> fugitives;
-
-	for (size_t particleID = 0; particleID < positions.size(); particleID ++) {
+	assert(positions.size() == densities.size());
+	for (size_t particleID = 0; particleID < positions.size();)
+	{
 
 		bool inside = true;
 
@@ -114,12 +114,17 @@ static void removeFugitives(vector<Vector3R>& positions,
 		inside &= (positions[particleID](1) <= upperCorner(1));
 		inside &= (positions[particleID](2) <= upperCorner(2));
 
-		if (!inside) fugitives.push_back(particleID);
+		if (!inside)
+		{
+			positions[particleID] = positions.back();
+			densities[particleID] = densities.back();
+			positions.pop_back();
+			densities.pop_back();
+			continue;
+		}
+		particleID++;
 	}
-	std::reverse(fugitives.begin(), fugitives.end());
 
-	for (auto particleID : fugitives) positions.erase(positions.begin() + particleID);
-	for (auto particleID : fugitives) densities.erase(densities.begin() + particleID);
 
 }
 
@@ -339,6 +344,8 @@ int main(int argc, char** argv)
 			("mls-max-samples", value<size_t>()->default_value(20), "maximum number of sample points")
 			("mls-curvature-particles", value<size_t>()->default_value(20), "radius of flat surface in terms of fluid particles (diameter)")
 			("mls-sample-overlap-factor", value<float>()->default_value(0.5), "factor of cluster size, a number of nearest neighbor samples in cluster that should be removed")
+			("parallel-frames", value<size_t>()->default_value(omp_get_max_threads()), "number of frames that should run in parallel")
+			("tag", value<std::string>()->default_value(""), "addition simulation name tag for debug purposes")
 			;
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
@@ -360,7 +367,7 @@ int main(int argc, char** argv)
 	pr_info("Max omp threads: %d", omp_get_max_threads());
     std::unique_ptr<MarchingCubes> mcbNew;
 	string simtype;
-	#pragma omp parallel for schedule(static, 1) private(mcbNew)
+	#pragma omp parallel for schedule(static, 1) private(mcbNew) num_threads(vm["parallel-frames"].as<size_t>())
 	for (size_t t = 0; t < paramFiles.size(); t++) {
 		if(!mcbNew)
 		{
@@ -502,6 +509,7 @@ int main(int argc, char** argv)
 				throw std::runtime_error("unknown simulation type...");
 			}
 			mcbNew->setSimName(simtype);
+			simtype += "_domain-" + vm["domain"].as<string>() + vm["_tag"].as<string>();
 		}
 		vector<Real> params;
 		vector<Vector3R> positions;

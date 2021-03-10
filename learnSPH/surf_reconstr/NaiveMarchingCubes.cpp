@@ -35,9 +35,12 @@ MarchingCubes::MarchingCubes(std::shared_ptr<learnSPH::FluidSystem> fluid,
 void MarchingCubes::configureHashTables()
 {
 	if(mSurfaceParticlesCount)
-		mDataToCellIndex.max_load_factor(2);
-	mDataToCellIndex.rehash(mSurfaceParticlesCount);
-	mCellToDataIndex.rehash(mSurfaceParticlesCount);
+	{
+		mDataToCellIndex.max_load_factor(4);
+		mCellToDataIndex.max_load_factor(4);
+	}
+	mDataToCellIndex.rehash(mSurfaceParticlesCount / 2);
+	mCellToDataIndex.rehash(mSurfaceParticlesCount / 2);
 }
 
 std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<learnSPH::FluidSystem> fluid)
@@ -194,9 +197,9 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 {
 
 	vector<Eigen::Vector3d> triangleMesh;
-	triangleMesh.reserve(mDataToCellIndex.size() * 3 * 3);
 
 	auto intersectionCells = computeIntersectionCells();
+	triangleMesh.reserve(intersectionCells.size() * 3 * 3);
 
 #pragma omp parallel for schedule(static)
 	for(size_t g = 0; g < intersectionCells.size(); g++)

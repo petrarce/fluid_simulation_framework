@@ -20,6 +20,7 @@ mls_overlap_factor="0.5"
 app="_empty_command_"
 num_threads=8
 parallel_options=""
+tag=""
 
 
 function printHelp()
@@ -45,6 +46,7 @@ function printHelp()
 	echo '--app'
 	echo '-nt|--num-threads'
 	echo '--parallel-opts'
+	echo '--tag'
 }
 
 
@@ -55,6 +57,14 @@ while [ $# -gt 0 ]; do
 		printHelp
 		exit 1
 		;;
+
+		--tag)
+		if [ $# -lt 2 ]; then exit; fi
+		tag=${2}
+		shift
+		shift
+		;;
+
 
 		--parallel-opts)
 		if [ $# -lt 2 ]; then exit; fi
@@ -273,7 +283,7 @@ for mt in ${method}; do
 			lsfco=""
 		fi
 		
-		OMP_NUM_THREADS=${num_threads} OMP_NESTED=TRUE parallel -j ${num_threads} ${parallel_options} \
+		OMP_NUM_THREADS=8 OMP_NESTED=TRUE parallel -j ${num_threads} ${parallel_options} \
 				${app} \
 					--domain {1} \
 					--init-val {2} \
@@ -292,10 +302,11 @@ for mt in ${method}; do
 					--mls-max-samples {14} \
 					--mls-curvature-particles {15}\
 					--mls-sample-overlap-factor {16}\
+					--tag {17}\
 						::: ${domain} ::: ${initVal} ::: ${sim_name}\
 						::: ${sim_directory} ::: ${grid_resolution} ::: ${supportRad}\
 						::: ${mt} ::: ${sdfsf} ::: ${bks} ::: ${bko}\
-						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${ms} ::: ${cp} ::: ${of}
+						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${ms} ::: ${cp} ::: ${of} ::: "${tag}"
 	done
 done
 
