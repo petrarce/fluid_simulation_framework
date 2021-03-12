@@ -145,6 +145,7 @@ protected:
 	friend class DataIndex;
 
 	void setFluidSystem(std::shared_ptr<learnSPH::FluidSystem> fluid) { mFluid = fluid; }
+	void relocateFluidParticles(Real supportRadius);
 	virtual void updateGrid() = 0;
 	virtual void updateLevelSet() = 0;
 	void configureHashTables();

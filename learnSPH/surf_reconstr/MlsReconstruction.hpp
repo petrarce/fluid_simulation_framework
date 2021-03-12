@@ -8,10 +8,12 @@
 #include <Eigen/Eigen>
 #include <vector>
 #include <unordered_set>
+#include <algorithm>
 #include <list>
 #include <set>
 #include <random>
 #include <cassert>
+#define USE_QUADRADIC_SAMPLING 1
 
 #if 0
 #ifndef DBG
@@ -64,6 +66,52 @@ private:
 		BaseClass::updateGrid();
 	}
 
+	std::unordered_set<size_t> generateIndexes(std::function<float(float)> shiftFunction)
+	{
+		std::mt19937 gen(1996);
+		std::unordered_set<size_t> acceptedIndices;
+
+		acceptedIndices.insert(0);
+		size_t lowerBound = 0;
+		size_t upperBound = (mMlsSamples - 1);
+		for(int i = 0; i < std::min(mMaxSamples, mMlsSamples); i++)
+		{
+			Real value = static_cast<Real>(gen()) / gen.max();
+			size_t index = lowerBound + shiftFunction(value) * (upperBound - lowerBound);				size_t currentIndex = index;
+			while(acceptedIndices.count(currentIndex)){
+				if(currentIndex == lowerBound)
+					currentIndex = upperBound;
+				else
+					currentIndex--;
+				assert(currentIndex != index);
+			}
+			acceptedIndices.insert(currentIndex);
+			if(currentIndex == lowerBound)
+			{
+				currentIndex++;
+				while(acceptedIndices.count(currentIndex))
+				{
+					currentIndex++;
+					assert(currentIndex < upperBound);
+				}
+				lowerBound = currentIndex;
+			}
+			else if(currentIndex == upperBound)
+			{
+				currentIndex--;
+				while(acceptedIndices.count(currentIndex))
+				{
+					currentIndex--;
+					assert(currentIndex > lowerBound);
+				}
+				upperBound = currentIndex;
+			}
+			assert(upperBound > lowerBound);
+		}
+		return acceptedIndices;
+
+	}
+
 	void updateLevelSet() override
 	{
 		BaseClass::updateLevelSet();
@@ -103,48 +151,15 @@ private:
 			keys.push_back(*todoIntersectionCells.begin());
 			todoIntersectionCells.erase(todoIntersectionCells.begin());
 		}
-		std::mt19937 gen(1996);
 		std::unordered_set<size_t> acceptedIndices;
-		const size_t totalSamples = 200;
 		if(mMlsSamples > 2 * mMaxSamples)
 		{
-			acceptedIndices.insert(0);
-			size_t lowerBound = 0;
-			size_t upperBound = (mMlsSamples - 1);
-			for(int i = 0; i < totalSamples; i++)
-			{
-				Real value = static_cast<Real>(gen()) / gen.max();
-				size_t index = lowerBound + value * value * (upperBound - lowerBound);				size_t currentIndex = index;
-				while(acceptedIndices.count(currentIndex)){
-					if(currentIndex == lowerBound)
-						currentIndex = upperBound;
-					else
-						currentIndex--;
-					assert(currentIndex != index);
-				}
-				acceptedIndices.insert(currentIndex);
-				if(currentIndex == lowerBound)
-				{
-					currentIndex++;
-					while(acceptedIndices.count(currentIndex))
-					{
-						currentIndex++;
-						assert(currentIndex < upperBound);
-					}
-					lowerBound = currentIndex;
-				}
-				else if(currentIndex == upperBound)
-				{
-					currentIndex--;
-					while(acceptedIndices.count(currentIndex))
-					{
-						currentIndex--;
-						assert(currentIndex > lowerBound);
-					}
-					upperBound = currentIndex;
-				}
-				assert(upperBound > lowerBound);
-			}
+#if USE_QUADRADIC_SAMPLING
+			auto fn = [](float v) {return v*v;};
+#else
+			auto fn = [](float v) {return v;};
+#endif
+			acceptedIndices = generateIndexes(fn);
 		}
 		else if(mMlsSamples > mMaxSamples)
 		{
@@ -223,31 +238,35 @@ private:
 			const int printEveryCluster = clusters.size() / 100;
 #endif
 			//compute mls surface within cluster
-			#pragma omp parallel for
-			for(const auto& cluster : clusters)
+			for(size_t i = 0; i < clusters.size(); i++)
 			{
+				const auto& cluster = clusters[i];
+
 	#ifdef DBG
 				std::vector<Vector3R> clusterPts;
 
 	#endif
 				auto solution = getMlsSurface(MarchingCubes::cell(cluster.front()), cluster);
+				Real maxDist = (MarchingCubes::cellCoord(MarchingCubes::cell(cluster.front())) -
+						MarchingCubes::cellCoord(MarchingCubes::cell(cluster.back()))).norm();
 				//smooth all cluster points within the generated surface
 				for(const auto& item : cluster)
 				{
-					typename BaseClass::CellIndex cI(item, *this);
+					MarchingCubes::CellIndex cI(item, *this);
+					Real dist = (MarchingCubes::cellCoord(MarchingCubes::cell(cluster.front())) -
+								 MarchingCubes::cellCoord(MarchingCubes::cell(item))).norm();
+					Real weight = std::clamp((maxDist - dist) / maxDist, 0., 1.);
+					assert(weight >= 0 && weight <= 1);
 					assert(*cI != InvPrt);
-					#pragma omp critical(UpdateMlsSdf)
-					{
 					if(!cellsAppearence.count(cI()))
 					{
-						newLevelSet[*cI] = correctSdf(solution, BaseClass::cellCoord(MarchingCubes::cell(cI())));
-						cellsAppearence[cI()] = 1;
+						newLevelSet[*cI] = weight * correctSdf(solution, BaseClass::cellCoord(MarchingCubes::cell(cI())));
+						cellsAppearence[cI()] = weight;
 					}
 					else
 					{
-						newLevelSet[*cI] += correctSdf(solution, BaseClass::cellCoord(MarchingCubes::cell(cI())));
-						cellsAppearence.at(cI()) += 1;
-					}
+						newLevelSet[*cI] += weight * correctSdf(solution, BaseClass::cellCoord(MarchingCubes::cell(cI())));
+						cellsAppearence.at(cI()) += weight;
 					}
 	#ifdef DBG
 					clusterPts.push_back(BaseClass::cellCoord(MarchingCubes::cell(cI())));

@@ -51,6 +51,10 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 	globalPerfStats.startTimer("updateSurfaceParticles");
 	updateSurfaceParticles();
 	globalPerfStats.stopTimer("updateSurfaceParticles");
+#ifdef DBG
+	saveParticlesToVTK("/tmp/" + mSimName + "ActiveFluidParticles" + mFrameNumber + ".vtk",
+					   mFluid->getPositions(), mFluid->getDensities());
+#endif
 
 	std::cout << "\rstage 2/5"; cout.flush();
 	globalPerfStats.startTimer("configureHashTables");
@@ -113,6 +117,25 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 	return mesh;
 }
 	
+void MarchingCubes::relocateFluidParticles(Real supportRadius)
+{
+	auto& particles = mFluid->getPositions();
+	auto& densities = mFluid->getDensities();
+
+	for(size_t i = mSurfaceParticlesCount; i < particles.size();)
+	{
+		auto nCells = getNeighbourCells(particles[i], supportRadius);
+		if(nCells.empty())
+		{
+			particles[i].swap(particles.back());
+			densities[i] = densities.back();
+			particles.pop_back();
+			densities.pop_back();
+			continue;
+		}
+		i++;
+	}
+}
 	
 void NaiveMarchingCubes::updateGrid()
 {
@@ -153,7 +176,10 @@ void NaiveMarchingCubes::updateGrid()
 	mMcVertexCurvature.shrink_to_fit();
 	mMcVertexSphParticles.shrink_to_fit();
 
+	//remove all fluid particles that are not in the neighborhood of the surface cells
+	relocateFluidParticles(mFluid->getCompactSupport());
 }
+
 
 void NaiveMarchingCubes::updateLevelSet()
 {
@@ -455,20 +481,23 @@ void MarchingCubes::updateSurfaceParticles()
 	}
 	//smooth out color field
 	auto smoothedColorField = colorField;
-	#pragma omp parallel for schedule(static)
-	for(size_t i = 0; i < particles.size(); i++)
+	for(size_t k = 0; k < 2; k++)
 	{
-		Real totalWeights = learnSPH::kernel::kernelFunction(particles[i], particles[i], r1);
-		smoothedColorField[i] = totalWeights * colorField[i];
-		for(size_t j : neighbors[i][0])
+		#pragma omp parallel for schedule(static)
+		for(size_t i = 0; i < particles.size(); i++)
 		{
-			auto weight = learnSPH::kernel::kernelFunction(particles[i], particles[j], r1);
-			smoothedColorField[i] += weight * colorField[j];
-			totalWeights += weight;
+			Real totalWeights = learnSPH::kernel::kernelFunction(particles[i], particles[i], r1);
+			smoothedColorField[i] = totalWeights * colorField[i];
+			for(size_t j : neighbors[i][0])
+			{
+				auto weight = learnSPH::kernel::kernelFunction(particles[i], particles[j], r1);
+				smoothedColorField[i] += weight * colorField[j];
+				totalWeights += weight;
+			}
+			smoothedColorField[i] /= totalWeights;
 		}
-		smoothedColorField[i] /= totalWeights;
+		colorField.swap(smoothedColorField);
 	}
-	colorField.swap(smoothedColorField);
 #ifdef DBG
 	saveParticlesToVTK("/tmp/" + mSimName +
 						"MarchingCubesColorField_" + mFrameNumber + ".vtk",

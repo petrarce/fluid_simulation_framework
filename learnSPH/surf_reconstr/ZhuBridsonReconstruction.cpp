@@ -11,6 +11,7 @@ void ZhuBridsonReconstruction::updateGrid()
 	mDataToCellIndex.clear();
 	mCellToDataIndex.clear();
 	mMcVertexCurvature.clear();
+	mMcVertexSphParticles.clear();
 	mMcVertexCurvature.reserve(mSurfaceParticlesCount);
 	mMcVertexSphParticles.reserve(mSurfaceParticlesCount);
 	mPartPerSupportArea = (8 * mRadii * mRadii * mRadii) /
@@ -18,6 +19,7 @@ void ZhuBridsonReconstruction::updateGrid()
 	const auto& particles = mFluid->getPositions();
 	for(size_t i = 0; i < mSurfaceParticlesCount; i++)
 	{
+		assert(mMcVertexSphParticles.size() == mMcVertexCurvature.size());
 		auto nCells = getNeighbourCells(particles[i], mRadii, false);
 		for(const auto& nc : nCells)
 		{
@@ -39,6 +41,8 @@ void ZhuBridsonReconstruction::updateGrid()
 	assert(mDataToCellIndex.size() == mCellToDataIndex.size());
 	mMcVertexCurvature.shrink_to_fit();
 	mMcVertexSphParticles.shrink_to_fit();
+
+	relocateFluidParticles(mRadii);
 }
 
 void ZhuBridsonReconstruction::updateLevelSet()

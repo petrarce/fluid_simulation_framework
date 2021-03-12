@@ -20,8 +20,10 @@ mls_curvature_particles="20"
 mls_overlap_factor="0.5"
 app="_empty_command_"
 num_threads=8
-parallel_options=""
+nested_paralelism="TRUE"
+parallel_options="-j8"
 tag=""
+
 
 
 function printHelp()
@@ -47,6 +49,7 @@ function printHelp()
 	echo '-cp | --mls-curvature-particles'
 	echo '--app'
 	echo '-nt|--num-threads'
+	echo '-np|--nested-paralelism'
 	echo '--parallel-opts'
 	echo '--tag'
 }
@@ -60,12 +63,20 @@ while [ $# -gt 0 ]; do
 		exit 1
 		;;
 
+		-np|--nested-paralelism)
+		if [ $# -lt 2 ]; then exit; fi
+		nested_paralelism=${2}
+		shift
+		shift
+		;;
+
 		-ms|--mls-samples)
 		if [ $# -lt 2 ]; then exit; fi
 		mls_samples=${2}
 		shift
 		shift
 		;;
+
 
 
 		--tag)
@@ -239,7 +250,7 @@ echo domain=${domain} init_val=${init_val} sim_directory=${sim_directory}\
 	  blur_kernel_size=${blur_kernel_size} blur_kernel_offset=${blur_kernel_offset}\
 	  blur_kernel_depth=${blur_kernel_depth} blur_surface_cells_only=${blur_surface_cells_only}\
 	  blur_iterations=${blur_iterations} cff=${cff} mls_similarity_threshold=${mls_similarity_threshold}\
-	  mls_max_samples=${mls_max_samples} app=${app} 
+	  mls_max_samples=${mls_max_samples} app=${app} tag=${tag}
 
 for mt in ${method}; do
 
@@ -295,7 +306,7 @@ for mt in ${method}; do
 			lsfco=""
 		fi
 		
-		OMP_NUM_THREADS=8 OMP_NESTED=TRUE parallel -j ${num_threads} ${parallel_options} \
+		OMP_NUM_THREADS=${num_threads} OMP_NESTED=${nested_paralelism} parallel ${parallel_options} \
 				${app} \
 					--domain {1} \
 					--init-val {2} \
@@ -319,7 +330,7 @@ for mt in ${method}; do
 						::: ${domain} ::: ${initVal} ::: ${sim_name}\
 						::: ${sim_directory} ::: ${grid_resolution} ::: ${supportRad}\
 						::: ${mt} ::: ${sdfsf} ::: ${bks} ::: ${bko}\
-						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${mms} ::: ${cp} ::: ${of} ::: "${tag}" ::: ${ms}
+						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${mms} ::: ${cp} ::: ${of} ::: ${tag} ::: ${ms}
 	done
 done
 
