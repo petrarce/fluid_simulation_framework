@@ -66,12 +66,15 @@ private:
 		BaseClass::updateGrid();
 	}
 
-	std::unordered_set<size_t> generateIndexes(std::function<float(float)> shiftFunction)
+	std::vector<size_t> generateIndexes(std::function<float(float)> shiftFunction)
 	{
 		std::mt19937 gen(1996);
 		std::unordered_set<size_t> acceptedIndices;
+		std::vector<size_t> acceptedIndicesVector;
+		acceptedIndicesVector.reserve(mMaxSamples);
 
 		acceptedIndices.insert(0);
+		acceptedIndicesVector.push_back(0);
 		size_t lowerBound = 0;
 		size_t upperBound = (mMlsSamples - 1);
 		for(int i = 0; i < std::min(mMaxSamples, mMlsSamples); i++)
@@ -86,6 +89,7 @@ private:
 				assert(currentIndex != index);
 			}
 			acceptedIndices.insert(currentIndex);
+			acceptedIndicesVector.push_back(currentIndex);
 			if(currentIndex == lowerBound)
 			{
 				currentIndex++;
@@ -108,7 +112,8 @@ private:
 			}
 			assert(upperBound > lowerBound);
 		}
-		return acceptedIndices;
+		std::sort(acceptedIndicesVector.begin(), acceptedIndicesVector.end());
+		return acceptedIndicesVector;
 
 	}
 
@@ -151,7 +156,7 @@ private:
 			keys.push_back(*todoIntersectionCells.begin());
 			todoIntersectionCells.erase(todoIntersectionCells.begin());
 		}
-		std::unordered_set<size_t> acceptedIndices;
+		std::vector<size_t> acceptedIndices;
 		if(mMlsSamples > 2 * mMaxSamples)
 		{
 #if USE_QUADRADIC_SAMPLING
@@ -165,7 +170,7 @@ private:
 		{
 			assert(mMlsSamples/static_cast<float>(mMaxSamples) > 1);
 			for(float i = 0; i < mMaxSamples; i+= mMlsSamples/static_cast<float>(mMaxSamples))
-				acceptedIndices.insert(static_cast<size_t>(i));
+				acceptedIndices.push_back(static_cast<size_t>(i));
 		}
 
 		std::vector<std::vector<size_t>> clusters;
@@ -358,7 +363,7 @@ private:
 	std::vector<size_t> getNeighbourCells(const std::unordered_set<size_t>& cellSet,
 												   const Eigen::Vector3li& baseCell,
 												   int maxSamples,
-													const std::unordered_set<size_t>& acceptedIndices)
+													const std::vector<size_t>& acceptedIndices)
 	{
 		std::vector<size_t> todoCells;
 		size_t currentTodoCell = 0;
@@ -376,14 +381,18 @@ private:
 		auto baseCellI = BaseClass::cellIndex(baseCell);
 		todoCells.push_back(baseCellI);
 		todoCellsHashmap.insert(baseCellI);
+		size_t currentAcceptedIndex = 0;
 
 		while(ngbCells.size() < maxSamples && currentTodoCell < todoCells.size())
 		{
 			size_t currentCell = todoCells[currentTodoCell];
 			todoCellsHashmap.erase(currentCell);
 			ngbCells.insert(currentCell);
-			if(acceptedIndices.count(currentTodoCell) || acceptedIndices.empty())
+			if(acceptedIndices.empty() || acceptedIndices[currentAcceptedIndex] == currentTodoCell)
+			{
 				ngbCellsVector.push_back(currentCell);
+				currentAcceptedIndex++;
+			}
 			currentTodoCell++;
 			Eigen::Vector3li c = BaseClass::cell(currentCell);
 			for(int64_t i = -1; i <= 1; i++)
