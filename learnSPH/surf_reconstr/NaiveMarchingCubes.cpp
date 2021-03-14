@@ -458,7 +458,7 @@ void MarchingCubes::updateSurfaceParticles()
 	vector<Real> colorField(particles.size(), 0);
 	Real r1 = mFluid->getSmoothingLength();
 	Real r2 = r1 / 2;
-	const auto samples = samplePoints(r1);
+	const auto samples = samplePoints(r1 * 1.1);
 	#pragma omp parallel for schedule(static)
 	for(size_t i = 0; i < particles.size(); i++)
 	{
