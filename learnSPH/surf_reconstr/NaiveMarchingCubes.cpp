@@ -141,41 +141,25 @@ void NaiveMarchingCubes::updateGrid()
 {
 	mDataToCellIndex.clear();
 	mCellToDataIndex.clear();
-	mMcVertexCurvature.clear();
-	mMcVertexCurvature.reserve(mSurfaceParticlesCount);
-	mMcVertexSphParticles.reserve(mSurfaceParticlesCount);
 	mPartPerSupportArea = 8 * (mFluid->getSmoothingLength() * mFluid->getSmoothingLength() * mFluid->getSmoothingLength()) /
 							(mFluid->getDiameter() * mFluid->getDiameter() * mFluid->getDiameter());
 	const auto& particles = mFluid->getPositions();
+	size_t totalCells = 0;
 	for(size_t i = 0; i < mSurfaceParticlesCount; i++)
 	{
 		auto nCells = getNeighbourCells(particles[i], mFluid->getCompactSupport(), false);
 		for(const auto& nc : nCells)
 		{
-			CellIndex cI(cellIndex(nc), *this);
-			if(*cI == InvPrt)
+			size_t cI = cellIndex(nc);
+			if(!mCellToDataIndex.count(cI))
 			{
-				mCellToDataIndex[cI()] = mMcVertexSphParticles.size();
-				mDataToCellIndex[mMcVertexSphParticles.size()] = cI();
-				mMcVertexSphParticles.push_back(1);
-				mMcVertexCurvature.push_back(mCurvature[i]);
-			}
-			else
-			{
-				assert(*cI < mMcVertexCurvature.size()
-					   && mMcVertexCurvature.size() == mMcVertexCurvature.size());
-				mMcVertexSphParticles[*cI]++;
-				mMcVertexCurvature[*cI] += mCurvature[i];
+				mCellToDataIndex[cI] = totalCells;
+				mDataToCellIndex[totalCells] = cI;
+				totalCells++;
 			}
 		}
 	}
 	assert(mDataToCellIndex.size() == mCellToDataIndex.size());
-	//no need in particle curvature any more. Free space
-	mCurvature.clear();
-	mCurvature.shrink_to_fit();
-	mMcVertexCurvature.shrink_to_fit();
-	mMcVertexSphParticles.shrink_to_fit();
-
 	//remove all fluid particles that are not in the neighborhood of the surface cells
 	relocateFluidParticles(mFluid->getCompactSupport());
 }
@@ -187,12 +171,17 @@ void NaiveMarchingCubes::updateLevelSet()
 		throw std::runtime_error("fluid was not initialised");
 
 	mMcVertexSdf.clear();
+	mMcVertexCurvature.clear();
+	mMcVertexSphParticles.clear();
 	mMcVertexSdf.resize(mDataToCellIndex.size(), mInitialValue);
+	mMcVertexCurvature.resize(mDataToCellIndex.size(), 0);
+	mMcVertexSphParticles.resize(mDataToCellIndex.size(), 0);
+
 	
 	const vector<Vector3R>& positions = mFluid->getPositions();
 	const vector<Real>& densities = mFluid->getDensities();
 	
-#pragma omp parallel for schedule(static)
+	#pragma omp parallel for schedule(static)
 	for(size_t i = 0; i < mFluid->size(); i++)
 	{
 		double fluidDensity = densities[i];
@@ -210,13 +199,19 @@ void NaiveMarchingCubes::updateLevelSet()
 			);
 			float density = std::max(fluidDensity, mFluid->getRestDensity());
 			float total = mFluid->getMass() / density * weight;
-#pragma omp critical(UpdateSDF)
-			{
+			#pragma omp atomic update
 			mMcVertexSdf[*cI] += total;
-			}
 
+			#pragma omp atomic update
+			mMcVertexCurvature[*cI] += mCurvature[i];
+
+			#pragma omp atomic update
+			mMcVertexSphParticles[*cI]++;
 		}
 	}
+	//no need in particle curvature any more. Clear storage
+	mCurvature.clear();
+
 }
 
 vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
@@ -227,7 +222,9 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 	auto intersectionCells = computeIntersectionCells();
 	triangleMesh.reserve(intersectionCells.size() * 3 * 3);
 
-#pragma omp parallel for schedule(static)
+	std::vector<Eigen::Vector3d> triangle;
+	triangle.reserve(3);
+	#pragma omp parallel for schedule(static) private(triangle)
 	for(size_t g = 0; g < intersectionCells.size(); g++)
 	{
 		const auto& cellVert = intersectionCells[g];
@@ -239,7 +236,7 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 		const std::array<std::array<int, 3>, 5>& triangle_type = cellVert.second;
 
 		for(size_t l = 0; l < 5; l++) {
-			std::array<Eigen::Vector3d, 3> triangle;
+			triangle.clear();
 			for(size_t m = 0; m < 3; m++) {
 				if(triangle_type[l][m] == -1) break;
 				
@@ -266,12 +263,13 @@ vector<Eigen::Vector3d> MarchingCubes::getTriangles() const
 
 				Eigen::Vector3d p1 = cellCoord(Eigen::Vector3li(c1Xind, c1Yind, c1Zind));
 				Eigen::Vector3d p2 = cellCoord(Eigen::Vector3li(c2Xind, c2Yind, c2Zind));
-				triangle[m] = lerp(p1, p2, v1, v2, 0);
+				triangle.push_back(lerp(p1, p2, v1, v2, 0));
 			}
-#pragma omp critical(UpdateTriangleMesh)
-{
-			triangleMesh.insert(triangleMesh.end(), triangle.begin(), triangle.end());
-}
+			if(triangle.size())
+			{
+				#pragma omp critical(UpdateTriangleMesh)
+				triangleMesh.insert(triangleMesh.end(), triangle.begin(), triangle.end());
+			}
 		}
 	}
 	return triangleMesh;
