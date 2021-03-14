@@ -3,6 +3,7 @@
 #include "ZhuBridsonReconstruction.hpp"
 #include "SolenthilerReconstruction.hpp"
 #include <learnSPH/core/vtk_writer.h>
+#include <learnSPH/core/PerfStats.hpp>
 #include <learnSPH/core/kernel.h>
 #include <Eigen/Dense>
 #include <Eigen/Eigen>
@@ -132,8 +133,11 @@ private:
 		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "LevelSetBeforeMls_" + MarchingCubes::mFrameNumber + ".vtk",
 									 points, BaseClass::mMcVertexSdf);
 #endif
+		globalPerfStats.startTimer("mlsSmoothPath");
 		for(int i = 0; i < mIterations; i++)
 			correctLevelSet();
+		globalPerfStats.stopTimer("mlsSmoothPath");
+
 #ifdef DBG
 
 		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "LevelSetAfterMls_" + MarchingCubes::mFrameNumber + ".vtk",

@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <map>
 #include <boost/timer/timer.hpp>
