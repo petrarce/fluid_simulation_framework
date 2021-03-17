@@ -52,7 +52,7 @@ std::vector<Eigen::Vector3d> MarchingCubes::generateMesh(const std::shared_ptr<l
 	updateSurfaceParticles();
 	globalPerfStats.stopTimer("updateSurfaceParticles");
 #ifdef DBG
-	saveParticlesToVTK("/tmp/" + mSimName + "ActiveFluidParticles" + mFrameNumber + ".vtk",
+	saveParticlesToVTK("/tmp/" + mSimName + "_ActiveFluidParticles_" + mFrameNumber + ".vtk",
 					   mFluid->getPositions(), mFluid->getDensities());
 #endif
 
@@ -425,7 +425,7 @@ void MarchingCubes::updateSurfaceParticles()
 	const auto& neighbors = mFluid->getNeighbors();
 	mCurvature = learnSPH::compute_curvature(mFluid.get());
 #ifdef DBG
-	saveParticlesToVTK("/tmp/" + mSimName + "ParticleCurvature" + mFrameNumber + ".vtk", particles, mCurvature);
+	saveParticlesToVTK("/tmp/" + mSimName + "_ParticleCurvature_" + mFrameNumber + ".vtk", particles, mCurvature);
 #endif
 	auto samplePoints = [](float radius)
 	{
@@ -522,7 +522,7 @@ void MarchingCubes::updateSurfaceParticles()
 #ifdef DBG
 	std::vector<Eigen::Vector3d> surfaceParticles(particles.begin(), particles.begin() + mSurfaceParticlesCount);
 	saveParticlesToVTK("/tmp/" + mSimName +
-						"MarchingCubesSPHSurfacePrticles_" + mFrameNumber + ".vtk",
+						"_MarchingCubesSPHSurfacePrticles_" + mFrameNumber + ".vtk",
 					   surfaceParticles);
 
 #endif

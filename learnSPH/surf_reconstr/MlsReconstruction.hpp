@@ -202,6 +202,7 @@ private:
 			{
 			clusters.push_back(std::move(cluster));
 #ifdef DBG
+
 			intPts.push_back(BaseClass::cellCoord(BaseClass::cell(cI())));
 //			maxFluidPartFactor.push_back(levelSetFactor);
 			curvaturePts.push_back(curvature);
@@ -209,9 +210,9 @@ private:
 			}
 		}
 #ifdef DBG
-		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsMaxSamplesFactor_" + BaseClass::mFrameNumber + ".vtk",
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "_MlsMaxSamplesFactor_" + BaseClass::mFrameNumber + ".vtk",
 									 intPts, maxFluidPartFactor);
-		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsIntersectionCellsSCurvature_" + BaseClass::mFrameNumber + ".vtk",
+		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "_MlsIntersectionCellsSCurvature_" + BaseClass::mFrameNumber + ".vtk",
 									 intPts, curvaturePts);
 
 #endif
@@ -223,7 +224,7 @@ private:
 		//find intersection cells
 		std::unordered_set<size_t> intersectionCells = MarchingCubes::computeIntersectionVertices(0);
 		std::vector<std::vector<size_t>> clusters;
-		std::unordered_map<size_t /*cell index*/, float /*total weight*/> cellsAppearence;
+		std::vector<float /*total weight*/> cellsAppearence(BaseClass::mMcVertexSdf.size(), 0);
 		std::vector<Real> newLevelSet = BaseClass::mMcVertexSdf;
 #ifdef DBG
 		std::vector<Real> intersCellsSmoothingFactor;
@@ -247,13 +248,14 @@ private:
 			const int printEveryCluster = clusters.size() / 100;
 #endif
 			//compute mls surface within cluster
+			#pragma omp parallel for schedule(static)
 			for(size_t i = 0; i < clusters.size(); i++)
 			{
 				const auto& cluster = clusters[i];
 
 	#ifdef DBG
 				std::vector<Vector3R> clusterPts;
-
+				float error = 0;
 	#endif
 				auto solution = getMlsSurface(MarchingCubes::cell(cluster.front()), cluster);
 				Real maxDist = (MarchingCubes::cellCoord(MarchingCubes::cell(cluster.front())) -
@@ -267,18 +269,15 @@ private:
 					Real weight = std::clamp((maxDist - dist) / maxDist, 0., 1.);
 					assert(weight >= 0 && weight <= 1);
 					assert(*cI != InvPrt);
-					if(!cellsAppearence.count(cI()))
-					{
-						newLevelSet[*cI] = weight * correctSdf(solution, BaseClass::cellCoord(MarchingCubes::cell(cI())));
-						cellsAppearence[cI()] = weight;
-					}
-					else
-					{
-						newLevelSet[*cI] += weight * correctSdf(solution, BaseClass::cellCoord(MarchingCubes::cell(cI())));
-						cellsAppearence.at(cI()) += weight;
-					}
+					#pragma omp atomic update
+					newLevelSet[*cI] += weight * correctSdf(solution, BaseClass::cellCoord(MarchingCubes::cell(cI())));
+
+					#pragma omp atomic update
+					cellsAppearence[*cI] += weight;
 	#ifdef DBG
+					#pragma omp critical(DBGPushclusterPts)
 					clusterPts.push_back(BaseClass::cellCoord(MarchingCubes::cell(cI())));
+
 
 	#endif
 				}
@@ -300,33 +299,53 @@ private:
 
 			}
 		}
-		assert(cellsAppearence.size() == intersectionCells.size());
-
-		for(const auto& item : cellsAppearence)
+#ifdef DBG
+		float totalError = 0;
+#endif
+		#pragma omp parallel for schedule(static)
+		for(size_t i = 0; i < cellsAppearence.size(); i++)
 		{
-
+			assert(cellsAppearence[i] >= 0);
+			if(cellsAppearence[i] < 1e-9)
+				continue;
 			//compute levelSetFactor
-			typename BaseClass::CellIndex cI(item.first, *this);
-			assert(*cI != InvPrt);
-			float levelSetFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(BaseClass::mMcVertexSphParticles[*cI]) /
+			float levelSetFactor = std::min(1.f, mSmoothingFactor * static_cast<float>(BaseClass::mMcVertexSphParticles[i]) /
 					BaseClass::mPartPerSupportArea);
 			assert(levelSetFactor >= 0 && levelSetFactor <= 1);
 			levelSetFactor *= levelSetFactor;
 #ifdef DBG
-			intersectionCellsPts.push_back(BaseClass::cellCoord(BaseClass::cell(cI())));
-			intersCellsSmoothingFactor.push_back(levelSetFactor);
+			#pragma omp critical
+			{
+			MarchingCubes::DataIndex dI(i, *this);
+			if(intersectionCells.count(*dI))
+			{
+				intersectionCellsPts.push_back(BaseClass::cellCoord(BaseClass::cell(*dI)));
+				intersCellsSmoothingFactor.push_back(levelSetFactor);
+			}
+			}
+
 #endif
 
 			//compute new level set value as weighted sum of old oone and new one
-			newLevelSet[*cI] /= item.second;
-			newLevelSet[*cI] = newLevelSet[*cI] * levelSetFactor + BaseClass::mMcVertexSdf[*cI] * (1 - levelSetFactor);
+			newLevelSet[i] -= BaseClass::mMcVertexSdf[i];
+			newLevelSet[i] /= cellsAppearence[i];
+			newLevelSet[i] = newLevelSet[i] * levelSetFactor + BaseClass::mMcVertexSdf[i] * (1 - levelSetFactor);
 
 #ifdef DBG
-			mlsIntersectionCellsSdfBefore.push_back(BaseClass::mMcVertexSdf[*cI]);
-			mlsIntersectionCellsSdfAfter.push_back(newLevelSet[*cI]);
+			float newPart = (newLevelSet[i] - BaseClass::mMcVertexSdf[i]);
+			#pragma omp atomic update
+			totalError += (newPart * newPart);
+
+			#pragma omp critical
+			{
+			mlsIntersectionCellsSdfBefore.push_back(BaseClass::mMcVertexSdf[i]);
+			mlsIntersectionCellsSdfAfter.push_back(newLevelSet[i]);
+			}
 #endif
 		}
 #ifdef DBG
+		pr_info("mls standard deviation: %f", totalError);
+
 		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsSdfIntersectionVertices+SmoothingFactors_" + BaseClass::mFrameNumber + ".vtk",
 									 intersectionCellsPts, intersCellsSmoothingFactor);
 		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName +  "MlsIntersectionVellsSdfBefore_" + BaseClass::mFrameNumber + ".vtk",
