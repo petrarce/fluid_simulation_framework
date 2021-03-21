@@ -164,6 +164,7 @@ struct
 	size_t mlsSamples {20};
 	size_t mlsCurvatureParticles {20};
 	float mlsSampleOverlapFactor {0.5};
+	float mlsClusterFraction {0.5};
 	
 	void parse(const variables_map& vm)
 	{
@@ -298,6 +299,14 @@ struct
 		else
 			mlsSamples = mlsMaxSamples;
 
+		if(vm.count("mls-cluster-fraction"))
+		{
+			mlsClusterFraction = vm["mls-cluster-fraction"].as<float>();
+			if(mlsClusterFraction < 0 || mlsClusterFraction > 1)
+				throw std::invalid_argument("mls-cluster-fraction should be between [0, 1]");
+		}
+
+
 
 	}
 private:
@@ -351,6 +360,7 @@ int main(int argc, char** argv)
 			("mls-max-samples", value<size_t>()->default_value(20), "maximum number of mls sample points")
 			("mls-curvature-particles", value<size_t>()->default_value(20), "radius of flat surface in terms of fluid particles (diameter)")
 			("mls-sample-overlap-factor", value<float>()->default_value(0.5), "factor of cluster size, a number of nearest neighbor samples in cluster that should be removed")
+			("mls-cluster-fraction", value<float>()->default_value(0.5), "fraction of 0-level intersection cells, for which mls clusters will be generated")
 			("parallel-frames", value<size_t>()->default_value(omp_get_max_threads()), "number of frames that should run in parallel")
 			("tag", value<std::string>()->default_value(""), "addition simulation name tag for debug purposes")
 			;
@@ -461,7 +471,8 @@ int main(int argc, char** argv)
 														 programInput.mlsSamples,
 														 programInput.mlsMaxSamples,
 														 programInput.mlsCurvatureParticles,
-														 programInput.mlsSampleOverlapFactor);
+														 programInput.mlsSampleOverlapFactor,
+														 programInput.mlsClusterFraction);
 #ifdef MLSV1
 				simtype = string("ZhuBridsonMlsV1")
 #else
@@ -479,7 +490,9 @@ int main(int argc, char** argv)
 						+ "_maxs-" + to_string(programInput.mlsMaxSamples)
 						+ "_mlss" + to_string(programInput.mlsSamples)
 						+ "_cp-" + to_string(programInput.mlsCurvatureParticles)
-						+ "_of-" + to_string(programInput.mlsSampleOverlapFactor);
+						+ "_of-" + to_string(programInput.mlsSampleOverlapFactor)
+						+ "_cf-" + to_string(programInput.mlsClusterFraction);
+
 
 
 				break;
@@ -494,7 +507,8 @@ int main(int argc, char** argv)
 													programInput.mlsSamples,
 													programInput.mlsMaxSamples,
 													programInput.mlsCurvatureParticles,
-													programInput.mlsSampleOverlapFactor);
+													programInput.mlsSampleOverlapFactor,
+													programInput.mlsClusterFraction);
 				simtype = string("NaiveMls")
 						+ "_cff-" + to_string(programInput.colorFieldFactor)
 						+ "_gr-" + to_string(programInput.gridResolution)
@@ -504,18 +518,13 @@ int main(int argc, char** argv)
 						+ "_maxs-" + to_string(programInput.mlsMaxSamples)
 						+ "_mlss" + to_string(programInput.mlsSamples)
 						+ "_cp-" + to_string(programInput.mlsCurvatureParticles)
-						+ "_of-" + to_string(programInput.mlsSampleOverlapFactor);
+						+ "_of-" + to_string(programInput.mlsSampleOverlapFactor)
+						+ "_cf-" + to_string(programInput.mlsClusterFraction);
+
 
 
 				break;
 
-//			case ReconstructionMethods::MinDist:
-//				mcbNew = std::make_unique<MinDistReconstruction>(nullptr,
-//												   programInput.lowerCorner,
-//												   programInput.upperCorner,
-//												   Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
-//												   programInput.supportRad);
-//				break;
 			default:
 				throw std::runtime_error("unknown simulation type...");
 			}

@@ -18,10 +18,11 @@ mls_max_samples="100"
 mls_samples="100"
 mls_curvature_particles="20"
 mls_overlap_factor="0.5"
+mls_cluster_factor="0.5"
 app="_empty_command_"
 num_threads=8
 nested_paralelism="TRUE"
-parallel_options="-j8"
+parallel_options="-j8 --ungroup"
 tag=""
 
 
@@ -46,6 +47,7 @@ function printHelp()
 	echo '-st|--mls-similarity-threshold'
 	echo '-ms|--mls-samples'
 	echo '-mms|--mls-max-samples'
+	echo '-mcf|--mls-clusters-factor'
 	echo '-cp | --mls-curvature-particles'
 	echo '--app'
 	echo '-nt|--num-threads'
@@ -61,6 +63,13 @@ while [ $# -gt 0 ]; do
 		-h|--help)
 		printHelp
 		exit 1
+		;;
+
+		-mcf|--mls-clusters-factor)
+		if [ $# -lt 2 ]; then exit; fi
+		mls_cluster_factor=${2}
+		shift
+		shift
 		;;
 
 		-np|--nested-paralelism)
@@ -291,11 +300,13 @@ for mt in ${method}; do
 		cp=${mls_curvature_particles}
 		of=${mls_overlap_factor}
 		ms=${mls_samples}
+		mcf=${mls_cluster_factor}
 	else
 		mms="1"
 		cp="1"
 		of="1"
 		ms="1"
+		mcf="1"
 	fi
 
 	for sfco in ${bsfco}; do
@@ -327,10 +338,12 @@ for mt in ${method}; do
 					--mls-sample-overlap-factor {16}\
 					--tag {17}\
 					--mls-samples {18}\
+					--mls-cluster-fraction {19}\
 						::: ${domain} ::: ${initVal} ::: ${sim_name}\
 						::: ${sim_directory} ::: ${grid_resolution} ::: ${supportRad}\
 						::: ${mt} ::: ${sdfsf} ::: ${bks} ::: ${bko}\
-						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${mms} ::: ${cp} ::: ${of} ::: ${tag} ::: ${ms}
+						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${mms} ::: ${cp}\
+						::: ${of} ::: ${tag} ::: ${ms} ::: ${mcf}
 	done
 done
 

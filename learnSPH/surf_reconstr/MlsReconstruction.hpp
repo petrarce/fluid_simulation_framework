@@ -38,17 +38,20 @@ public:
 							   size_t mlsSamples,
 							   size_t maxSamples,
 							   size_t curvatureParticles,
-							   float sampleOverlapFactor):
+							   float sampleOverlapFactor,
+							   float clusterFraction):
 		BaseClass(args...),
 		mSmoothingFactor(smoothingFactor),
 		mIterations(iterations),
 		mMlsSamples(mlsSamples),
 		mMaxSamples(maxSamples),
 		mCurvatureParticles(curvatureParticles),
-		mSampleOverlapFactor(sampleOverlapFactor)
+		mSampleOverlapFactor(sampleOverlapFactor),
+		mCluestersFraction(clusterFraction)
 	{
 		assert(smoothingFactor >= 0);
 		assert(sampleOverlapFactor >= 0 && sampleOverlapFactor <= 1);
+		assert(clusterFraction > 0 && clusterFraction <= 1);
 
 	}
 	MlsReconstruction(const MlsReconstruction& other):
@@ -58,7 +61,8 @@ public:
 		mMlsSamples(other.mMlsSamples),
 		mMaxSamples(other.mMaxSamples),
 		mCurvatureParticles(other.mCurvatureParticles),
-		mSampleOverlapFactor(other.mSampleOverlapFactor)
+		mSampleOverlapFactor(other.mSampleOverlapFactor),
+		mCluestersFraction(other.mCluestersFraction)
 	{}
 private:
 
@@ -145,7 +149,7 @@ private:
 
 #endif
 	}
-	std::vector<std::vector<size_t>> computeClusters(const std::unordered_set<size_t>& intersectionCells, std::unordered_set<size_t>& todoIntersectionCells)
+	std::vector<std::vector<size_t>> computeClusters(const std::unordered_set<size_t>& intersectionCells, std::vector<size_t>& todoIntersectionCells)
 	{
 
 #ifdef DBG
@@ -153,13 +157,8 @@ private:
 		std::vector<Real> maxFluidPartFactor;
 		std::vector<Real> curvaturePts;
 #endif
-		std::vector<size_t> keys;
-		keys.reserve(std::min(20000ul + 1ul, todoIntersectionCells.size()));
-		while(keys.size() < 20000 && !todoIntersectionCells.empty())
-		{
-			keys.push_back(*todoIntersectionCells.begin());
-			todoIntersectionCells.erase(todoIntersectionCells.begin());
-		}
+		std::vector<size_t>& keys = todoIntersectionCells;
+
 		std::vector<size_t> acceptedIndices;
 		if(mMlsSamples > 2 * mMaxSamples)
 		{
@@ -178,8 +177,9 @@ private:
 		}
 
 		std::vector<std::vector<size_t>> clusters;
+		size_t clustersSize = std::min(20000ul, todoIntersectionCells.size());
 		#pragma omp parallel for schedule(static)
-		for(int i = 0; i < keys.size(); i++)
+		for(size_t i = keys.size() - 1; i > keys.size() - clustersSize; i--)
 		{
 
 			std::vector<size_t> cluster;
@@ -216,6 +216,9 @@ private:
 									 intPts, curvaturePts);
 
 #endif
+		assert(todoIntersectionCells.size() - clusterSize > 0 &&
+			   todoIntersectionCells.size() - clusterSize < todoIntersectionCells.size());
+		todoIntersectionCells.resize(todoIntersectionCells.size() - clustersSize);
 		return clusters;
 	};
 #ifndef MLSV1
@@ -239,7 +242,20 @@ private:
 #endif
 
 		//compute clusters from intersection cells
-		auto todoIntersectionCells = intersectionCells;
+		std::vector<size_t> todoIntersectionCells(intersectionCells.begin(), intersectionCells.end());
+		std::vector<size_t> tmp;
+		tmp.reserve(todoIntersectionCells.size());
+		size_t clusterSamples = mCluestersFraction * todoIntersectionCells.size();
+		std::mt19937 gen(123);
+		for(size_t i = 0; i < clusterSamples; i++)
+		{
+			size_t index = gen() % todoIntersectionCells.size();
+			tmp.push_back(todoIntersectionCells[index]);
+			todoIntersectionCells[index] = todoIntersectionCells.back();
+			todoIntersectionCells.pop_back();
+		}
+		todoIntersectionCells.swap(tmp);
+
 		while(!todoIntersectionCells.empty())
 		{
 			clusters = computeClusters(intersectionCells, todoIntersectionCells);
@@ -507,6 +523,7 @@ private:
 	float mSmoothingFactor {1};
 	size_t mCurvatureParticles {20};
 	float mSampleOverlapFactor {0.5};
+	float mCluestersFraction {0.5};
 };
 
 typedef  MlsReconstruction<ZhuBridsonReconstruction, std::shared_ptr<learnSPH::FluidSystem> , const Eigen::Vector3d ,
