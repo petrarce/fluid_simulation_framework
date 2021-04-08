@@ -81,7 +81,7 @@ public:
 protected:
 	class CellIndex{
 	private:
-		const size_t mIndex;
+		size_t mIndex;
 		const MarchingCubes& mMarchingCubes;
 		mutable bool mDataIndexRequested {false};
 		mutable size_t mDataIndex {InvPrt};
@@ -106,6 +106,17 @@ protected:
 		size_t operator()() const
 		{
 			return mIndex;
+		}
+		const CellIndex& operator=(size_t cI)
+		{
+			if(cI == mIndex)
+				return *this;
+
+			std::lock_guard<std::mutex> lock(mLock);
+			mIndex = cI;
+			mDataIndex = InvPrt;
+			mDataIndexRequested = false;
+			return *this;
 		}
 	};
 	class DataIndex{

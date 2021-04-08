@@ -14,6 +14,7 @@
 #include <set>
 #include <random>
 #include <cassert>
+#include <iostream>
 #define USE_QUADRADIC_SAMPLING 1
 
 #if 0
@@ -149,6 +150,7 @@ private:
 
 #endif
 	}
+
 	std::vector<std::vector<size_t>> computeClusters(const std::unordered_set<size_t>& intersectionCells, std::vector<size_t>& todoIntersectionCells)
 	{
 
@@ -216,8 +218,7 @@ private:
 									 intPts, curvaturePts);
 
 #endif
-		assert(todoIntersectionCells.size() - clusterSize > 0 &&
-			   todoIntersectionCells.size() - clusterSize < todoIntersectionCells.size());
+		assert(todoIntersectionCells.size() >= clustersSize);
 		todoIntersectionCells.resize(todoIntersectionCells.size() - clustersSize);
 		return clusters;
 	};
