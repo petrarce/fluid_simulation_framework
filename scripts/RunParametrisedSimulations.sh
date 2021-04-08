@@ -23,6 +23,7 @@ app="_empty_command_"
 num_threads=8
 nested_paralelism="TRUE"
 parallel_options="-j8 --ungroup"
+dnn_model=""
 tag=""
 
 
@@ -54,6 +55,7 @@ function printHelp()
 	echo '-np|--nested-paralelism'
 	echo '--parallel-opts'
 	echo '--tag'
+	echo '-dm|--dnn-model'
 }
 
 
@@ -63,6 +65,13 @@ while [ $# -gt 0 ]; do
 		-h|--help)
 		printHelp
 		exit 1
+		;;
+
+		-dm|--dnn-model)
+		if [ $# -lt 2 ]; then exit; fi
+		dnn_model=${2}
+		shift
+		shift
 		;;
 
 		-mcf|--mls-clusters-factor)
@@ -309,6 +318,12 @@ for mt in ${method}; do
 		mcf="1"
 	fi
 
+	if [ ${mt} == "NaiveDNN" ]; then
+		dnnm="${dnn_model}"
+	else
+		dnnm="" 
+	fi
+
 	for sfco in ${bsfco}; do
 
 		if [ ${sfco} == "true" ]; then
@@ -339,11 +354,12 @@ for mt in ${method}; do
 					--tag {17}\
 					--mls-samples {18}\
 					--mls-cluster-fraction {19}\
+					--dnn-model {20}\
 						::: ${domain} ::: ${initVal} ::: ${sim_name}\
 						::: ${sim_directory} ::: ${grid_resolution} ::: ${supportRad}\
 						::: ${mt} ::: ${sdfsf} ::: ${bks} ::: ${bko}\
 						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${mms} ::: ${cp}\
-						::: ${of} ::: ${tag} ::: ${ms} ::: ${mcf}
+						::: ${of} ::: ${tag} ::: ${ms} ::: ${mcf} ::: ${dnnm}
 	done
 done
 

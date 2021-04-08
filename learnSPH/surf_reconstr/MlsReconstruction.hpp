@@ -123,6 +123,54 @@ private:
 
 	}
 
+	void generateTrainingSet(const std::string& heading, unordered_set<size_t> interCells)
+	{
+		std::string fname = "/tmp/trainingSet-" +
+									BaseClass::mSimName + "_" +
+									MarchingCubes::mFrameNumber +
+									"_" + heading +
+								   ".txt";
+		std::ofstream trainingData(fname.c_str(), std::ios::app);
+		if(!trainingData.is_open())
+		{
+			pr_warn("Failed to open/create file %s to deploy training data", fname.c_str());
+			return;
+		}
+		while(!interCells.empty())
+		{
+			std::string sample;
+			MarchingCubes::CellIndex cI(*interCells.begin(), *this);
+			assert(*cI != InvPrt);
+
+			interCells.erase(interCells.begin());
+			Eigen::Vector3li cell = MarchingCubes::cell(cI());
+			for(int64_t i = -2; i <= 2; i++)
+			{
+				for(int64_t j = -2; j <= 2; j++)
+				{
+					for(int64_t k = -2; k <= 2; k++)
+					{
+						auto cellOffset = Eigen::Vector3li(i, j, k);
+						Eigen::Vector3li nbCell = cell + cellOffset;
+						MarchingCubes::CellIndex nbcI(MarchingCubes::cellIndex(nbCell), *this);
+						while(*nbcI == InvPrt)
+						{
+							assert(nbcI() != cI());
+							cellOffset /= 2;
+							nbCell = cell + cellOffset;
+							nbcI = MarchingCubes::cellIndex(nbCell);
+						}
+						interCells.erase(nbcI());
+						sample = sample + (sample.empty()? "" : ", ") + std::to_string(MarchingCubes::mMcVertexSdf[*nbcI]);
+					}
+				}
+			}
+			sample = sample + "\n";
+			trainingData << sample;
+		}
+		trainingData << "\n";
+	}
+
 	void updateLevelSet() override
 	{
 		BaseClass::updateLevelSet();
@@ -138,10 +186,13 @@ private:
 		learnSPH::saveParticlesToVTK("/tmp/" + BaseClass::mSimName + "LevelSetBeforeMls_" + MarchingCubes::mFrameNumber + ".vtk",
 									 points, BaseClass::mMcVertexSdf);
 #endif
+		auto intersectionCells = MarchingCubes::computeIntersectionVertices(0);
+		generateTrainingSet("input", intersectionCells);
 		globalPerfStats.startTimer("mlsSmoothPath");
 		for(int i = 0; i < mIterations; i++)
 			correctLevelSet();
 		globalPerfStats.stopTimer("mlsSmoothPath");
+		generateTrainingSet("output", intersectionCells);
 
 #ifdef DBG
 

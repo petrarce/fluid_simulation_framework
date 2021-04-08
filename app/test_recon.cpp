@@ -16,6 +16,7 @@
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
 #include <learnSPH/surf_reconstr/BlurredReconstruction.hpp>
 #include <learnSPH/surf_reconstr/MlsReconstruction.hpp>
+#include <learnSPH/surf_reconstr/DNNReconstruction.hpp>
 //#include <learnSPH/surf_reconstr/MinDistReconstruction.hpp>
 #include <learnSPH/core/storage.h>
 
@@ -137,6 +138,7 @@ enum ReconstructionMethods
 	NMCBlur,
 	ZBMls,
 	NMCMLS,
+	NMCDNN,
 	MinDist,
 };
 
@@ -165,6 +167,7 @@ struct
 	size_t mlsCurvatureParticles {20};
 	float mlsSampleOverlapFactor {0.5};
 	float mlsClusterFraction {0.5};
+	std::string dnnModelFile {""};
 	
 	void parse(const variables_map& vm)
 	{
@@ -261,6 +264,8 @@ struct
 				method = ReconstructionMethods::NMCMLS;
 			else if(lmethod == "MinDist")
 				method = ReconstructionMethods::MinDist;
+			else if(lmethod == "NaiveDNN")
+				method = ReconstructionMethods::NMCDNN;
 			else
 				throw invalid_argument("unknown reconstruction method specified in  --method: " + lmethod);
 		} else
@@ -306,7 +311,8 @@ struct
 				throw std::invalid_argument("mls-cluster-fraction should be between [0, 1]");
 		}
 
-
+		if(vm.count("dnn-model"))
+			dnnModelFile = vm["dnn-model"].as<std::string>();
 
 	}
 private:
@@ -363,6 +369,7 @@ int main(int argc, char** argv)
 			("mls-cluster-fraction", value<float>()->default_value(0.5), "fraction of 0-level intersection cells, for which mls clusters will be generated")
 			("parallel-frames", value<size_t>()->default_value(omp_get_max_threads()), "number of frames that should run in parallel")
 			("tag", value<std::string>()->default_value(""), "addition simulation name tag for debug purposes")
+			("dnn-model", value<std::string>()->default_value(""), "path to the tendor flow (.h5) DNN model")
 			;
 	variables_map vm;
 	store(parse_command_line(argc, argv, options), vm);
@@ -524,7 +531,19 @@ int main(int argc, char** argv)
 
 
 				break;
+			case ReconstructionMethods::NMCDNN:
+				mcbNew = std::make_unique<NaiveDNN>(nullptr,
+													programInput.lowerCorner,
+													programInput.upperCorner,
+													Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
+													programInput.initValue,
+													programInput.dnnModelFile);
 
+				simtype = string("NaiveDNN")
+						+ "_cff-" + to_string(programInput.colorFieldFactor)
+						+ "_gr-" + to_string(programInput.gridResolution)
+						+ "_iv-" + to_string(programInput.initValue);
+				break;
 			default:
 				throw std::runtime_error("unknown simulation type...");
 			}
