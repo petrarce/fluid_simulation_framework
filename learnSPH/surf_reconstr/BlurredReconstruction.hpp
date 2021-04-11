@@ -7,7 +7,7 @@
 #include <learnSPH/core/kernel.h>
 #include <learnSPH/surf_reconstr/ZhuBridsonReconstruction.hpp>
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
-#include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
+#include <learnSPH/surf_reconstr/SolenthalerReconstruction.hpp>
 #include <cassert>
 
 #if 0
@@ -319,8 +319,8 @@ private:
 
 typedef  BlurredReconstruction<ZhuBridsonReconstruction, std::shared_ptr<learnSPH::FluidSystem> , const Eigen::Vector3d , 
 								const Eigen::Vector3d , const Eigen::Vector3d , float > ZhuBridsonBlurred;
-typedef  BlurredReconstruction<SolenthilerReconstruction, std::shared_ptr<learnSPH::FluidSystem>, const Eigen::Vector3d, const Eigen::Vector3d, 
-								const Eigen::Vector3d , float, float, float> SolenthilerBlurred;
+typedef  BlurredReconstruction<SolenthalerReconstruction, std::shared_ptr<learnSPH::FluidSystem>, const Eigen::Vector3d, const Eigen::Vector3d, 
+								const Eigen::Vector3d , float, float, float> SolenthalerBlurred;
 typedef  BlurredReconstruction<NaiveMarchingCubes, std::shared_ptr<learnSPH::FluidSystem>, const Eigen::Vector3d, 
 								const Eigen::Vector3d, const Eigen::Vector3d, float> NaiveBlurred;
 

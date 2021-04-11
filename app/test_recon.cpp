@@ -13,7 +13,7 @@
 #include <learnSPH/core/vtk_writer.h>
 #include <learnSPH/surf_reconstr/NaiveMarchingCubes.hpp>
 #include <learnSPH/surf_reconstr/ZhuBridsonReconstruction.hpp>
-#include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
+#include <learnSPH/surf_reconstr/SolenthalerReconstruction.hpp>
 #include <learnSPH/surf_reconstr/BlurredReconstruction.hpp>
 #include <learnSPH/surf_reconstr/MlsReconstruction.hpp>
 #include <learnSPH/surf_reconstr/MullerEtAlReconstruction.hpp>
@@ -254,7 +254,7 @@ struct
 				method = ReconstructionMethods::NMC;
 			else if(lmethod == "ZhuBridson")
 				method = ReconstructionMethods::ZB;
-			else if(lmethod == "Solenthiler")
+			else if(lmethod == "Solenthaler")
 				method = ReconstructionMethods::SLH;
 			else if(lmethod == "ZhuBridsonBlurred")
 				method = ReconstructionMethods::ZBBlur;
@@ -356,7 +356,7 @@ int main(int argc, char** argv)
 			("sim-name", value<string>(), "simulation name")
 			("sim-directory", value<string>()->default_value("./"), "path to the simulation vtk files")
 			("grid-resolution", value<Real>(), "uniform grid resolution for matching cubes")
-			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC[Blurred/Mls], ZhuBridson[Blurred/Mls], MinDist, Solenthiler")
+			("method", value<string>()->default_value("NaiveMC"), "reconstruction type: NaiveMC[Blurred/Mls], ZhuBridson[Blurred/Mls], MinDist, Solenthaler")
 			("support-radius", value<Real>()->default_value(2), "Support radius for position-based scalar fields")
 			("tmin", value<Real>()->default_value(1), "lower bound for Solentiler evalue treshold")
 			("tmax", value<Real>()->default_value(2), "upper bound for Solentiler evalue treshold")
@@ -433,14 +433,14 @@ int main(int argc, char** argv)
 				simtype = string("ZhuBridson") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad);
 				break;
 			case ReconstructionMethods::SLH:
-				mcbNew = std::make_unique<SolenthilerReconstruction>(nullptr,
+				mcbNew = std::make_unique<SolenthalerReconstruction>(nullptr,
 					programInput.lowerCorner, 
 					programInput.upperCorner, 
 					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution), 
 					programInput.supportRad,
 					programInput.tMin,
 					programInput.tMax);
-				simtype = string("Solenthiler") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) +
+				simtype = string("Solenthaler") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) +
 						"_tmin-" + to_string(programInput.tMin) + "_tmax-" + to_string(programInput.tMax);
 				break;
 			case ReconstructionMethods::OnderikEtAl:

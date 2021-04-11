@@ -3,10 +3,10 @@
 #include <unordered_map>
 #include <types.hpp>
 
-class SolenthilerReconstruction : public ZhuBridsonReconstruction
+class SolenthalerReconstruction : public ZhuBridsonReconstruction
 {
 public:
-	explicit SolenthilerReconstruction(std::shared_ptr<learnSPH::FluidSystem> fluid,
+	explicit SolenthalerReconstruction(std::shared_ptr<learnSPH::FluidSystem> fluid,
 							  const Eigen::Vector3d lCorner,
 							  const Eigen::Vector3d uCorner,
 							  const Eigen::Vector3d cResolution,
@@ -17,7 +17,7 @@ public:
 		mTLow(tLow),
 		mTHigh(tHigh)
 	{}
-	explicit SolenthilerReconstruction(const SolenthilerReconstruction& other):
+	explicit SolenthalerReconstruction(const SolenthalerReconstruction& other):
 		ZhuBridsonReconstruction(other),
 		mTLow(other.mTLow),
 		mTHigh(other.mTHigh)

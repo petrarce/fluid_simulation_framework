@@ -1,4 +1,4 @@
-#include "SolenthilerReconstruction.hpp"
+#include "SolenthalerReconstruction.hpp"
 #include <learnSPH/core/vtk_writer.h>
 #if 0
 #ifndef DBG
@@ -6,7 +6,7 @@
 #endif
 #endif
 
-void SolenthilerReconstruction::updateLevelSet()
+void SolenthalerReconstruction::updateLevelSet()
 {
 	ZhuBridsonReconstruction::updateAvgs();
 	updateGradientSums();
@@ -24,7 +24,7 @@ void SolenthilerReconstruction::updateLevelSet()
 	}
 }
 
-void SolenthilerReconstruction::updateGrid()
+void SolenthalerReconstruction::updateGrid()
 {
 	ZhuBridsonReconstruction::updateGrid();
 }
@@ -37,7 +37,7 @@ static float thresholdFunction(Real EVmax, Real tMin, Real tMax)
 	return std::min(1., std::max(0., lmbda2 * lmbda - 3 * lmbda2 + 3*lmbda));
 }
 
-void SolenthilerReconstruction::updateGradientSums()
+void SolenthalerReconstruction::updateGradientSums()
 {
 	mGradSums.clear();
 	mGradSums.resize(mDataToCellIndex.size(), Vector3R::Zero());
@@ -72,7 +72,7 @@ void SolenthilerReconstruction::updateGradientSums()
 	
 }
 
-void SolenthilerReconstruction::updateJakobians()
+void SolenthalerReconstruction::updateJakobians()
 {
 	mJacobians.clear();
 	mJacobians.resize(mDataToCellIndex.size(), Matrix3d::Zero());
@@ -94,7 +94,7 @@ void SolenthilerReconstruction::updateJakobians()
 		}
 	}
 }
-void SolenthilerReconstruction::updateFFunction()
+void SolenthalerReconstruction::updateFFunction()
 {
 #ifdef DBG
 	std::vector<Eigen::Vector3d> evls;

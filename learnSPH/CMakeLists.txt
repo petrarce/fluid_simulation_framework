@@ -38,8 +38,8 @@ set(SOURCE_FILES
 	surf_reconstr/NaiveMarchingCubes.cpp
 	surf_reconstr/ZhuBridsonReconstruction.hpp
 	surf_reconstr/ZhuBridsonReconstruction.cpp
-	surf_reconstr/SolenthilerReconstruction.cpp
-	surf_reconstr/SolenthilerReconstruction.hpp
+	surf_reconstr/SolenthalerReconstruction.cpp
+	surf_reconstr/SolenthalerReconstruction.hpp
 	surf_reconstr/MullerEtAlReconstruction.cpp
 	surf_reconstr/MullerEtAlReconstruction.hpp
 	surf_reconstr/MlsReconstruction.hpp

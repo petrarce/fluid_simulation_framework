@@ -298,12 +298,12 @@ for mt in ${method}; do
 	ms="1"
 	mcf="1"
 
-	if [[ ${mt} =~ "OnderikEtAl" ]] || [[ ${mt} =~ "Solenthiler" ]]; then
+	if [[ ${mt} =~ "OnderikEtAl" ]] || [[ ${mt} =~ "Solenthaler" ]]; then
 		tMin=${tmin}
 		tMax=${tmax}
 	fi
 
-	if [[ ${mt} =~ "OnderikEtAl" ]] || [[ ${mt} =~ "ZhuBridson" ]] || [[ ${mt} =~ "Solenthiler" ]]; then
+	if [[ ${mt} =~ "OnderikEtAl" ]] || [[ ${mt} =~ "ZhuBridson" ]] || [[ ${mt} =~ "Solenthaler" ]]; then
 		supportRad=${support_radius}
 	fi
 

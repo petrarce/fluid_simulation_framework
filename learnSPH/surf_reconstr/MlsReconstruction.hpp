@@ -1,7 +1,7 @@
 #pragma once
 #include "NaiveMarchingCubes.hpp"
 #include "ZhuBridsonReconstruction.hpp"
-#include "SolenthilerReconstruction.hpp"
+#include "SolenthalerReconstruction.hpp"
 #include "OnderikEtAlReconstruction.hpp"
 #include <learnSPH/core/vtk_writer.h>
 #include <learnSPH/core/PerfStats.hpp>
@@ -532,8 +532,8 @@ private:
 
 typedef  MlsReconstruction<ZhuBridsonReconstruction, std::shared_ptr<learnSPH::FluidSystem> , const Eigen::Vector3d ,
 								const Eigen::Vector3d , const Eigen::Vector3d , float > ZhuBridsonMls;
-typedef  MlsReconstruction<SolenthilerReconstruction, std::shared_ptr<learnSPH::FluidSystem>, const Eigen::Vector3d, const Eigen::Vector3d,
-								const Eigen::Vector3d , float, float, float> SolenthilerMls;
+typedef  MlsReconstruction<SolenthalerReconstruction, std::shared_ptr<learnSPH::FluidSystem>, const Eigen::Vector3d, const Eigen::Vector3d,
+								const Eigen::Vector3d , float, float, float> SolenthalerMls;
 typedef  MlsReconstruction<NaiveMarchingCubes, std::shared_ptr<learnSPH::FluidSystem>, const Eigen::Vector3d,
 								const Eigen::Vector3d, const Eigen::Vector3d, float> NaiveMls;
 typedef  MlsReconstruction<OnderikEtAlReconstruction, std::shared_ptr<learnSPH::FluidSystem>, const Eigen::Vector3d, const Eigen::Vector3d,
