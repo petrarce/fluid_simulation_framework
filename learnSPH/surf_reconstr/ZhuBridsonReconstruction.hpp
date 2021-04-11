@@ -24,10 +24,9 @@ public:
 	
 	explicit ZhuBridsonReconstruction(const ZhuBridsonReconstruction& other ):
 		MarchingCubes(other),
+		mRadii(other.mRadii),
 		denominators(other.denominators),
-		dAvg(other.dAvg),
-		xAvg(other.xAvg),
-		mRadii(other.mRadii)
+		xAvg(other.xAvg)
 	{}
 
 protected:
@@ -37,17 +36,13 @@ protected:
 	void clearBuffers() override
 	{
 		denominators.clear(); denominators.shrink_to_fit();
-		dAvg.clear(); dAvg.shrink_to_fit();
 		xAvg.clear(); xAvg.shrink_to_fit();
 	}
+	void updateAvgs();
 
 	Real mRadii;
 	std::vector<Real> denominators;
-	std::vector<Real> dAvg;
 	std::vector<Vector3R> xAvg;
 
-protected:
-	void updateDenominators();
-	void updateAvgs();
 
 };

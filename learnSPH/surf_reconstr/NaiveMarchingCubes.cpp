@@ -121,16 +121,18 @@ void MarchingCubes::relocateFluidParticles(Real supportRadius)
 {
 	auto& particles = mFluid->getPositions();
 	auto& densities = mFluid->getDensities();
-
 	for(size_t i = mSurfaceParticlesCount; i < particles.size();)
 	{
+		assert(mCurvature.size() == particles.size());
 		auto nCells = getNeighbourCells(particles[i], supportRadius);
 		if(nCells.empty())
 		{
 			particles[i].swap(particles.back());
 			densities[i] = densities.back();
+			mCurvature[i] = mCurvature.back();
 			particles.pop_back();
 			densities.pop_back();
+			mCurvature.pop_back();
 			continue;
 		}
 		i++;
@@ -185,6 +187,7 @@ void NaiveMarchingCubes::updateLevelSet()
 	for(size_t i = 0; i < mFluid->size(); i++)
 	{
 		double fluidDensity = densities[i];
+		float normDensity = mFluid->getMass() / std::max(fluidDensity, mFluid->getRestDensity());
 		const Eigen::Vector3d& particle = positions[i];
 		std::vector<Eigen::Vector3li> neighbourCells =
 				getNeighbourCells(particle, mFluid->getCompactSupport());
@@ -197,8 +200,7 @@ void NaiveMarchingCubes::updateLevelSet()
 				cellCoord(cell), 
 				mFluid->getSmoothingLength()
 			);
-			float density = std::max(fluidDensity, mFluid->getRestDensity());
-			float total = mFluid->getMass() / density * weight;
+			float total = normDensity * weight;
 			#pragma omp atomic update
 			mMcVertexSdf[*cI] += total;
 

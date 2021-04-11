@@ -23,6 +23,8 @@ app="_empty_command_"
 num_threads=8
 nested_paralelism="TRUE"
 parallel_options="-j8 --ungroup"
+tmin="0"
+tmax="1.05"
 tag=""
 
 
@@ -53,6 +55,8 @@ function printHelp()
 	echo '-nt|--num-threads'
 	echo '-np|--nested-paralelism'
 	echo '--parallel-opts'
+	echo '-tmin'
+	echo '-tmax'
 	echo '--tag'
 }
 
@@ -64,6 +68,22 @@ while [ $# -gt 0 ]; do
 		printHelp
 		exit 1
 		;;
+
+		-tmax)
+		if [ $# -lt 2 ]; then exit; fi
+		tmax=${2}
+		shift
+		shift
+		;;
+
+
+		-tmin)
+		if [ $# -lt 2 ]; then exit; fi
+		tmin=${2}
+		shift
+		shift
+		;;
+
 
 		-mcf|--mls-clusters-factor)
 		if [ $# -lt 2 ]; then exit; fi
@@ -262,59 +282,61 @@ echo domain=${domain} init_val=${init_val} sim_directory=${sim_directory}\
 	  mls_max_samples=${mls_max_samples} app=${app} tag=${tag}
 
 for mt in ${method}; do
+	tMin="0"
+	tMax="1"
+	bks="1"
+	bkd="1"
+	bko="1"
+	bsfco="true"
+	initVal="-0.5"
+	supportRad="0"
+	sdfsf="1"
+	bit="1"
+	mms="1"
+	cp="1"
+	of="1"
+	ms="1"
+	mcf="1"
 
-
-	if [ ${mt} == "ZhuBridson" ] || [ ${mt} == "ZhuBridsonBlurred" ] || [ ${mt} == "ZhuBridsonMls" ] || [ ${mt} == "Solenthiler" ]; then
-		initVal="-0.5"
-	else
-		initVal=${init_val}
+	if [[ ${mt} =~ "OnderikEtAl" ]] || [[ ${mt} =~ "Solenthiler" ]]; then
+		tMin=${tmin}
+		tMax=${tmax}
 	fi
-	if [ ${mt} == "NaiveMC" ] || [ ${mt} == "NaiveMCBlurred" ] || [ ${mt} == "NaiveMCMls" ]; then
-		supportRad="0"
-	else 
+
+	if [[ ${mt} =~ "OnderikEtAl" ]] || [[ ${mt} =~ "ZhuBridson" ]] || [[ ${mt} =~ "Solenthiler" ]]; then
 		supportRad=${support_radius}
 	fi
 
-	if [ ${mt} == "ZhuBridsonBlurred" ] || [ ${mt} == "NaiveMCBlurred" ] ; then
+	if [[ ${mt} =~ "NaiveMC" ]]; then
+		initVal=${init_val}
+	fi
+
+	if [[ ${mt} =~ "Blurred" ]]; then
 		bks=${blur_kernel_size}
 		bko=${blur_kernel_offset}
 		bsfco=${blur_surface_cells_only}
 		bkd=${blur_kernel_depth}
-	else
-		bks="1"
-		bkd="1"
-		bko="1"
-		bsfco="true"
 	fi
 
 
-	if [ ${mt} == "ZhuBridsonBlurred" ] || [ ${mt} == "NaiveMCBlurred" ] || [ ${mt} == "ZhuBridsonMls" ] || [ ${mt} == "NaiveMCMls" ]; then
+	if [[ ${mt} =~ "Blurred" ]] || [[ ${mt} =~ "Mls" ]]; then
 		bit=${blur_iterations}
 		sdfsf=${sdf_smoothing_factor}
-	else
-		sdfsf="1"
-		bit="1"
 	fi
-	if [ ${mt} == "ZhuBridsonMls" ] || [ ${mt} == "NaiveMCMls" ]; then
+
+	if [[ ${mt} =~ "Mls" ]]; then
 		mms=${mls_max_samples}
 		cp=${mls_curvature_particles}
 		of=${mls_overlap_factor}
 		ms=${mls_samples}
 		mcf=${mls_cluster_factor}
-	else
-		mms="1"
-		cp="1"
-		of="1"
-		ms="1"
-		mcf="1"
 	fi
 
 	for sfco in ${bsfco}; do
 
+		lsfco=""
 		if [ ${sfco} == "true" ]; then
 			lsfco="--blur-surface-cells-only"
-		else
-			lsfco=""
 		fi
 		
 		OMP_NUM_THREADS=${num_threads} OMP_NESTED=${nested_paralelism} parallel ${parallel_options} \
@@ -339,11 +361,13 @@ for mt in ${method}; do
 					--tag {17}\
 					--mls-samples {18}\
 					--mls-cluster-fraction {19}\
+					--tmin {20}\
+					--tmax {21}\
 						::: ${domain} ::: ${initVal} ::: ${sim_name}\
 						::: ${sim_directory} ::: ${grid_resolution} ::: ${supportRad}\
 						::: ${mt} ::: ${sdfsf} ::: ${bks} ::: ${bko}\
 						::: ${bkd} ::: ${bit} ::: ${cff} ::: ${mms} ::: ${cp}\
-						::: ${of} ::: ${tag} ::: ${ms} ::: ${mcf}
+						::: ${of} ::: ${tag} ::: ${ms} ::: ${mcf} ::: ${tMin} ::: ${tMax}
 	done
 done
 

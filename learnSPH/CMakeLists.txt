@@ -29,6 +29,7 @@ set(SOURCE_FILES
 	core/vtk_writer.h
 	simulation/solver.cpp
 	simulation/solver.h
+	surf_reconstr/BlurredReconstruction.hpp
 	surf_reconstr/marching_cubes_deprecated.cpp
 	surf_reconstr/marching_cubes_deprecated.h
 	surf_reconstr/look_up_tables.hpp
@@ -39,8 +40,11 @@ set(SOURCE_FILES
 	surf_reconstr/ZhuBridsonReconstruction.cpp
 	surf_reconstr/SolenthilerReconstruction.cpp
 	surf_reconstr/SolenthilerReconstruction.hpp
-	surf_reconstr/BlurredReconstruction.hpp
+	surf_reconstr/MullerEtAlReconstruction.cpp
+	surf_reconstr/MullerEtAlReconstruction.hpp
 	surf_reconstr/MlsReconstruction.hpp
+	surf_reconstr/OnderikEtAlReconstruction.cpp
+	surf_reconstr/OnderikEtAlReconstruction.hpp
 #	surf_reconstr/MinDistReconstruction.hpp
 
 	${CMAKE_SOURCE_DIR}/include/types.hpp

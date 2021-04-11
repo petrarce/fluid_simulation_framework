@@ -2,6 +2,7 @@
 #include "NaiveMarchingCubes.hpp"
 #include "ZhuBridsonReconstruction.hpp"
 #include "SolenthilerReconstruction.hpp"
+#include "OnderikEtAlReconstruction.hpp"
 #include <learnSPH/core/vtk_writer.h>
 #include <learnSPH/core/PerfStats.hpp>
 #include <learnSPH/core/kernel.h>
@@ -225,6 +226,8 @@ private:
 #ifndef MLSV1
 	void correctLevelSet()
 	{
+		assert(MarchingCubes::mMcVertexSphParticles.size() == MarchingCubes::mMcVertexSdf.size() &&
+			   MarchingCubes::mMcVertexCurvature.size() == MarchingCubes::mMcVertexSdf.size());
 		//find intersection cells
 		std::unordered_set<size_t> intersectionCells = MarchingCubes::computeIntersectionVertices(0);
 		std::vector<std::vector<size_t>> clusters;
@@ -533,4 +536,7 @@ typedef  MlsReconstruction<SolenthilerReconstruction, std::shared_ptr<learnSPH::
 								const Eigen::Vector3d , float, float, float> SolenthilerMls;
 typedef  MlsReconstruction<NaiveMarchingCubes, std::shared_ptr<learnSPH::FluidSystem>, const Eigen::Vector3d,
 								const Eigen::Vector3d, const Eigen::Vector3d, float> NaiveMls;
+typedef  MlsReconstruction<OnderikEtAlReconstruction, std::shared_ptr<learnSPH::FluidSystem>, const Eigen::Vector3d, const Eigen::Vector3d,
+								const Eigen::Vector3d , float, float, float> OnderikMls;
+
 

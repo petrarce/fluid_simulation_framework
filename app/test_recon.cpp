@@ -16,6 +16,8 @@
 #include <learnSPH/surf_reconstr/SolenthilerReconstruction.hpp>
 #include <learnSPH/surf_reconstr/BlurredReconstruction.hpp>
 #include <learnSPH/surf_reconstr/MlsReconstruction.hpp>
+#include <learnSPH/surf_reconstr/MullerEtAlReconstruction.hpp>
+#include <learnSPH/surf_reconstr/OnderikEtAlReconstruction.hpp>
 //#include <learnSPH/surf_reconstr/MinDistReconstruction.hpp>
 #include <learnSPH/core/storage.h>
 
@@ -138,6 +140,9 @@ enum ReconstructionMethods
 	ZBMls,
 	NMCMLS,
 	MinDist,
+	MullEtAll,
+	OnderikEtAl,
+	OnderikEtAlMls,
 };
 
 struct 
@@ -261,6 +266,12 @@ struct
 				method = ReconstructionMethods::NMCMLS;
 			else if(lmethod == "MinDist")
 				method = ReconstructionMethods::MinDist;
+			else if(lmethod == "MullEtAll")
+				method = ReconstructionMethods::MullEtAll;
+			else if(lmethod == "OnderikEtAl")
+				method = ReconstructionMethods::OnderikEtAl;
+			else if(lmethod == "OnderikEtAlMls")
+				method = ReconstructionMethods::OnderikEtAlMls;
 			else
 				throw invalid_argument("unknown reconstruction method specified in  --method: " + lmethod);
 		} else
@@ -401,6 +412,18 @@ int main(int argc, char** argv)
 						+ "_gr-" + to_string(programInput.gridResolution)
 						+ "_iv-" + to_string(programInput.initValue);
 				break;
+			case ReconstructionMethods::MullEtAll :
+				mcbNew = std::make_unique<MullerEtAlReconstruction>(nullptr,
+					programInput.lowerCorner,
+					programInput.upperCorner,
+					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
+					programInput.initValue);
+				simtype = string("MullerEtAlReconstruction")
+						+ "_cff-" + to_string(programInput.colorFieldFactor)
+						+ "_gr-" + to_string(programInput.gridResolution)
+						+ "_iv-" + to_string(programInput.initValue);
+				break;
+
 			case ReconstructionMethods::ZB:
 				mcbNew = std::make_unique<ZhuBridsonReconstruction>(nullptr,
 					programInput.lowerCorner, 
@@ -420,6 +443,22 @@ int main(int argc, char** argv)
 				simtype = string("Solenthiler") + "_cff-" + to_string(programInput.colorFieldFactor) + "_gr-" + to_string(programInput.gridResolution) + "_sr-" + to_string(programInput.supportRad) +
 						"_tmin-" + to_string(programInput.tMin) + "_tmax-" + to_string(programInput.tMax);
 				break;
+			case ReconstructionMethods::OnderikEtAl:
+				mcbNew = std::make_unique<OnderikEtAlReconstruction>(nullptr,
+					programInput.lowerCorner,
+					programInput.upperCorner,
+					Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
+					programInput.supportRad,
+					programInput.tMin,
+					programInput.tMax);
+				simtype = string("OnderikEtAl")
+						+ "_cff-" + to_string(programInput.colorFieldFactor)
+						+ "_gr-" + to_string(programInput.gridResolution)
+						+ "_sr-" + to_string(programInput.supportRad)
+						+ "_wmin-" + to_string(programInput.tMin)
+						+ "_wmax-" + to_string(programInput.tMax);
+				break;
+
 			case ReconstructionMethods::ZBBlur:
 				mcbNew = std::make_unique<ZhuBridsonBlurred>(nullptr,
 					programInput.lowerCorner, 
@@ -523,6 +562,35 @@ int main(int argc, char** argv)
 
 
 
+				break;
+			case ReconstructionMethods::OnderikEtAlMls:
+				mcbNew = std::make_unique<OnderikMls>(nullptr,
+													programInput.lowerCorner,
+													programInput.upperCorner,
+													Vector3R(programInput.gridResolution, programInput.gridResolution, programInput.gridResolution),
+													programInput.supportRad,
+													programInput.tMin,
+													programInput.tMax,
+													programInput.sdfSmoothingFactor,
+													programInput.blurIterations,
+													programInput.mlsSamples,
+													programInput.mlsMaxSamples,
+													programInput.mlsCurvatureParticles,
+													programInput.mlsSampleOverlapFactor,
+													programInput.mlsClusterFraction);
+				simtype = string("OnderikEtAlMls")
+						+ "_cff-" + to_string(programInput.colorFieldFactor)
+						+ "_gr-" + to_string(programInput.gridResolution)
+						+ "_sr-" + to_string(programInput.supportRad)
+						+ "_wmin-" + to_string(programInput.tMin)
+						+ "_wmax-" + to_string(programInput.tMax)
+						+ "_sf-" + to_string(programInput.sdfSmoothingFactor)
+						+ "_bi-" + to_string(programInput.blurIterations)
+						+ "_maxs-" + to_string(programInput.mlsMaxSamples)
+						+ "_mlss" + to_string(programInput.mlsSamples)
+						+ "_cp-" + to_string(programInput.mlsCurvatureParticles)
+						+ "_of-" + to_string(programInput.mlsSampleOverlapFactor)
+						+ "_cf-" + to_string(programInput.mlsClusterFraction);
 				break;
 
 			default:
