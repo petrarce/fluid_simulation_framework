@@ -64,7 +64,7 @@ void OnderikEtAlReconstruction::updateSdf()
 		DataIndex dI(i, *this);
 		assert(*dI != InvPrt);
 		auto cC = cellCoord(cell(*dI));
-		mMcVertexSdf[i] = (cC - mWeightedAvgs[i] / mWeightedSums[i]).norm() - (mRadii) * g(mWeightedSums[i]);
+		mMcVertexSdf[i] = (cC - mWeightedAvgs[i] / mWeightedSums[i]).norm() - (mRadii / 4) * g(mWeightedSums[i]);
 #ifdef DBG
 		points[i] = cC;
 		distDecayFunction[i] = g(mWeightedSums[i]);

@@ -1,6 +1,8 @@
 #include "PerfStats.hpp"
 #include <omp.h>
 
+PerfStats globalPerfStats;
+
 boost::timer::cpu_times operator+(const boost::timer::cpu_times& left, const boost::timer::cpu_times& right)
 {
 	boost::timer::cpu_times total = left;

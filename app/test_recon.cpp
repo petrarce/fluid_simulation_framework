@@ -36,8 +36,6 @@ using namespace learnSPH;
 using namespace std;
 using namespace boost::program_options;
 
-PerfStats globalPerfStats;
-
 static void load_vectors(const std::string &path, std::vector<Vector3R> &data)
 {
 	std::ifstream is(path, std::ios::binary);

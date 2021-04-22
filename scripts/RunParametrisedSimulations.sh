@@ -23,8 +23,10 @@ app="_empty_command_"
 num_threads=8
 nested_paralelism="TRUE"
 parallel_options="-j8 --ungroup"
-tmin="0"
-tmax="1.05"
+tmin="2"
+tmax="3.5"
+wmin="0"
+wmax="1.05"
 tag=""
 
 
@@ -57,6 +59,8 @@ function printHelp()
 	echo '--parallel-opts'
 	echo '-tmin'
 	echo '-tmax'
+	echo '-wmin'
+	echo '-wmax'
 	echo '--tag'
 }
 
@@ -68,6 +72,22 @@ while [ $# -gt 0 ]; do
 		printHelp
 		exit 1
 		;;
+
+		-wmin)
+		if [ $# -lt 2 ]; then exit; fi
+		wmin=${2}
+		shift
+		shift
+		;;
+
+
+		-wmax)
+		if [ $# -lt 2 ]; then exit; fi
+		wmax=${2}
+		shift
+		shift
+		;;
+
 
 		-tmax)
 		if [ $# -lt 2 ]; then exit; fi
@@ -298,9 +318,12 @@ for mt in ${method}; do
 	ms="1"
 	mcf="1"
 
-	if [[ ${mt} =~ "OnderikEtAl" ]] || [[ ${mt} =~ "Solenthaler" ]]; then
+	if [[ ${mt} =~ "Solenthaler" ]]; then
 		tMin=${tmin}
 		tMax=${tmax}
+	elif [[ ${mt} =~ "OnderikEtAl" ]]; then
+		tMin=${wmin}
+		tMax=${wmax}
 	fi
 
 	if [[ ${mt} =~ "OnderikEtAl" ]] || [[ ${mt} =~ "ZhuBridson" ]] || [[ ${mt} =~ "Solenthaler" ]]; then
